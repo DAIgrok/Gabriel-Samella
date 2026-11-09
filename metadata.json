@@ -1,0 +1,6 @@
+{
+  "name": "Nosso Mundo",
+  "description": "Aplicativo romântico premium exclusivo para nós dois com memórias, cartas, fotos, música, contador de amor, jogos e loja.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
