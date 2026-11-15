@@ -19,9 +19,10 @@ import { StoreItem } from '../../types';
 import { soundEngine } from '../../utils/audioSynth';
 
 export const StoreView: React.FC = () => {
-  const { storeItems, buyStoreItem, redeemVoucher, coins, showToast, triggerEasterEgg, triggerHeartExplosion } = useApp();
+  const { storeItems, buyStoreItem, redeemVoucher, coins, showToast, triggerEasterEgg, triggerHeartExplosion, renamePet } = useApp();
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
   const [activeModalItem, setActiveModalItem] = useState<StoreItem | null>(null);
+  const [petCustomName, setPetCustomName] = useState<string>('');
 
   const categories = [
     { id: 'todos', label: 'Tudo', icon: '✨' },
@@ -43,6 +44,15 @@ export const StoreView: React.FC = () => {
     if (selectedCategory === 'temas') return item.category === 'temas' || item.category === 'efeitos';
     return item.category === selectedCategory;
   });
+
+  const handleOpenItemModal = (item: StoreItem) => {
+    setActiveModalItem(item);
+    if (item.category === 'pets') {
+      const parts = item.title.replace('Adoção: ', '').trim().split(' ');
+      const suggested = parts.length > 1 ? parts[1] : parts[0];
+      setPetCustomName(suggested);
+    }
+  };
 
   const handleCopyCode = (code: string) => {
     navigator.clipboard?.writeText(code);
@@ -133,7 +143,7 @@ export const StoreView: React.FC = () => {
               key={item.id}
               layout
               whileHover={{ y: -3 }}
-              onClick={() => setActiveModalItem(item)}
+              onClick={() => handleOpenItemModal(item)}
               className={`glass-panel rounded-3xl p-5 border flex flex-col justify-between transition-all cursor-pointer relative overflow-hidden ${
                 item.purchased
                   ? item.redeemed
@@ -190,9 +200,13 @@ export const StoreView: React.FC = () => {
                   onClick={(e) => {
                     e.stopPropagation();
                     if (!item.purchased) {
-                      buyStoreItem(item.id);
+                      if (item.category === 'pets') {
+                        handleOpenItemModal(item);
+                      } else {
+                        buyStoreItem(item.id);
+                      }
                     } else {
-                      setActiveModalItem(item);
+                      handleOpenItemModal(item);
                     }
                   }}
                   className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 ${
@@ -263,12 +277,34 @@ export const StoreView: React.FC = () => {
               </p>
 
               {activeModalItem.category === 'pets' && (
-                <div className="p-3 rounded-2xl bg-gradient-to-r from-pink-950/60 to-purple-950/60 border border-pink-500/30 text-xs text-pink-200 flex items-center gap-2.5">
-                  <span className="text-2xl">{activeModalItem.icon}</span>
-                  <div>
-                    <span className="font-bold text-white block">Modelo 3D Interativo Completo</span>
-                    <span className="text-[11px] text-purple-200/80">Ao adotar, o mascote fica ativo imediatamente com rotação 360°, sons e carinhos reais.</span>
+                <div className="space-y-3">
+                  <div className="p-3 rounded-2xl bg-gradient-to-r from-pink-950/60 to-purple-950/60 border border-pink-500/30 text-xs text-pink-200 flex items-center gap-2.5">
+                    <span className="text-2xl">{activeModalItem.icon}</span>
+                    <div>
+                      <span className="font-bold text-white block">Mascote Interativo Real</span>
+                      <span className="text-[11px] text-purple-200/80">
+                        Ilustração 2.5D viva, carinhos, alimentação, banho e brincadeiras reais.
+                      </span>
+                    </div>
                   </div>
+
+                  {!activeModalItem.purchased && (
+                    <div className="p-3.5 rounded-2xl bg-purple-950/80 border border-purple-500/30 space-y-1.5 text-left">
+                      <label className="text-xs font-semibold text-pink-200 block">
+                        Como vai se chamar seu novo mascote? ♡
+                      </label>
+                      <input
+                        type="text"
+                        value={petCustomName}
+                        onChange={(e) => setPetCustomName(e.target.value)}
+                        placeholder="Ex: Pipoca, Floquinho, Thor..."
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-purple-500/40 text-white text-xs focus:outline-none focus:border-pink-400 font-medium"
+                      />
+                      <p className="text-[10px] text-purple-300/70">
+                        Você escolhe o nome do seu mascote livremente.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -276,8 +312,8 @@ export const StoreView: React.FC = () => {
                 <div className="p-3 rounded-2xl bg-gradient-to-r from-teal-950/60 to-purple-950/60 border border-teal-500/30 text-xs text-teal-200 flex items-center gap-2.5">
                   <span className="text-2xl">{activeModalItem.icon}</span>
                   <div>
-                    <span className="font-bold text-white block">Efeito 3D para a Árvore do Amor</span>
-                    <span className="text-[11px] text-teal-200/80">Aparece e brilha em tempo real no cenário 3D da Árvore.</span>
+                    <span className="font-bold text-white block">Efeito para a Árvore do Amor</span>
+                    <span className="text-[11px] text-teal-200/80">Aparece e brilha em tempo real no cenário da Árvore.</span>
                   </div>
                 </div>
               )}
@@ -319,11 +355,15 @@ export const StoreView: React.FC = () => {
                   <button
                     onClick={() => {
                       if (buyStoreItem(activeModalItem.id)) {
+                        if (activeModalItem.category === 'pets' && petCustomName.trim()) {
+                          renamePet(petCustomName.trim());
+                          showToast(`Mascote "${petCustomName.trim()}" adotado com sucesso! 🐾♡`);
+                        }
                         setActiveModalItem((prev) => (prev ? { ...prev, purchased: true } : null));
                       }
                     }}
                     disabled={coins < activeModalItem.price}
-                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow-md disabled:opacity-50"
+                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow-md disabled:opacity-50 cursor-pointer"
                   >
                     Adquirir por 💎 {activeModalItem.price}
                   </button>

@@ -17,6 +17,9 @@ import {
   Flame,
   Info,
   CheckCircle,
+  Trash2,
+  Plus,
+  X,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { motion, AnimatePresence } from 'motion/react';
@@ -35,14 +38,21 @@ export const MusicView: React.FC = () => {
     nextSong,
     prevSong,
     toggleFavoriteSong,
+    addSong,
+    removeSong,
     triggerEasterEgg,
     triggerHeartExplosion,
     showToast,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'player' | 'letras' | 'playlist'>('player');
-  const [customAudioUrl, setCustomAudioUrl] = useState('');
-  const [isCustomAudioOpen, setIsCustomAudioOpen] = useState(false);
+  const [isAddSongModalOpen, setIsAddSongModalOpen] = useState(false);
+  const [newSongTitle, setNewSongTitle] = useState('');
+  const [newSongArtist, setNewSongArtist] = useState('Gabriel & Samella');
+  const [newSongUrl, setNewSongUrl] = useState('');
+  const [newSongCover, setNewSongCover] = useState('/assets/img/real/photo_1.jpg');
+  const [newSongDuration, setNewSongDuration] = useState('3:30');
+  const [newSongLyrics, setNewSongLyrics] = useState('');
   const [audioState, setAudioState] = useState(realAudio.getState());
   const [visualizerBars, setVisualizerBars] = useState<number[]>(new Array(16).fill(15));
 
@@ -115,22 +125,76 @@ export const MusicView: React.FC = () => {
     showToast('✨ O amor de Gabriel & Samella gira infinito!');
   };
 
-  const handleApplyCustomAudio = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customAudioUrl.trim()) return;
-    const customSong: Song = {
-      id: `custom-${Date.now()}`,
-      title: 'Música Especial do Casal',
-      artist: 'Gabriel & Samella',
-      duration: 210,
-      durationFormatted: '3:30',
-      audioUrl: customAudioUrl.trim(),
-      coverUrl: '/assets/img/1.jpg',
-      isFavorite: true,
+  const handleAudioFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileNameClean = file.name.replace(/\.[^/.]+$/, '');
+    const reader = new FileReader();
+    reader.onload = (loadEvt) => {
+      const dataUrl = loadEvt.target?.result as string;
+      if (!dataUrl) return;
+
+      // Extract duration using HTML5 Audio
+      const tempAudio = new window.Audio(dataUrl);
+      tempAudio.addEventListener('loadedmetadata', () => {
+        const dur = Math.round(tempAudio.duration) || 210;
+        const mins = Math.floor(dur / 60);
+        const secs = dur % 60;
+        const durFormatted = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+        const newSongData = {
+          title: fileNameClean,
+          artist: 'Gabriel & Samella',
+          duration: dur,
+          durationFormatted: durFormatted,
+          audioUrl: dataUrl,
+          coverUrl: '/assets/img/real/music_cover.jpg',
+          lyrics: [
+            'Nossa canção de amor...',
+            'Gravada com carinho no coração.',
+            'Gabriel & Samella para sempre. ♡'
+          ],
+        };
+
+        addSong(newSongData);
+        const addedSong: Song = { ...newSongData, id: `song-${Date.now()}` };
+        handlePlaySong(addedSong);
+        showToast(`Música "${fileNameClean}" adicionada e tocando! 🎵✨`);
+      });
     };
-    handlePlaySong(customSong);
-    showToast('Áudio personalizado iniciado com sucesso! 🎵');
-    setIsCustomAudioOpen(false);
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveNewSong = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSongTitle.trim() || !newSongUrl.trim()) {
+      showToast('Preencha pelo menos o título e o link/áudio da música!');
+      return;
+    }
+
+    const lyricsArray = newSongLyrics.trim()
+      ? newSongLyrics.split('\n').map((line) => line.trim())
+      : ['Melodia romântica de Gabriel & Samella ♡'];
+
+    const songToAdd = {
+      title: newSongTitle.trim(),
+      artist: newSongArtist.trim() || 'Gabriel & Samella',
+      duration: 210,
+      durationFormatted: newSongDuration.trim() || '3:30',
+      audioUrl: newSongUrl.trim(),
+      coverUrl: newSongCover || '/assets/img/real/photo_1.jpg',
+      lyrics: lyricsArray,
+    };
+
+    addSong(songToAdd);
+    const created: Song = { ...songToAdd, id: `song-${Date.now()}` };
+    handlePlaySong(created);
+    setIsAddSongModalOpen(false);
+    setNewSongTitle('');
+    setNewSongUrl('');
+    setNewSongLyrics('');
+    showToast(`"${songToAdd.title}" adicionada à playlist com sucesso! 🎶`);
   };
 
   return (
@@ -366,39 +430,23 @@ export const MusicView: React.FC = () => {
 
           {/* Custom Music Options: File Upload & URL */}
           <div className="mt-4 pt-3 border-t border-purple-500/15 flex flex-wrap items-center justify-center gap-2">
-            <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-900/40 hover:bg-purple-800/60 border border-purple-500/30 text-[11px] text-pink-200 cursor-pointer transition-colors">
+            <label className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-900/40 hover:bg-purple-800/60 border border-purple-500/30 text-xs font-semibold text-pink-200 cursor-pointer transition-colors shadow-md">
               <Upload className="w-3.5 h-3.5 text-pink-400" />
-              <span>Tocar MP3 do Dispositivo</span>
+              <span>Enviar MP3 do Celular / PC</span>
               <input
                 type="file"
                 accept="audio/*"
                 className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const objectUrl = URL.createObjectURL(file);
-                  const uploadedSong: Song = {
-                    id: `uploaded-${Date.now()}`,
-                    title: file.name.replace(/\.[^/.]+$/, ''),
-                    artist: 'Gabriel & Samella',
-                    duration: 210,
-                    durationFormatted: 'Local',
-                    audioUrl: objectUrl,
-                    coverUrl: '/assets/img/real/music_cover.jpg',
-                    isFavorite: true,
-                  };
-                  handlePlaySong(uploadedSong);
-                  showToast(`Reproduzindo: ${file.name} 🎵`);
-                }}
+                onChange={handleAudioFileUpload}
               />
             </label>
 
             <button
-              onClick={() => setIsCustomAudioOpen(!isCustomAudioOpen)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-900/40 hover:bg-purple-800/60 border border-purple-500/30 text-[11px] text-purple-300 hover:text-white transition-colors cursor-pointer"
+              onClick={() => setIsAddSongModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-900/40 hover:bg-purple-800/60 border border-purple-500/30 text-xs font-semibold text-purple-200 hover:text-white transition-colors cursor-pointer shadow-md"
             >
-              <Link2 className="w-3.5 h-3.5" />
-              <span>Link URL</span>
+              <Plus className="w-3.5 h-3.5 text-pink-400" />
+              <span>Nova Música</span>
             </button>
           </div>
 
@@ -409,7 +457,7 @@ export const MusicView: React.FC = () => {
               <span>Pasta de Áudios: public/assets/audio/</span>
             </div>
             <p className="text-[11px] text-purple-300/70 leading-relaxed">
-              Para as faixas tocarem direto do app, adicione seus arquivos .mp3 na pasta com estes nomes:
+              Você pode enviar qualquer áudio direto do seu celular acima ou colocar arquivos .mp3 na pasta:
             </p>
             <div className="font-mono text-[10px] space-y-0.5 text-purple-200/90 bg-black/40 p-2 rounded-xl border border-purple-500/20">
               <div>1. tudo-o-que-voce-quiser.mp3</div>
@@ -419,45 +467,6 @@ export const MusicView: React.FC = () => {
               <div>5. cuida-bem-dela.mp3</div>
             </div>
           </div>
-
-          {/* Custom Audio URL Modal */}
-          <AnimatePresence>
-            {isCustomAudioOpen && (
-              <motion.form
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                onSubmit={handleApplyCustomAudio}
-                className="w-full mt-3 p-3 rounded-2xl bg-purple-950/60 border border-purple-500/30 space-y-2 text-left"
-              >
-                <label className="text-[11px] text-purple-200 font-medium block">
-                  Link direto de arquivo MP3 ou áudio:
-                </label>
-                <input
-                  type="url"
-                  value={customAudioUrl}
-                  onChange={(e) => setCustomAudioUrl(e.target.value)}
-                  placeholder="https://exemplo.com/nossa-musica.mp3"
-                  className="w-full px-3 py-2 rounded-xl bg-black/40 border border-purple-500/30 text-xs text-white focus:outline-none focus:border-pink-400"
-                />
-                <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsCustomAudioOpen(false)}
-                    className="px-3 py-1.5 rounded-lg glass-panel text-[11px] text-purple-300 hover:text-white"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-3 py-1.5 rounded-lg bg-pink-600 hover:bg-pink-500 text-white text-[11px] font-bold shadow-md cursor-pointer"
-                  >
-                    Tocar Áudio
-                  </button>
-                </div>
-              </motion.form>
-            )}
-          </AnimatePresence>
         </motion.div>
       )}
 
@@ -503,8 +512,28 @@ export const MusicView: React.FC = () => {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="glass-card-glow rounded-3xl p-4 md:p-6 border border-purple-400/30 shadow-2xl space-y-2.5"
+          className="glass-card-glow rounded-3xl p-4 md:p-6 border border-purple-400/30 shadow-2xl space-y-3"
         >
+          {/* Playlist Header & Add Song Action */}
+          <div className="flex items-center justify-between pb-2 border-b border-purple-500/20">
+            <div>
+              <h3 className="text-base font-bold text-white font-display">
+                Trilhas do Nosso Amor ♡
+              </h3>
+              <p className="text-xs text-purple-300/70">
+                {songs.length} músicas guardadas na nossa história
+              </p>
+            </div>
+
+            <button
+              onClick={() => setIsAddSongModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-pink-600/30 hover:bg-pink-600/50 border border-pink-400/40 text-xs font-semibold text-pink-200 transition-colors shadow-sm cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Adicionar Música</span>
+            </button>
+          </div>
+
           {songs.map((song, index) => {
             const isThis = currentSong.id === song.id;
             return (
@@ -518,7 +547,7 @@ export const MusicView: React.FC = () => {
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-xl bg-purple-950 flex items-center justify-center text-xs font-bold text-purple-300">
+                  <div className="w-8 h-8 rounded-xl bg-purple-950 flex items-center justify-center text-xs font-bold text-purple-300 flex-shrink-0">
                     {isThis && (audioState.isPlaying || isPlaying) ? (
                       <Sparkles className="w-4 h-4 text-pink-300 animate-spin" />
                     ) : (
@@ -535,26 +564,32 @@ export const MusicView: React.FC = () => {
                       >
                         {song.title}
                       </h4>
-                      {song.id === 's1' && (
+                      {song.id.startsWith('song-') || song.id.startsWith('uploaded-') ? (
+                        <span className="px-1.5 py-0.2 rounded-full bg-pink-500/20 text-pink-300 text-[9px] font-semibold border border-pink-500/30">
+                          Nossa
+                        </span>
+                      ) : song.id === 's1' ? (
                         <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 text-[9px] font-semibold">
                           MP3
                         </span>
-                      )}
+                      ) : null}
                     </div>
-                    <p className="text-[11px] text-purple-300/70">{song.artist}</p>
+                    <p className="text-[11px] text-purple-300/70 truncate">{song.artist}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5 flex-shrink-0">
                   <span className="text-xs text-purple-300/70 font-mono">
                     {song.durationFormatted}
                   </span>
+
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleFavoriteSong(song.id);
                     }}
-                    className="p-1 text-purple-400 hover:text-pink-400"
+                    title="Favoritar"
+                    className="p-1.5 text-purple-400 hover:text-pink-400 transition-colors"
                   >
                     <Heart
                       className={`w-4 h-4 ${
@@ -562,12 +597,159 @@ export const MusicView: React.FC = () => {
                       }`}
                     />
                   </button>
+
+                  {songs.length > 1 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Remover "${song.title}" da playlist?`)) {
+                          removeSong(song.id);
+                        }
+                      }}
+                      title="Remover música"
+                      className="p-1.5 text-purple-400/60 hover:text-rose-400 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
             );
           })}
         </motion.div>
       )}
+
+      {/* Add Song Modal */}
+      <AnimatePresence>
+        {isAddSongModalOpen && (
+          <div
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+            onClick={() => setIsAddSongModalOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-3xl glass-card-glow border border-pink-400/40 p-6 space-y-4"
+            >
+              <div className="flex items-center justify-between pb-2 border-b border-purple-500/20">
+                <div className="flex items-center gap-2">
+                  <Music className="w-5 h-5 text-pink-400" />
+                  <h3 className="text-lg font-bold text-white font-display">
+                    Adicionar Música do Casal ♡
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setIsAddSongModalOpen(false)}
+                  className="p-1 rounded-lg text-purple-300 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveNewSong} className="space-y-3 text-left">
+                {/* File Upload Shortcut */}
+                <div className="p-3 rounded-2xl bg-purple-950/60 border border-purple-500/30 flex items-center justify-between">
+                  <span className="text-xs text-purple-200">Tem o arquivo no celular?</span>
+                  <label className="px-3 py-1.5 rounded-xl bg-pink-600 hover:bg-pink-500 text-white text-xs font-semibold cursor-pointer shadow-md">
+                    Escolher MP3
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setNewSongTitle(file.name.replace(/\.[^/.]+$/, ''));
+                        const reader = new FileReader();
+                        reader.onload = (loadEvt) => {
+                          const dataUrl = loadEvt.target?.result as string;
+                          if (dataUrl) {
+                            setNewSongUrl(dataUrl);
+                            showToast('Arquivo carregado pronto para salvar!');
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </label>
+                </div>
+
+                <div>
+                  <label className="text-xs text-purple-200 font-medium block mb-1">
+                    Nome da Música *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Nossa Canção Preferida"
+                    value={newSongTitle}
+                    onChange={(e) => setNewSongTitle(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-purple-950/50 border border-purple-500/30 text-white text-xs focus:outline-none focus:border-pink-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-purple-200 font-medium block mb-1">
+                    Artista / Cantores
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Gabriel & Samella"
+                    value={newSongArtist}
+                    onChange={(e) => setNewSongArtist(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-purple-950/50 border border-purple-500/30 text-white text-xs focus:outline-none focus:border-pink-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-purple-200 font-medium block mb-1">
+                    Link de Áudio Direto (ou MP3 Carregado Acima) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="https://... ou arquivo local"
+                    value={newSongUrl}
+                    onChange={(e) => setNewSongUrl(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-purple-950/50 border border-purple-500/30 text-white text-xs focus:outline-none focus:border-pink-400 font-mono text-[11px]"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-purple-200 font-medium block mb-1">
+                    Letra da Canção (opcional)
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="Cole aqui a letra romântica ou trechos especiais..."
+                    value={newSongLyrics}
+                    onChange={(e) => setNewSongLyrics(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-purple-950/50 border border-purple-500/30 text-white text-xs focus:outline-none focus:border-pink-400"
+                  />
+                </div>
+
+                <div className="pt-2 flex justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddSongModalOpen(false)}
+                    className="px-4 py-2 rounded-xl glass-panel text-xs font-semibold text-purple-300 hover:text-white"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white text-xs font-bold shadow-lg cursor-pointer"
+                  >
+                    Salvar na Trilha ♡
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

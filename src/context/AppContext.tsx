@@ -100,6 +100,8 @@ interface AppContextType {
   toggleFavoritePhoto: (id: string) => void;
   setSelectedPhoto: (photo: MemoryPhoto | null) => void;
   updatePhotoUrl: (id: string, url: string, title?: string) => void;
+  addPhoto: (photo: Omit<MemoryPhoto, 'id' | 'index'>) => void;
+  removePhoto: (id: string) => void;
   playSong: (song?: Song) => void;
   pauseSong: () => void;
   togglePlay: () => void;
@@ -107,6 +109,8 @@ interface AppContextType {
   prevSong: () => void;
   seekSong: (time: number) => void;
   toggleFavoriteSong: (id: string) => void;
+  addSong: (song: Omit<Song, 'id'>) => void;
+  removeSong: (id: string) => void;
   unlockAchievement: (id: string) => void;
   buyStoreItem: (id: string) => boolean;
   redeemVoucher: (id: string) => void;
@@ -459,6 +463,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showToast('Foto atualizada com sucesso! 📸');
   };
 
+  const addPhoto = (newPhotoData: Omit<MemoryPhoto, 'id' | 'index'>) => {
+    soundEngine.playSparkle();
+    const newPhoto: MemoryPhoto = {
+      ...newPhotoData,
+      id: `photo-${Date.now()}`,
+      index: photos.length + 1,
+      isFavorite: false,
+    };
+    setPhotos((prev) => [newPhoto, ...prev]);
+    showToast('Nova foto adicionada ao álbum! 📸✨');
+    unlockAchievement('ach-photo-album');
+  };
+
+  const removePhoto = (id: string) => {
+    soundEngine.playHeartPop();
+    setPhotos((prev) => prev.filter((p) => p.id !== id));
+    showToast('Foto removida da galeria.');
+  };
+
   const playSong = (song?: Song) => {
     const target = song || currentSong;
     setCurrentSong(target);
@@ -511,6 +534,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setSongs((prev) =>
       prev.map((s) => (s.id === id ? { ...s, isFavorite: !s.isFavorite } : s))
     );
+  };
+
+  const addSong = (newSongData: Omit<Song, 'id'>) => {
+    soundEngine.playSparkle();
+    const newSong: Song = {
+      ...newSongData,
+      id: `song-${Date.now()}`,
+      isFavorite: false,
+    };
+    setSongs((prev) => [...prev, newSong]);
+    showToast(`Música "${newSong.title}" adicionada à playlist! 🎵✨`);
+  };
+
+  const removeSong = (id: string) => {
+    soundEngine.playHeartPop();
+    setSongs((prev) => prev.filter((s) => s.id !== id));
+    showToast('Música removida da playlist.');
   };
 
   const buyStoreItem = (id: string): boolean => {
@@ -1005,6 +1045,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         toggleFavoritePhoto,
         setSelectedPhoto,
         updatePhotoUrl,
+        addPhoto,
+        removePhoto,
         playSong,
         pauseSong,
         togglePlay,
@@ -1012,6 +1054,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         prevSong,
         seekSong,
         toggleFavoriteSong,
+        addSong,
+        removeSong,
         unlockAchievement,
         buyStoreItem,
         redeemVoucher,

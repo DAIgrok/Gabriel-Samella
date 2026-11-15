@@ -48,6 +48,7 @@ export const KittenView: React.FC = () => {
   const [customNameInput, setCustomNameInput] = useState(kitten.name);
   const [activeFoodEmoji, setActiveFoodEmoji] = useState('🐟');
   const [farewellPetTarget, setFarewellPetTarget] = useState<typeof PET_SPECIES_CATALOG[0] | null>(null);
+  const [switchPetName, setSwitchPetName] = useState<string>('');
 
   const currentPetType: PetType = (kitten.petType as PetType) || 'cat';
   const currentSpecies = PET_SPECIES_CATALOG.find((s) => s.type === currentPetType) || PET_SPECIES_CATALOG[0];
@@ -854,6 +855,7 @@ export const KittenView: React.FC = () => {
                     onClick={() => {
                       if (!isOwned || isActive) return;
                       setFarewellPetTarget(species);
+                      setSwitchPetName(species.defaultName);
                     }}
                     className={`p-3.5 rounded-2xl border flex items-center justify-between transition-all ${
                       isActive
@@ -925,29 +927,46 @@ export const KittenView: React.FC = () => {
                   Trocar para {farewellPetTarget.name}?
                 </h3>
                 <div className="mt-2.5 p-3 rounded-2xl bg-purple-950/60 border border-pink-500/20 text-xs text-pink-100/90 leading-relaxed italic">
-                  &ldquo;{kitten.name} dá um carinho delicado: &lsquo;Vou tirar uma sonequinha no jardim das flores... Cuide com muito amor de {farewellPetTarget.name}! Até logo, papais! ♡&rsquo;&rdquo;
+                  &ldquo;{kitten.name} dá um carinho delicado: &lsquo;Vou tirar uma sonequinha no jardim das flores... Cuide com muito amor de {switchPetName.trim() || farewellPetTarget.name}! Até logo, papais! ♡&rsquo;&rdquo;
                 </div>
+              </div>
+
+              {/* Choose custom pet name */}
+              <div className="space-y-1.5 text-left">
+                <label className="text-[11px] font-bold text-pink-300 block">
+                  Escolha o nome deste mascote:
+                </label>
+                <input
+                  type="text"
+                  value={switchPetName}
+                  onChange={(e) => setSwitchPetName(e.target.value)}
+                  placeholder="Digite o nome que preferir..."
+                  maxLength={18}
+                  className="w-full px-3.5 py-2 rounded-xl bg-purple-950/80 border border-pink-500/40 text-white text-xs font-semibold focus:outline-none focus:border-pink-400 placeholder-purple-400/50"
+                />
               </div>
 
               <div className="flex gap-2.5 pt-1">
                 <button
                   onClick={() => setFarewellPetTarget(null)}
-                  className="flex-1 py-2.5 rounded-xl border border-purple-500/30 text-purple-200 text-xs font-semibold hover:bg-purple-900/30 transition"
+                  className="flex-1 py-2.5 rounded-xl border border-purple-500/30 text-purple-200 text-xs font-semibold hover:bg-purple-900/30 transition cursor-pointer"
                 >
                   Continuar com {kitten.name}
                 </button>
                 <button
                   onClick={() => {
                     const target = farewellPetTarget;
+                    const finalName = switchPetName.trim() || target.defaultName;
                     setFarewellPetTarget(null);
                     switchPet(target.type);
-                    setPetReaction(`Olá, Gabriel & Samella! Que alegria estar com vocês! ✨`);
+                    renamePet(finalName);
+                    setPetReaction(`Olá, Gabriel & Samella! Sou ${finalName} e amo vocês! ✨`);
                     soundEngine.playSparkle();
                     triggerHeartExplosion(0.5, 0.4);
                   }}
                   className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold shadow-lg hover:brightness-110 transition cursor-pointer"
                 >
-                  Confirmar Troca 🐾
+                  Confirmar e Batizar 🐾
                 </button>
               </div>
             </motion.div>

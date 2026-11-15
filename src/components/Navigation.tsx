@@ -52,7 +52,7 @@ export const Navigation: React.FC = () => {
     { id: 'arvore', label: 'Árvore do Amor', icon: Trees, color: 'text-teal-300' },
     { id: 'conquistas', label: 'Conquistas & Selos', icon: Trophy, color: 'text-amber-300' },
     { id: 'jogos', label: 'Jogos do Casal', icon: Gamepad2, color: 'text-indigo-400' },
-    { id: 'gatinho', label: 'Nosso Gatinho (Mimi)', icon: Cat, color: 'text-pink-300', badge: kitten.mood === 'com-fome' ? 'Fome!' : undefined },
+    { id: 'gatinho', label: `Mascote (${kitten.name || 'Mimi'})`, icon: Cat, color: 'text-pink-300', badge: kitten.mood === 'com-fome' ? 'Fome!' : undefined },
     { id: 'loja', label: 'Loja do Amor', icon: ShoppingBag, color: 'text-rose-400', badge: `${coins} 💎` },
     { id: 'conversas', label: 'Conversas & Recados', icon: MessageCircle, color: 'text-purple-300' },
     { id: 'frases', label: '50+ Frases Românticas', icon: BookHeart, color: 'text-pink-300' },

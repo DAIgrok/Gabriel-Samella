@@ -120,19 +120,67 @@ export const GamesView: React.FC = () => {
     }
   };
 
+  // High Scores from localStorage
+  const [catchRecord, setCatchRecord] = useState<number>(() => {
+    try {
+      return parseInt(localStorage.getItem('nosso_mundo_catch_record') || '0', 10);
+    } catch {
+      return 0;
+    }
+  });
+
+  const [memoryBestMoves, setMemoryBestMoves] = useState<number>(() => {
+    try {
+      return parseInt(localStorage.getItem('nosso_mundo_memory_record') || '0', 10);
+    } catch {
+      return 0;
+    }
+  });
+
+  const [tictacMatchScore, setTictacMatchScore] = useState<{ gabriel: number; samella: number; draws: number }>(() => {
+    try {
+      const saved = localStorage.getItem('nosso_mundo_tictac_score');
+      return saved ? JSON.parse(saved) : { gabriel: 0, samella: 0, draws: 0 };
+    } catch {
+      return { gabriel: 0, samella: 0, draws: 0 };
+    }
+  });
+
   // Catch Hearts Mini-Game State
   const [heartsCaught, setHeartsCaught] = useState(0);
+  const [heartsTimeLeft, setHeartsTimeLeft] = useState(30);
+  const [isCatchGameOver, setIsCatchGameOver] = useState(false);
   const [fallingHearts, setFallingHearts] = useState<{ id: number; x: number; y: number; speed: number; icon: string }[]>([]);
 
   const startCatchHeartsGame = () => {
     setHeartsCaught(0);
+    setHeartsTimeLeft(30);
+    setIsCatchGameOver(false);
     setFallingHearts([]);
   };
 
   useEffect(() => {
-    if (activeGame !== 'coracoes') return;
-    const interval = setInterval(() => {
-      if (fallingHearts.length < 6) {
+    if (activeGame !== 'coracoes' || isCatchGameOver) return;
+    const timerInterval = setInterval(() => {
+      setHeartsTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerInterval);
+          setIsCatchGameOver(true);
+          soundEngine.playSparkle();
+          triggerHeartExplosion();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timerInterval);
+  }, [activeGame, isCatchGameOver]);
+
+  useEffect(() => {
+    if (activeGame !== 'coracoes' || isCatchGameOver) return;
+    const spawnInterval = setInterval(() => {
+      if (fallingHearts.length < 7) {
         setFallingHearts((prev) => [
           ...prev,
           {
@@ -140,22 +188,29 @@ export const GamesView: React.FC = () => {
             x: Math.random() * 80 + 10,
             y: -10,
             speed: Math.random() * 2 + 2,
-            icon: ['💖', '💎', '🌹', '✨'][Math.floor(Math.random() * 4)],
+            icon: ['💖', '💎', '🌹', '✨', '🍓'][Math.floor(Math.random() * 5)],
           },
         ]);
       }
-    }, 1000);
+    }, 800);
 
-    return () => clearInterval(interval);
-  }, [activeGame, fallingHearts.length]);
+    return () => clearInterval(spawnInterval);
+  }, [activeGame, isCatchGameOver, fallingHearts.length]);
 
   const handleCatchHeart = (id: number) => {
+    if (isCatchGameOver) return;
     soundEngine.playSparkle();
     setFallingHearts((prev) => prev.filter((h) => h.id !== id));
     setHeartsCaught((prev) => {
       const next = prev + 1;
+      if (next > catchRecord) {
+        setCatchRecord(next);
+        try {
+          localStorage.setItem('nosso_mundo_catch_record', next.toString());
+        } catch {}
+      }
       if (next % 5 === 0) {
-        addCoins(5, 'Corações coletados');
+        addCoins(2, 'Corações coletados');
       }
       return next;
     });
@@ -163,7 +218,7 @@ export const GamesView: React.FC = () => {
 
   // Tic Tac Toe State
   const [tictacBoard, setTictacBoard] = useState<(string | null)[]>(Array(9).fill(null));
-  const [isXNext, setIsXNext] = useState(true);
+  const [isGabrielTurn, setIsGabrielTurn] = useState(true); // true = Gabriel 🌹, false = Samella 💖
   const [tictacWinner, setTictacWinner] = useState<string | null>(null);
 
   const checkTictacWinner = (squares: (string | null)[]) => {
@@ -187,16 +242,30 @@ export const GamesView: React.FC = () => {
     
     soundEngine.playHeartPop();
     const newBoard = [...tictacBoard];
-    newBoard[index] = isXNext ? '💖' : '🌟';
+    const currentSymbol = isGabrielTurn ? '🌹' : '💖';
+    newBoard[index] = currentSymbol;
     setTictacBoard(newBoard);
-    setIsXNext(!isXNext);
+    setIsGabrielTurn(!isGabrielTurn);
     
     const winner = checkTictacWinner(newBoard);
     if (winner) {
       setTictacWinner(winner);
+      setTictacMatchScore((prev) => {
+        const nextScore = {
+          gabriel: winner === '🌹' ? prev.gabriel + 1 : prev.gabriel,
+          samella: winner === '💖' ? prev.samella + 1 : prev.samella,
+          draws: winner === 'draw' ? prev.draws + 1 : prev.draws,
+        };
+        try {
+          localStorage.setItem('nosso_mundo_tictac_score', JSON.stringify(nextScore));
+        } catch {}
+        return nextScore;
+      });
+
       if (winner !== 'draw') {
         soundEngine.playSparkle();
-        addCoins(10, 'Vitória no Jogo da Velha');
+        addCoins(10, 'Vitória no Jogo da Velha do Amor');
+        unlockAchievement('ach-tictac-win');
       }
     }
   };
@@ -204,7 +273,7 @@ export const GamesView: React.FC = () => {
   const resetTictac = () => {
     setTictacBoard(Array(9).fill(null));
     setTictacWinner(null);
-    setIsXNext(true);
+    setIsGabrielTurn(true);
   };
 
   return (
@@ -440,28 +509,41 @@ export const GamesView: React.FC = () => {
 
       {/* Catch Hearts View */}
       {activeGame === 'coracoes' && (
-        <div className="glass-card-glow rounded-3xl p-6 border border-teal-400/30 space-y-4 relative min-h-[320px] overflow-hidden">
+        <div className="glass-card-glow rounded-3xl p-6 border border-teal-400/30 space-y-4 relative min-h-[380px] overflow-hidden">
           <div className="flex items-center justify-between pb-3 border-b border-purple-500/20">
-            <span className="text-xs text-teal-300 font-mono">
-              Corações Coletados: <strong>{heartsCaught}</strong>
-            </span>
-            <button
-              onClick={() => setActiveGame('menu')}
-              className="text-xs text-purple-300 hover:text-white"
-            >
-              Sair
-            </button>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="text-teal-300 font-mono">
+                Corações: <strong>{heartsCaught}</strong>
+              </span>
+              <span className="text-pink-300 font-mono">
+                Recorde: <strong>{catchRecord}</strong> 🏆
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-mono font-bold ${
+                heartsTimeLeft <= 5 ? 'bg-rose-500 text-white animate-ping' : 'bg-purple-950 text-teal-300 border border-teal-500/40'
+              }`}>
+                ⏳ {heartsTimeLeft}s
+              </span>
+              <button
+                onClick={() => setActiveGame('menu')}
+                className="text-xs text-purple-300 hover:text-white"
+              >
+                Sair
+              </button>
+            </div>
           </div>
 
           <p className="text-xs text-center text-purple-200/70">
-            Toque nos corações e diamantes para coletá-los!
+            Toque rápido nos corações, diamantes e rosas antes do tempo acabar!
           </p>
 
-          <div className="relative h-64 w-full">
+          <div className="relative h-72 w-full">
             {fallingHearts.map((heart) => (
               <motion.button
                 key={heart.id}
-                initial={{ y: 220, opacity: 0, x: `${heart.x}%` }}
+                initial={{ y: 240, opacity: 0, x: `${heart.x}%` }}
                 animate={{ y: 10, opacity: 1 }}
                 transition={{ duration: heart.speed, ease: 'linear' }}
                 onClick={() => handleCatchHeart(heart.id)}
@@ -470,6 +552,36 @@ export const GamesView: React.FC = () => {
                 {heart.icon}
               </motion.button>
             ))}
+
+            {/* Game Over Modal Overlay */}
+            {isCatchGameOver && (
+              <div className="absolute inset-0 bg-black/80 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center p-4 text-center z-20 space-y-3">
+                <span className="text-4xl">⏱️✨</span>
+                <h3 className="text-lg font-bold text-white">Tempo Esgotado!</h3>
+                <p className="text-xs text-purple-200">
+                  Você coletou <strong>{heartsCaught}</strong> corações e itens mágicos!
+                </p>
+                {heartsCaught >= catchRecord && heartsCaught > 0 && (
+                  <span className="text-xs font-bold text-amber-300 bg-amber-500/20 px-3 py-1 rounded-full border border-amber-400/30">
+                    🎉 Novo Recorde do Casal!
+                  </span>
+                )}
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={startCatchHeartsGame}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-600 text-white text-xs font-bold"
+                  >
+                    Jogar Novamente
+                  </button>
+                  <button
+                    onClick={() => setActiveGame('menu')}
+                    className="px-4 py-2 rounded-xl border border-purple-500/30 text-purple-200 text-xs font-semibold"
+                  >
+                    Menu de Jogos
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -477,9 +589,9 @@ export const GamesView: React.FC = () => {
       {/* Tic Tac Toe Game */}
       {activeGame === 'velha' && (
         <div className="glass-card-glow rounded-3xl p-6 border border-rose-400/30">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <span className="text-sm font-bold text-white flex items-center gap-1.5">
-              <span className="text-xl">⭕</span> Jogo da Velha
+              <span className="text-xl">⭕</span> Jogo da Velha do Amor
             </span>
             <button
               onClick={() => setActiveGame('menu')}
@@ -489,14 +601,29 @@ export const GamesView: React.FC = () => {
             </button>
           </div>
 
-          <div className="text-center mb-6">
+          {/* Match Scoreboard */}
+          <div className="flex items-center justify-around p-2.5 rounded-2xl bg-purple-950/60 border border-purple-500/20 text-xs mb-4">
+            <span className="text-rose-300 font-semibold">Gabriel 🌹: <strong>{tictacMatchScore.gabriel}</strong></span>
+            <span className="text-purple-400">|</span>
+            <span className="text-pink-300 font-semibold">Samella 💖: <strong>{tictacMatchScore.samella}</strong></span>
+            <span className="text-purple-400">|</span>
+            <span className="text-purple-300">Empates: <strong>{tictacMatchScore.draws}</strong></span>
+          </div>
+
+          <div className="text-center mb-5">
             {tictacWinner ? (
-              <h3 className="text-xl font-bold text-pink-300 animate-pulse">
-                {tictacWinner === 'draw' ? 'Deu Velha! Empate 🤝' : `${tictacWinner} Venceu o Jogo!`}
-              </h3>
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold text-pink-300 animate-pulse">
+                  {tictacWinner === 'draw'
+                    ? 'Deu Velha! Almas gêmeas em sintonia 🤝'
+                    : tictacWinner === '🌹'
+                    ? 'Gabriel venceu! 🌹 “Samella, você é o amor da minha vida!”'
+                    : 'Samella venceu! 💖 “Gabriel, meu coração é todinho seu!”'}
+                </h3>
+              </div>
             ) : (
-              <h3 className="text-lg font-bold text-white">
-                Vez de: <span className="text-2xl">{isXNext ? '💖' : '🌟'}</span>
+              <h3 className="text-sm font-bold text-white flex items-center justify-center gap-1.5">
+                Vez de: <span className="text-base text-pink-300 font-extrabold">{isGabrielTurn ? 'Gabriel 🌹' : 'Samella 💖'}</span>
               </h3>
             )}
           </div>
@@ -532,10 +659,10 @@ export const GamesView: React.FC = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={resetTictac}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer"
             >
               <RotateCcw className="w-4 h-4" />
-              <span>Jogar Novamente</span>
+              <span>Jogar Nova Rodada</span>
             </motion.button>
           )}
         </div>

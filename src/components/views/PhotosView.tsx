@@ -3,9 +3,13 @@ import {
   Image as ImageIcon,
   Heart,
   Play,
+  Plus,
+  Trash2,
+  X,
+  Upload,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { MemoryPhoto } from '../../types';
 import { soundEngine } from '../../utils/audioSynth';
 import { SmartPhoto } from '../SmartPhoto';
@@ -17,11 +21,55 @@ export const PhotosView: React.FC = () => {
     selectedPhoto,
     setSelectedPhoto,
     toggleFavoritePhoto,
+    addPhoto,
+    removePhoto,
     unlockAchievement,
     showToast,
   } = useApp();
 
   const [filter, setFilter] = useState<'todas' | 'favoritas'>('todas');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newPhotoTitle, setNewPhotoTitle] = useState('');
+  const [newPhotoCaption, setNewPhotoCaption] = useState('');
+  const [newPhotoDate, setNewPhotoDate] = useState(new Date().toLocaleDateString('pt-BR'));
+  const [newPhotoUrl, setNewPhotoUrl] = useState('');
+  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        setPreviewDataUrl(result);
+        setNewPhotoUrl(result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveNewPhoto = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPhotoUrl && !previewDataUrl) {
+      showToast('Por favor, selecione uma imagem ou informe a URL!');
+      return;
+    }
+
+    addPhoto({
+      title: newPhotoTitle.trim() || 'Nosso Momento Especial ♡',
+      subtitle: newPhotoCaption.trim() || 'Amor de Gabriel & Samella',
+      date: newPhotoDate || new Date().toLocaleDateString('pt-BR'),
+      url: previewDataUrl || newPhotoUrl,
+      caption: newPhotoCaption.trim(),
+    });
+
+    // Reset and close
+    setNewPhotoTitle('');
+    setNewPhotoCaption('');
+    setNewPhotoUrl('');
+    setPreviewDataUrl(null);
+    setIsAddModalOpen(false);
+  };
 
   const filteredPhotos = photos.filter((p) => {
     if (filter === 'favoritas') return p.isFavorite;
@@ -89,17 +137,27 @@ export const PhotosView: React.FC = () => {
           </button>
         </div>
 
-        <button
-          onClick={handleStartSlideshow}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-white text-purple-900 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
-        >
-          <Play className="w-3.5 h-3.5 fill-current" />
-          <span>Slideshow</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Adicionar Foto</span>
+          </button>
+
+          <button
+            onClick={handleStartSlideshow}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white text-purple-900 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
+          >
+            <Play className="w-3.5 h-3.5 fill-current" />
+            <span>Slideshow</span>
+          </button>
+        </div>
       </div>
 
       {/* Photos Grid Premium iPhone Style */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-1 md:gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
         {filteredPhotos.map((photo, i) => (
           <motion.div
             key={photo.id}
@@ -116,24 +174,173 @@ export const PhotosView: React.FC = () => {
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
 
-            {/* Favorite Button Overlay (iOS Style) */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleFavoritePhoto(photo.id);
-              }}
-              className="absolute top-3 right-3 p-2 rounded-full bg-black/40 backdrop-blur-md text-white/90 hover:text-pink-400 transition-colors z-10"
-              title="Favoritar"
-            >
-              <Heart
-                className={`w-4 h-4 ${
-                  photo.isFavorite ? 'text-pink-400 fill-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.8)]' : ''
-                }`}
-              />
-            </button>
+            {/* Favorite & Delete Buttons Overlay */}
+            <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleFavoritePhoto(photo.id);
+                }}
+                className="p-2 rounded-full bg-black/40 backdrop-blur-md text-white/90 hover:text-pink-400 transition-colors"
+                title="Favoritar"
+              >
+                <Heart
+                  className={`w-4 h-4 ${
+                    photo.isFavorite ? 'text-pink-400 fill-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.8)]' : ''
+                  }`}
+                />
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm('Deseja remover esta foto do álbum?')) {
+                    removePhoto(photo.id);
+                  }
+                }}
+                className="p-2 rounded-full bg-black/40 backdrop-blur-md text-white/70 hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100"
+                title="Remover foto"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Title Scrim */}
+            <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+              <p className="text-xs font-bold text-white truncate">{photo.title}</p>
+              <p className="text-[10px] text-purple-200/80 truncate">{photo.date}</p>
+            </div>
           </motion.div>
         ))}
       </div>
+
+      {/* Add Photo Modal */}
+      <AnimatePresence>
+        {isAddModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 15 }}
+              className="w-full max-w-md rounded-3xl p-6 bg-gradient-to-b from-[#1c0b33] via-[#120622] to-[#080214] border border-pink-400/40 shadow-2xl space-y-4"
+            >
+              <div className="flex items-center justify-between pb-2 border-b border-purple-500/20">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-pink-400" />
+                  <h3 className="text-base font-bold text-white">Adicionar Nova Foto ♡</h3>
+                </div>
+                <button
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="p-1 rounded-lg text-purple-300 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveNewPhoto} className="space-y-3.5">
+                {/* File picker button */}
+                <div>
+                  <label className="text-xs text-pink-300 font-semibold block mb-1.5">
+                    Escolha uma foto do seu celular ou computador:
+                  </label>
+                  <label className="w-full p-4 rounded-2xl border-2 border-dashed border-purple-500/40 hover:border-pink-400 flex flex-col items-center justify-center gap-2 cursor-pointer bg-purple-950/40 transition">
+                    {previewDataUrl ? (
+                      <div className="w-24 h-24 rounded-xl overflow-hidden shadow-md border border-pink-400/50">
+                        <img src={previewDataUrl} alt="Preview" className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <>
+                        <Upload className="w-6 h-6 text-pink-400" />
+                        <span className="text-xs text-purple-200">Toque para selecionar imagem</span>
+                        <span className="text-[10px] text-purple-400">JPG, PNG, WebP do dispositivo</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                {/* Or Direct URL Input */}
+                <div>
+                  <label className="text-xs text-purple-300 font-semibold block mb-1">
+                    Ou cole o link direto da imagem:
+                  </label>
+                  <input
+                    type="url"
+                    value={newPhotoUrl}
+                    onChange={(e) => {
+                      setNewPhotoUrl(e.target.value);
+                      setPreviewDataUrl(e.target.value);
+                    }}
+                    placeholder="https://exemplo.com/nossa-foto.jpg"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-purple-950/80 border border-purple-500/40 text-white text-xs placeholder-purple-400/50 focus:outline-none focus:border-pink-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-purple-300 font-semibold block mb-1">
+                    Título do momento:
+                  </label>
+                  <input
+                    type="text"
+                    value={newPhotoTitle}
+                    onChange={(e) => setNewPhotoTitle(e.target.value)}
+                    placeholder="Ex: Pôr do sol com você ♡"
+                    className="w-full px-3.5 py-2 rounded-xl bg-purple-950/80 border border-purple-500/40 text-white text-xs placeholder-purple-400/50 focus:outline-none focus:border-pink-400"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="text-xs text-purple-300 font-semibold block mb-1">
+                      Data:
+                    </label>
+                    <input
+                      type="text"
+                      value={newPhotoDate}
+                      onChange={(e) => setNewPhotoDate(e.target.value)}
+                      placeholder="DD/MM/AAAA"
+                      className="w-full px-3.5 py-2 rounded-xl bg-purple-950/80 border border-purple-500/40 text-white text-xs placeholder-purple-400/50 focus:outline-none focus:border-pink-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-purple-300 font-semibold block mb-1">
+                      Legenda carinhosa:
+                    </label>
+                    <input
+                      type="text"
+                      value={newPhotoCaption}
+                      onChange={(e) => setNewPhotoCaption(e.target.value)}
+                      placeholder="Ex: Dia inesquecível..."
+                      className="w-full px-3.5 py-2 rounded-xl bg-purple-950/80 border border-purple-500/40 text-white text-xs placeholder-purple-400/50 focus:outline-none focus:border-pink-400"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddModalOpen(false)}
+                    className="flex-1 py-2.5 rounded-xl border border-purple-500/30 text-purple-200 text-xs font-semibold hover:bg-purple-900/30 transition"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow-md hover:brightness-110 transition cursor-pointer"
+                  >
+                    Salvar Foto 📸
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Fullscreen Photo Visualizer Modal */}
       <PhotoVisualizerModal

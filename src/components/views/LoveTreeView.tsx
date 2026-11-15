@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Trees,
   Droplets,
@@ -13,11 +13,13 @@ import {
   Plus,
   X,
   ChevronRight,
+  Calendar,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { soundEngine } from '../../utils/audioSynth';
 import { FantasyTreeCanvas } from '../3d/FantasyTreeCanvas';
+import { LoveTree2D } from '../tree/LoveTree2D';
 
 interface PromiseRibbon {
   id: string;
@@ -84,11 +86,19 @@ export const LoveTreeView: React.FC = () => {
   const [isWatering, setIsWatering] = useState(false);
   const [isSunbathing, setIsSunbathing] = useState(false);
   const [isPruning, setIsPruning] = useState(false);
+  const [treeRenderMode, setTreeRenderMode] = useState<'2.5d' | '3d'>('2.5d');
   const [selectedRibbon, setSelectedRibbon] = useState<PromiseRibbon | null>(null);
   const [harvestedFruitMsg, setHarvestedFruitMsg] = useState<string | null>(null);
   const [harvestedFruits, setHarvestedFruits] = useState<number[]>([]);
   const [isAddingRibbon, setIsAddingRibbon] = useState(false);
   const [newRibbonText, setNewRibbonText] = useState('');
+
+  // Real relationship days since June 12, 2023
+  const daysTogether = useMemo(() => {
+    const start = new Date('2023-06-12T00:00:00').getTime();
+    const now = Date.now();
+    return Math.max(1, Math.floor((now - start) / (1000 * 60 * 60 * 24)));
+  }, []);
 
   // Store unlocks
   const hasSakuraTheme = storeItems.find((i) => i.id === 'item-tree-sakura')?.purchased;
@@ -264,29 +274,81 @@ export const LoveTreeView: React.FC = () => {
           ))}
         </div>
 
-        {/* Stage Badge */}
-        <div className="z-10 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/40 border border-teal-400/40 backdrop-blur-md mb-2">
-          <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" />
-          <span className="text-xs font-bold text-white tracking-wide">{stage.title}</span>
+        {/* Render mode selector + Stage Badge */}
+        <div className="z-10 w-full flex items-center justify-between mb-2 px-1">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 border border-teal-400/40 backdrop-blur-md">
+            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" />
+            <span className="text-xs font-bold text-white tracking-wide">{stage.title}</span>
+          </div>
+
+          <div className="flex items-center p-0.5 rounded-xl bg-purple-950/80 border border-purple-500/30 text-[11px] font-bold">
+            <button
+              onClick={() => {
+                setTreeRenderMode('2.5d');
+                soundEngine.playSparkle();
+              }}
+              className={`px-2.5 py-0.5 rounded-lg transition-all ${
+                treeRenderMode === '2.5d'
+                  ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-sm'
+                  : 'text-purple-300/70 hover:text-white'
+              }`}
+            >
+              🌿 2.5D Encantado
+            </button>
+            <button
+              onClick={() => {
+                setTreeRenderMode('3d');
+                soundEngine.playSparkle();
+              }}
+              className={`px-2.5 py-0.5 rounded-lg transition-all ${
+                treeRenderMode === '3d'
+                  ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-sm'
+                  : 'text-purple-300/70 hover:text-white'
+              }`}
+            >
+              🎮 3D
+            </button>
+          </div>
         </div>
 
-        {/* 3D Real Fantasy Tree Experience */}
+        {/* Tree Experience (2.5D Animated Vector or 3D Mesh) */}
         <div className="relative w-full my-1">
-          <FantasyTreeCanvas
-            level={currentLevel}
-            isWatering={isWatering}
-            isSunbathing={isSunbathing}
-            isPruning={isPruning}
-            hasSakuraTheme={hasSakuraTheme}
-            hasGoldenApples={hasGoldenApples}
-            hasFairyLights={hasFairyLights}
-            ribbons={DEFAULT_RIBBONS}
-            onTreeInteract={() => {
-              soundEngine.playSparkle();
-              triggerHeartExplosion();
-              showToast('A Árvore do Amor vibra com o carinho de vocês! 🌿💖', '✨');
-            }}
-          />
+          {treeRenderMode === '2.5d' ? (
+            <LoveTree2D
+              level={currentLevel}
+              isWatering={isWatering}
+              isSunbathing={isSunbathing}
+              isPruning={isPruning}
+              hasSakuraTheme={hasSakuraTheme}
+              hasGoldenApples={hasGoldenApples}
+              hasFairyLights={hasFairyLights}
+              ribbons={allRibbons}
+              creatures={treeState.creaturesUnlocked || []}
+              harvestedFruits={harvestedFruits}
+              onHarvestFruit={handleHarvestFruit}
+              onTreeTap={() => {
+                soundEngine.playSparkle();
+                triggerHeartExplosion();
+                showToast('A Árvore do Amor vibra com o carinho de vocês! 🌿💖', '✨');
+              }}
+            />
+          ) : (
+            <FantasyTreeCanvas
+              level={currentLevel}
+              isWatering={isWatering}
+              isSunbathing={isSunbathing}
+              isPruning={isPruning}
+              hasSakuraTheme={hasSakuraTheme}
+              hasGoldenApples={hasGoldenApples}
+              hasFairyLights={hasFairyLights}
+              ribbons={DEFAULT_RIBBONS}
+              onTreeInteract={() => {
+                soundEngine.playSparkle();
+                triggerHeartExplosion();
+                showToast('A Árvore do Amor vibra com o carinho de vocês! 🌿💖', '✨');
+              }}
+            />
+          )}
 
           {/* Quick Floating Harvest Button for Sacred Fruits */}
           {(currentLevel >= 3 || hasGoldenApples) && (
@@ -304,16 +366,22 @@ export const LoveTreeView: React.FC = () => {
           )}
         </div>
 
-        {/* Level Progress Stats */}
+        {/* Level Progress Stats with Relationship Days Integration */}
         <div className="w-full max-w-sm space-y-2 mt-1">
           <div className="flex items-center justify-between text-xs text-purple-200">
             <span className="font-semibold flex items-center gap-1">
               <Award className="w-3.5 h-3.5 text-teal-300" />
               <span>Nível da Árvore</span>
             </span>
-            <span className="font-bold text-teal-300 font-mono text-sm">
-              Nível {currentLevel} / 10
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-pink-300 flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-pink-400" />
+                {daysTogether} dias de amor
+              </span>
+              <span className="font-bold text-teal-300 font-mono text-sm">
+                Nv. {currentLevel}/10
+              </span>
+            </div>
           </div>
 
           {/* XP Bar */}
