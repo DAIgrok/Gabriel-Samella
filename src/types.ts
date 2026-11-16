@@ -106,7 +106,7 @@ export interface StoreItem {
   redeemedAt?: string;
   actionLabel?: string;
   petTypeTarget?: PetType | 'all';
-  slotType?: 'hat' | 'outfit' | 'accessory' | 'tree' | 'theme' | 'frame';
+  slotType?: 'hat' | 'outfit' | 'collar' | 'glasses' | 'accessory' | 'tree' | 'theme' | 'frame';
 }
 
 export type PetType =
@@ -165,6 +165,8 @@ export interface KittenState {
   equippedHat?: string;
   equippedAccessory?: string;
   equippedOutfit?: string;
+  equippedCollar?: string;
+  equippedGlasses?: string;
   lastFed?: string;
   lastSlept?: string;
   lastBathed?: string;
@@ -173,6 +175,7 @@ export interface KittenState {
   xp: number;
   maxXp: number;
   ownedPets?: PetType[];
+  customNames?: Partial<Record<PetType, string>>;
 }
 
 export interface TreeDecorationItem {

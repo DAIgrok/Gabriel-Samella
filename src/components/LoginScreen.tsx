@@ -3,21 +3,28 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Heart, Lock, KeyRound, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { soundEngine } from '../utils/audioSynth';
+import { getCouplePhotoUrl, REAL_PHOTO_SLOTS } from '../data/mediaAssets';
 
 export const LoginScreen: React.FC = () => {
-  const { setIsLoggedIn, config, triggerHeartExplosion } = useApp();
+  const { setIsLoggedIn, config, photos, triggerHeartExplosion } = useApp();
   const [passcode, setPasscode] = useState('');
   const [error, setError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleUnlock = (overridePass?: string) => {
-    const input = overridePass !== undefined ? overridePass : passcode;
+    const input = (overridePass !== undefined ? overridePass : passcode).trim();
+    const expectedPasscode = (config.passcode || '1206').trim();
+    if (!input) {
+      soundEngine.playHeartPop();
+      setError(true);
+      return;
+    }
+
     setIsSubmitting(true);
     setError(false);
 
     setTimeout(() => {
-      // Accept passcode (e.g. 1206) or direct button unlock for Samella!
-      if (!input || input === config.passcode || input === '1206' || input === '12/06') {
+      if (input === expectedPasscode) {
         soundEngine.playSparkle();
         triggerHeartExplosion(0.5, 0.5);
         setIsLoggedIn(true);
@@ -26,11 +33,12 @@ export const LoginScreen: React.FC = () => {
         setError(true);
         setIsSubmitting(false);
       }
-    }, 400);
+    }, 300);
   };
 
   const handleKeyPress = (num: string) => {
     soundEngine.playHeartPop();
+    if (error) setError(false);
     if (passcode.length < 4) {
       const next = passcode + num;
       setPasscode(next);
@@ -41,6 +49,7 @@ export const LoginScreen: React.FC = () => {
   };
 
   const handleDelete = () => {
+    soundEngine.playHeartPop();
     setPasscode((prev) => prev.slice(0, -1));
     setError(false);
   };
@@ -60,9 +69,21 @@ export const LoginScreen: React.FC = () => {
         transition={{ duration: 0.6, ease: 'easeOut' }}
         className="w-full max-w-sm glass-card-glow rounded-3xl p-6 md:p-8 text-center border border-purple-400/25 relative z-10 my-auto shadow-[0_20px_60px_rgba(0,0,0,0.7)]"
       >
-        {/* Glowing Heart Emblem */}
-        <div className="mx-auto w-16 h-16 rounded-2xl glass-panel flex items-center justify-center mb-4 border border-pink-400/30 shadow-[0_0_25px_rgba(244,114,182,0.3)]">
-          <Heart className="w-8 h-8 text-pink-400 fill-pink-500/60 neon-glow-pink animate-pulse" />
+        {/* Real Couple Portrait + Glowing Heart Badge */}
+        <div className="relative mx-auto w-20 h-20 mb-4">
+          <div className="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-purple-600 via-pink-500 to-rose-400 shadow-[0_0_25px_rgba(244,114,182,0.45)] overflow-hidden">
+            <img
+              src={getCouplePhotoUrl(photos, 1, REAL_PHOTO_SLOTS.loginPortrait)}
+              alt="Gabriel e Samella"
+              className="w-full h-full object-cover rounded-full"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/assets/img/2.jpg';
+              }}
+            />
+          </div>
+          <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[#120524] border border-pink-400/50 flex items-center justify-center shadow-md">
+            <Heart className="w-3.5 h-3.5 text-pink-400 fill-pink-400 animate-pulse" />
+          </div>
         </div>
 
         {/* Title */}
@@ -105,7 +126,7 @@ export const LoginScreen: React.FC = () => {
               exit={{ opacity: 0 }}
               className="text-xs text-rose-300 mb-4 bg-rose-950/50 py-1.5 px-3 rounded-lg border border-rose-500/30"
             >
-              Senha incorreta! Dica: 1206 (data do nosso namoro)
+              Senha incorreta! Dica: a data especial do nosso amor ♡
             </motion.p>
           )}
         </AnimatePresence>
@@ -115,43 +136,48 @@ export const LoginScreen: React.FC = () => {
           {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((num) => (
             <button
               key={num}
+              type="button"
               id={`keypad-${num}`}
               onClick={() => handleKeyPress(num)}
-              className="h-12 rounded-2xl glass-panel-interactive flex items-center justify-center text-lg font-medium text-white/90 active:scale-95 transition-transform border border-purple-500/20"
+              className="h-12 rounded-2xl glass-panel-interactive flex items-center justify-center text-lg font-medium text-white/90 active:scale-95 transition-transform border border-purple-500/20 cursor-pointer"
             >
               {num}
             </button>
           ))}
           <button
+            type="button"
             id="keypad-clear"
             onClick={handleDelete}
-            className="h-12 rounded-2xl glass-panel-interactive flex items-center justify-center text-xs text-purple-300 active:scale-95 transition-transform"
+            className="h-12 rounded-2xl glass-panel-interactive flex items-center justify-center text-xs text-purple-300 active:scale-95 transition-transform cursor-pointer"
           >
             Apagar
           </button>
           <button
+            type="button"
             id="keypad-0"
             onClick={() => handleKeyPress('0')}
-            className="h-12 rounded-2xl glass-panel-interactive flex items-center justify-center text-lg font-medium text-white/90 active:scale-95 transition-transform border border-purple-500/20"
+            className="h-12 rounded-2xl glass-panel-interactive flex items-center justify-center text-lg font-medium text-white/90 active:scale-95 transition-transform border border-purple-500/20 cursor-pointer"
           >
             0
           </button>
           <button
-            id="keypad-date-quick"
-            onClick={() => handleUnlock('1206')}
-            title="Preencher data do namoro (12/06)"
-            className="h-12 rounded-2xl glass-panel-interactive flex items-center justify-center text-xs text-pink-300 active:scale-95 transition-transform border border-pink-500/30"
+            type="button"
+            id="keypad-confirm"
+            onClick={() => handleUnlock()}
+            title="Confirmar senha"
+            className="h-12 rounded-2xl glass-panel-interactive flex items-center justify-center text-xs font-bold text-pink-300 active:scale-95 transition-transform border border-pink-500/30 cursor-pointer"
           >
-            12/06
+            OK ♡
           </button>
         </div>
 
-        {/* Direct One-Click Button for Samella */}
+        {/* Unlock Submit Button */}
         <button
+          type="button"
           id="btn-direct-login"
-          onClick={() => handleUnlock('1206')}
+          onClick={() => handleUnlock()}
           disabled={isSubmitting}
-          className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-500 text-white font-medium text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(236,72,153,0.4)] active:scale-[0.98] transition-all hover:brightness-110"
+          className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-500 text-white font-medium text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(236,72,153,0.4)] active:scale-[0.98] transition-all hover:brightness-110 cursor-pointer"
         >
           <Sparkles className="w-4 h-4 text-pink-200" />
           <span>Entrar no Nosso Mundo</span>

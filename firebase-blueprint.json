@@ -1,0 +1,100 @@
+{
+  "entities": {
+    "CoupleWorld": {
+      "title": "CoupleWorld",
+      "description": "Estado persistente sincronizado na nuvem do aplicativo Nosso Mundo (Gabriel & Samella), ativado após o primeiro acesso via QR Code.",
+      "type": "object",
+      "properties": {
+        "worldId": {
+          "type": "string",
+          "description": "Identificador fixo e único do universo do casal.",
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "journeyStarted": {
+          "type": "boolean",
+          "description": "Indica se Samella já escaneou/desbloqueou o aplicativo pela primeira vez."
+        },
+        "coins": {
+          "type": "integer",
+          "description": "Saldo atual de diamantes."
+        },
+        "treeWaterCount": {
+          "type": "integer",
+          "description": "Total de regas feitas na Árvore do Amor."
+        },
+        "currentDailyIndex": {
+          "type": "integer",
+          "description": "Índice da mensagem diária exibida."
+        },
+        "config": {
+          "type": "object",
+          "description": "Configurações personalizáveis do casal (nomes, data, senha)."
+        },
+        "treeState": {
+          "type": "object",
+          "description": "Progresso da Árvore do Amor (nível, xp, fitas, frutos, luzes)."
+        },
+        "kitten": {
+          "type": "object",
+          "description": "Estado completo do mascote ativo e espécies adotadas."
+        },
+        "lettersState": {
+          "type": "object",
+          "description": "Mapa de cartas lidas, favoritadas e cartas personalizadas."
+        },
+        "achievementsState": {
+          "type": "object",
+          "description": "Mapa de conquistas desbloqueadas e progresso."
+        },
+        "storeItemsState": {
+          "type": "object",
+          "description": "Mapa de itens comprados e vales resgatados."
+        },
+        "easterEggsState": {
+          "type": "object",
+          "description": "Mapa de segredos descobertos."
+        },
+        "phrasesState": {
+          "type": "object",
+          "description": "Mapa de frases favoritadas."
+        },
+        "chatMessages": {
+          "type": "array",
+          "description": "Mensagens trocadas no chat interno do casal."
+        },
+        "gameRecords": {
+          "type": "object",
+          "description": "Recordes e pontuações nos mini-jogos do casal."
+        },
+        "customPhotos": {
+          "type": "array",
+          "description": "Metadados de fotos adicionadas via URL ou galeria."
+        },
+        "customSongs": {
+          "type": "array",
+          "description": "Metadados de músicas adicionadas à playlist."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de criação no servidor."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp da última atualização no servidor."
+        }
+      },
+      "required": ["worldId", "journeyStarted", "coins", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/couple_worlds/{worldId}": {
+      "schema": {
+        "$ref": "#/entities/CoupleWorld"
+      },
+      "description": "Documento único que armazena o progresso compartilhado de Gabriel & Samella sem necessidade de login."
+    }
+  }
+}

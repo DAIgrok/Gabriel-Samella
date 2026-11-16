@@ -27,6 +27,7 @@ export const PhotosView: React.FC = () => {
     showToast,
   } = useApp();
 
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [filter, setFilter] = useState<'todas' | 'favoritas'>('todas');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newPhotoTitle, setNewPhotoTitle] = useState('');
@@ -34,24 +35,74 @@ export const PhotosView: React.FC = () => {
   const [newPhotoDate, setNewPhotoDate] = useState(new Date().toLocaleDateString('pt-BR'));
   const [newPhotoUrl, setNewPhotoUrl] = useState('');
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+  const compressImageFile = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
       const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Falha ao ler imagem'));
       reader.onload = () => {
-        const result = reader.result as string;
-        setPreviewDataUrl(result);
-        setNewPhotoUrl(result);
+        const rawDataUrl = reader.result as string;
+        const img = new Image();
+        img.onerror = () => resolve(rawDataUrl);
+        img.onload = () => {
+          const maxDim = 1200;
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            const ratio = Math.min(maxDim / width, maxDim / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(rawDataUrl);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.82));
+        };
+        img.src = rawDataUrl;
       };
       reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setIsProcessingFile(true);
+    try {
+      const file = files[0];
+      const compressed = await compressImageFile(file);
+      setPreviewDataUrl(compressed);
+      setNewPhotoUrl(compressed);
+      if (!newPhotoTitle) {
+        const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ').trim();
+        if (cleanName && cleanName.length <= 36) {
+          setNewPhotoTitle(cleanName);
+        }
+      }
+      setIsAddModalOpen(true);
+    } catch {
+      showToast('Não foi possível carregar essa imagem. Tente outro arquivo.', '⚠️');
+    } finally {
+      setIsProcessingFile(false);
+      e.target.value = '';
     }
+  };
+
+  const handleOpenDeviceMedia = () => {
+    soundEngine.playHeartPop();
+    fileInputRef.current?.click();
   };
 
   const handleSaveNewPhoto = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPhotoUrl && !previewDataUrl) {
-      showToast('Por favor, selecione uma imagem ou informe a URL!');
+      showToast('Por favor, selecione uma imagem da sua galeria ou informe a URL!');
       return;
     }
 
@@ -98,6 +149,15 @@ export const PhotosView: React.FC = () => {
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
       className="space-y-6 pb-32 sm:pb-24 max-w-5xl mx-auto"
     >
+      {/* Hidden Direct Device Media Input (Galeria / Fotos / Arquivos) */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileUpload}
+        className="hidden"
+      />
+
       {/* Header */}
       <div className="text-center space-y-1">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-400/30 text-xs font-semibold text-purple-300 mb-1">
@@ -108,7 +168,7 @@ export const PhotosView: React.FC = () => {
           Nossa História em Imagens ♡
         </h2>
         <p className="text-xs md:text-sm text-purple-200/70">
-          Gabriel & Samella • Fotos salvas na pasta <code className="text-pink-300 font-mono">public/assets/photos/</code>
+          Gabriel & Samella • Fotos salvas na pasta <code className="text-pink-300 font-mono">public/assets/img/</code>
         </p>
       </div>
 
@@ -139,16 +199,28 @@ export const PhotosView: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer"
+            type="button"
+            onClick={handleOpenDeviceMedia}
+            disabled={isProcessingFile}
+            className="flex items-center gap-1.5 px-3.5 min-h-[40px] py-2 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer disabled:opacity-60"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Adicionar Foto</span>
+            <span>{isProcessingFile ? 'Carregando...' : 'Adicionar Foto'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center gap-1 px-3 min-h-[40px] py-2 rounded-2xl glass-panel border border-purple-500/30 text-purple-200 hover:text-white text-xs font-semibold active:scale-95 transition-all cursor-pointer"
+            title="Adicionar por link ou galeria"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Link/Opções</span>
           </button>
 
           <button
             onClick={handleStartSlideshow}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white text-purple-900 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 min-h-[40px] py-2 rounded-2xl bg-white text-purple-900 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
             <span>Slideshow</span>
@@ -241,27 +313,28 @@ export const PhotosView: React.FC = () => {
                 {/* File picker button */}
                 <div>
                   <label className="text-xs text-pink-300 font-semibold block mb-1.5">
-                    Escolha uma foto do seu celular ou computador:
+                    Escolha uma foto da galeria do celular ou computador:
                   </label>
-                  <label className="w-full p-4 rounded-2xl border-2 border-dashed border-purple-500/40 hover:border-pink-400 flex flex-col items-center justify-center gap-2 cursor-pointer bg-purple-950/40 transition">
+                  <button
+                    type="button"
+                    onClick={handleOpenDeviceMedia}
+                    className="w-full p-4 rounded-2xl border-2 border-dashed border-purple-500/40 hover:border-pink-400 flex flex-col items-center justify-center gap-2 cursor-pointer bg-purple-950/40 transition"
+                  >
                     {previewDataUrl ? (
-                      <div className="w-24 h-24 rounded-xl overflow-hidden shadow-md border border-pink-400/50">
-                        <img src={previewDataUrl} alt="Preview" className="w-full h-full object-cover" />
+                      <div className="flex flex-col items-center gap-1.5">
+                        <div className="w-24 h-24 rounded-xl overflow-hidden shadow-md border border-pink-400/50">
+                          <img src={previewDataUrl} alt="Preview" className="w-full h-full object-cover" />
+                        </div>
+                        <span className="text-[11px] text-pink-300 font-semibold">Toque para trocar a imagem</span>
                       </div>
                     ) : (
                       <>
                         <Upload className="w-6 h-6 text-pink-400" />
-                        <span className="text-xs text-purple-200">Toque para selecionar imagem</span>
+                        <span className="text-xs text-purple-200">Toque para abrir a Galeria / Mídia</span>
                         <span className="text-[10px] text-purple-400">JPG, PNG, WebP do dispositivo</span>
                       </>
                     )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                  </label>
+                  </button>
                 </div>
 
                 {/* Or Direct URL Input */}

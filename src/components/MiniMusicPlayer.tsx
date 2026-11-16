@@ -10,9 +10,10 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { realAudio } from '../services/realAudio';
+import { getCouplePhotoUrl, REAL_PHOTO_SLOTS } from '../data/mediaAssets';
 
 export const MiniMusicPlayer: React.FC = () => {
-  const { currentSong, songs, nextSong, prevSong, isPlaying, playSong, pauseSong, toggleFavoriteSong } = useApp();
+  const { currentSong, photos, playbackTime, nextSong, prevSong, isPlaying, playSong, pauseSong, toggleFavoriteSong } = useApp();
   const [audioState, setAudioState] = useState(realAudio.getState());
   const [isShuffle, setIsShuffle] = useState(false);
   const [isLoop, setIsLoop] = useState(true);
@@ -31,8 +32,8 @@ export const MiniMusicPlayer: React.FC = () => {
   };
 
   const activeDuration = audioState.duration || currentSong.duration || 216;
-  const activeCurrentTime = audioState.currentTime || (audioState.isPlaying || isPlaying ? 102 : 102); // 1:42 default like screenshot
-  const progressPercent = Math.min(100, (activeCurrentTime / activeDuration) * 100);
+  const activeCurrentTime = audioState.currentTime || playbackTime || 0;
+  const progressPercent = activeDuration > 0 ? Math.min(100, (activeCurrentTime / activeDuration) * 100) : 0;
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation();
@@ -64,13 +65,13 @@ export const MiniMusicPlayer: React.FC = () => {
         {/* Album Artwork Cover matching screenshot */}
         <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 relative border border-purple-500/30 shadow-md bg-purple-950/60">
           <img
-            src="/assets/img/real/music_cover.jpg"
+            src={currentSong.coverUrl || getCouplePhotoUrl(photos, 11, REAL_PHOTO_SLOTS.musicCovers[0])}
             alt={currentSong.title}
             className={`w-full h-full object-cover transition-transform duration-500 ${
               audioState.isPlaying || isPlaying ? 'scale-105' : ''
             }`}
             onError={(e) => {
-              (e.target as HTMLImageElement).src = '/assets/img/1.jpg';
+              (e.target as HTMLImageElement).src = '/assets/img/12.jpg';
             }}
           />
         </div>

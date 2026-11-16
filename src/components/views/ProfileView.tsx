@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  Settings,
   Heart,
   Trophy,
   Image as ImageIcon,
@@ -11,13 +10,12 @@ import {
   Clock,
   Music,
   Trees,
-  Cat,
   Hourglass,
   ChevronRight,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { motion } from 'motion/react';
-import { AdminSettingsModal } from './AdminSettingsModal';
+import { getCouplePhotoUrl, REAL_PHOTO_SLOTS } from '../../data/mediaAssets';
 
 export const ProfileView: React.FC = () => {
   const {
@@ -32,12 +30,11 @@ export const ProfileView: React.FC = () => {
     currentSong,
     treeState,
     loveTree,
-    kitten,
   } = useApp();
-  const [showSettings, setShowSettings] = useState(false);
 
   const activeTree = treeState || loveTree;
-  const treeLevel = activeTree?.level ?? 2;
+  const treeLevel = activeTree?.level ?? 1;
+  const treeStageName = activeTree?.stageName || 'Semente do Amor 🌱';
 
   const readLettersCount = letters.filter((l) => l.read).length;
   const favPhotosCount = photos.filter((p) => p.isFavorite).length;
@@ -62,22 +59,11 @@ export const ProfileView: React.FC = () => {
         <div className="absolute -top-16 -right-16 w-48 h-48 bg-pink-600/15 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Settings button */}
-        <div className="absolute top-4 right-4 z-10">
-          <button
-            onClick={() => setShowSettings(true)}
-            className="p-2.5 rounded-2xl bg-purple-950/60 hover:bg-purple-900/80 text-purple-200 hover:text-white border border-purple-500/25 transition-all cursor-pointer"
-            title="Configurações do Casal"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
-        </div>
-
         {/* Real Couple Photo Avatar */}
         <div className="relative my-2">
           <div className="w-28 h-28 rounded-full p-1 bg-gradient-to-tr from-purple-600 via-pink-500 to-rose-400 shadow-[0_0_30px_rgba(244,114,182,0.45)]">
             <img
-              src="/assets/img/real/photo_1.jpg"
+              src={getCouplePhotoUrl(photos, 2, REAL_PHOTO_SLOTS.profileAvatar)}
               alt="Gabriel e Samella"
               className="w-full h-full object-cover rounded-full"
               onError={(e) => {
@@ -167,7 +153,7 @@ export const ProfileView: React.FC = () => {
             </div>
             <div>
               <span className="text-[10px] text-purple-300/70 block uppercase font-medium">Nossa Árvore</span>
-              <span className="text-xs font-semibold text-white">Nível {treeLevel} (Florescendo)</span>
+              <span className="text-xs font-semibold text-white">Nível {treeLevel} · {treeStageName}</span>
             </div>
           </div>
         </div>
@@ -257,51 +243,42 @@ export const ProfileView: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-4 gap-2">
-          {['/assets/img/real/photo_1.jpg', '/assets/img/real/photo_2.jpg', '/assets/img/real/photo_3.jpg', '/assets/img/real/photo_4.jpg'].map(
-            (src, idx) => (
+          {REAL_PHOTO_SLOTS.homeMemories.map((fallbackSrc, idx) => {
+            const photoItem = photos[idx];
+            const src = getCouplePhotoUrl(photos, idx, fallbackSrc);
+            return (
               <div
                 key={idx}
                 onClick={() => {
-                  if (photos[idx]) setSelectedPhoto(photos[idx]);
+                  if (photoItem) setSelectedPhoto(photoItem);
                   setExtendedView('fotos');
                 }}
                 className="aspect-square rounded-2xl overflow-hidden border border-purple-500/30 bg-purple-950/40 cursor-pointer hover:scale-105 transition-transform"
               >
                 <img
                   src={src}
-                  alt={`Memória ${idx + 1}`}
+                  alt={photoItem?.title || `Memória ${idx + 1}`}
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = `/assets/img/${idx + 1}.jpg`;
                   }}
                 />
               </div>
-            )
-          )}
+            );
+          })}
         </div>
       </div>
 
-      {/* 5. App Controls & Security */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-        <button
-          onClick={() => setShowSettings(true)}
-          className="w-full py-3 px-4 rounded-2xl bg-[#1b0a33] hover:bg-[#28114c] border border-purple-500/30 text-purple-200 hover:text-white flex items-center justify-center gap-2 text-xs font-semibold cursor-pointer transition-colors"
-        >
-          <Settings className="w-4 h-4 text-purple-300" />
-          <span>Configurações do Casal</span>
-        </button>
-
+      {/* 5. Security Lock Control */}
+      <div className="pt-1">
         <button
           onClick={() => setIsLoggedIn(false)}
-          className="w-full py-3 px-4 rounded-2xl bg-[#1b0a33] hover:bg-[#28114c] border border-purple-500/30 text-purple-200 hover:text-white flex items-center justify-center gap-2 text-xs font-semibold cursor-pointer transition-colors"
+          className="w-full min-h-[44px] py-3 px-4 rounded-2xl bg-[#1b0a33] hover:bg-[#28114c] border border-purple-500/30 text-purple-200 hover:text-white flex items-center justify-center gap-2 text-xs font-semibold cursor-pointer transition-colors"
         >
           <Lock className="w-4 h-4 text-pink-400" />
-          <span>Bloquear com Senha (1206)</span>
+          <span>Bloquear Aplicativo com Senha</span>
         </button>
       </div>
-
-      {/* Admin Settings Modal */}
-      {showSettings && <AdminSettingsModal onClose={() => setShowSettings(false)} />}
     </motion.div>
   );
 };

@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useRef,
+  ReactNode,
+} from 'react';
 import { User } from 'firebase/auth';
 import {
   Achievement,
@@ -40,6 +47,50 @@ import {
   getAccessToken,
 } from '../services/firebaseAuth';
 import { fetchDriveFolderPhotos, TARGET_DRIVE_FOLDER_ID } from '../services/googleDrive';
+import {
+  clearCloudWorld,
+  CloudWorldPayload,
+  GameRecords,
+  loadCloudWorld,
+  saveCloudWorld,
+  testFirestoreConnection,
+} from '../services/cloudSync';
+
+const INITIAL_PHOTO_IDS = new Set(INITIAL_PHOTOS.map((p) => p.id));
+const INITIAL_SONG_IDS = new Set(INITIAL_SONGS.map((s) => s.id));
+
+const DEFAULT_GAME_RECORDS: GameRecords = {
+  bestHearts: 0,
+  bestMemoryMoves: 0,
+  bestQuizScore: 0,
+  ticTacToeWins: 0,
+};
+
+export function getTreeStageName(level: number): string {
+  switch (level) {
+    case 1:
+      return 'Semente do Amor 🌱';
+    case 2:
+      return 'Primeiro Broto 🌿';
+    case 3:
+      return 'Muda Jovem 🌸';
+    case 4:
+      return 'Árvore em Botão 🌷';
+    case 5:
+      return 'Copa Florida 🌳';
+    case 6:
+      return 'Cerejeira Encantada 🌸✨';
+    case 7:
+      return 'Árvore das Promessas 🎀';
+    case 8:
+      return 'Frutos Sagrados 🍎';
+    case 9:
+      return 'Guardiã Estrelada 🕯️';
+    case 10:
+    default:
+      return 'Árvore Cósmica da Eternidade 🌌👑';
+  }
+}
 
 interface AppContextType {
   // State
@@ -48,8 +99,13 @@ interface AppContextType {
   activeTab: ActiveTab;
   extendedView: ExtendedView;
   isDrawerOpen: boolean;
+  isSettingsOpen: boolean;
   isLoggedIn: boolean;
   isLoadingDone: boolean;
+  isLoading: boolean;
+  isLocked: boolean;
+  journeyStarted: boolean;
+  isCloudSynced: boolean;
   phrases: Phrase[];
   dailyMessages: DailyMessage[];
   currentDailyIndex: number;
@@ -72,6 +128,7 @@ interface AppContextType {
   treeState: LoveTreeState;
   loveTree: LoveTreeState;
   hasSeenIntro: boolean;
+  gameRecords: GameRecords;
 
   // Google Drive & Auth
   isGoogleConnected: boolean;
@@ -86,6 +143,7 @@ interface AppContextType {
   setActiveTab: (tab: ActiveTab) => void;
   setExtendedView: (view: ExtendedView) => void;
   setIsDrawerOpen: (open: boolean) => void;
+  setIsSettingsOpen: (open: boolean) => void;
   setIsLoggedIn: (loggedIn: boolean) => void;
   setIsLoadingDone: (done: boolean) => void;
   addCoins: (amount: number, reason?: string) => void;
@@ -115,12 +173,12 @@ interface AppContextType {
   buyStoreItem: (id: string) => boolean;
   redeemVoucher: (id: string) => void;
   petKitten: (part?: 'head' | 'belly' | 'paw') => void;
-  feedKitten: (foodName?: string) => void;
+  feedKitten: (foodName?: string, hungerBoost?: number, happyBoost?: number) => void;
   giveWaterKitten: () => void;
-  batheKitten: () => void;
+  batheKitten: (boostAmount?: number) => void;
   toggleSleepKitten: () => void;
   playWithKitten: (toyName?: string) => void;
-  equipKittenItem: (itemId: string, category: 'hat' | 'accessory' | 'outfit') => void;
+  equipKittenItem: (itemId: string, category: 'hat' | 'accessory' | 'outfit' | 'collar' | 'glasses') => void;
   switchPet: (petType: PetType) => void;
   renamePet: (newName: string) => void;
   adoptPet: (petType: PetType) => void;
@@ -134,72 +192,126 @@ interface AppContextType {
   closeEasterEggModal: () => void;
   showToast: (text: string, icon?: string, reward?: number) => void;
   updateConfig: (newConfig: Partial<CoupleConfig>) => void;
+  updateGameRecord: (partial: Partial<GameRecords>) => void;
   triggerHeartExplosion: (x?: number, y?: number) => void;
   heartRainTriggerCount: number;
-  resetAllData: () => void;
+  resetAllData: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
 
-const STORAGE_KEY = 'NOSSO_MUNDO_APP_STATE_V2';
+const STORAGE_KEY = 'NOSSO_MUNDO_APP_STATE_V3';
+const UNLOCK_STORAGE_KEY = 'NOSSO_MUNDO_UNLOCKED_V3';
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Load saved state or defaults
   const loadSavedState = () => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.journeyStarted === true) {
+          return parsed;
+        }
       }
     } catch {
-      // ignore
+      // ignore invalid storage
     }
     return null;
   };
 
+  const loadUnlockedSession = (): boolean => {
+    try {
+      return localStorage.getItem(UNLOCK_STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  };
+
   const savedData = loadSavedState();
 
-  const mergeInitialItems = <T extends { id: string }>(savedList: T[] | undefined, initialList: T[]): T[] => {
+  const mergeInitialItems = <T extends { id: string }>(
+    savedList: T[] | undefined,
+    initialList: T[]
+  ): T[] => {
     if (!savedList || savedList.length === 0) return initialList;
     const existingIds = new Set(savedList.map((item) => item.id));
     const newItems = initialList.filter((item) => !existingIds.has(item.id));
     return [...savedList, ...newItems];
   };
 
-  const [config, setConfig] = useState<CoupleConfig>(savedData?.config || INITIAL_COUPLE_CONFIG);
-  const [coins, setCoins] = useState<number>(savedData?.coins ?? 50); // Starts with 50 💎
+  const [journeyStarted, setJourneyStarted] = useState<boolean>(
+    Boolean(savedData?.journeyStarted)
+  );
+  const [isCloudSynced, setIsCloudSynced] = useState<boolean>(false);
+
+  const [config, setConfig] = useState<CoupleConfig>(
+    savedData?.config || INITIAL_COUPLE_CONFIG
+  );
+  const [coins, setCoins] = useState<number>(savedData?.coins ?? 0);
   const [activeTab, setActiveTabState] = useState<ActiveTab>('inicio');
   const [extendedView, setExtendedViewState] = useState<ExtendedView>('inicio');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isLoadingDone, setIsLoadingDone] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedInState] = useState<boolean>(() => loadUnlockedSession());
+  const [isLoadingDone, setIsLoadingDone] = useState<boolean>(() => loadUnlockedSession());
   const [hasSeenIntro] = useState(false);
 
-  const [phrases, setPhrases] = useState<Phrase[]>(mergeInitialItems(savedData?.phrases, INITIAL_PHRASES));
+  const [phrases, setPhrases] = useState<Phrase[]>(
+    mergeInitialItems(savedData?.phrases, INITIAL_PHRASES)
+  );
   const [dailyMessages] = useState<DailyMessage[]>(INITIAL_DAILY_MESSAGES);
-  const [currentDailyIndex, setCurrentDailyIndex] = useState<number>(savedData?.currentDailyIndex ?? 0);
+  const [currentDailyIndex, setCurrentDailyIndex] = useState<number>(
+    savedData?.currentDailyIndex ?? 0
+  );
 
-  const [letters, setLetters] = useState<Letter[]>(mergeInitialItems(savedData?.letters, INITIAL_LETTERS));
+  const [letters, setLetters] = useState<Letter[]>(
+    mergeInitialItems(savedData?.letters, INITIAL_LETTERS)
+  );
   const [selectedLetter, setSelectedLetter] = useState<Letter | null>(null);
 
-  const [photos, setPhotos] = useState<MemoryPhoto[]>(mergeInitialItems(savedData?.photos, INITIAL_PHOTOS));
+  const [photos, setPhotos] = useState<MemoryPhoto[]>(
+    mergeInitialItems(savedData?.photos, INITIAL_PHOTOS)
+  );
   const [selectedPhoto, setSelectedPhoto] = useState<MemoryPhoto | null>(null);
 
-  const [songs, setSongs] = useState<Song[]>(mergeInitialItems(savedData?.songs, INITIAL_SONGS));
-  const [currentSong, setCurrentSong] = useState<Song>(savedData?.songs ? savedData.songs[0] : INITIAL_SONGS[0]);
+  const [songs, setSongs] = useState<Song[]>(
+    mergeInitialItems(savedData?.songs, INITIAL_SONGS)
+  );
+  const [currentSong, setCurrentSong] = useState<Song>(
+    savedData?.songs?.[0] || INITIAL_SONGS[0]
+  );
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackTime, setPlaybackTime] = useState(45);
+  const [playbackTime, setPlaybackTime] = useState(0);
 
-  const [achievements, setAchievements] = useState<Achievement[]>(mergeInitialItems(savedData?.achievements, INITIAL_ACHIEVEMENTS));
-  const [storeItems, setStoreItems] = useState<StoreItem[]>(mergeInitialItems(savedData?.storeItems, INITIAL_STORE_ITEMS));
+  const [achievements, setAchievements] = useState<Achievement[]>(
+    mergeInitialItems(savedData?.achievements, INITIAL_ACHIEVEMENTS)
+  );
+  const [storeItems, setStoreItems] = useState<StoreItem[]>(
+    mergeInitialItems(savedData?.storeItems, INITIAL_STORE_ITEMS)
+  );
   const [kitten, setKitten] = useState<KittenState>(savedData?.kitten || INITIAL_KITTEN);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(savedData?.chatMessages || INITIAL_CHAT_MESSAGES);
-  const [easterEggs, setEasterEggs] = useState<EasterEgg[]>(savedData?.easterEggs || INITIAL_EASTER_EGGS);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(
+    savedData?.chatMessages || INITIAL_CHAT_MESSAGES
+  );
+  const [easterEggs, setEasterEggs] = useState<EasterEgg[]>(
+    mergeInitialItems(savedData?.easterEggs, INITIAL_EASTER_EGGS)
+  );
   const [recentEasterEgg, setRecentEasterEgg] = useState<EasterEgg | null>(null);
 
-  const [treeWaterCount, setTreeWaterCount] = useState<number>(savedData?.treeWaterCount ?? 3);
-  const [treeState, setTreeState] = useState<LoveTreeState>(savedData?.treeState || INITIAL_TREE_STATE);
-  const [toastMessage, setToastMessage] = useState<{ text: string; icon?: string; reward?: number } | null>(null);
+  const [treeWaterCount, setTreeWaterCount] = useState<number>(
+    savedData?.treeWaterCount ?? 0
+  );
+  const [treeState, setTreeState] = useState<LoveTreeState>(
+    savedData?.treeState || INITIAL_TREE_STATE
+  );
+  const [gameRecords, setGameRecords] = useState<GameRecords>(
+    savedData?.gameRecords || DEFAULT_GAME_RECORDS
+  );
+  const [toastMessage, setToastMessage] = useState<{
+    text: string;
+    icon?: string;
+    reward?: number;
+  } | null>(null);
 
   // Google Drive & Auth States
   const [googleUser, setGoogleUser] = useState<User | null>(null);
@@ -207,14 +319,134 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isDriveSyncing, setIsDriveSyncing] = useState(false);
   const [driveSyncError, setDriveSyncError] = useState<string | null>(null);
 
-  // Init Google Auth listener
+  const cloudHydratedRef = useRef(false);
+  const syncTimeoutRef = useRef<number | null>(null);
+
+  const getSpeciesDisplayName = (petType?: PetType, customName?: string) => {
+    if (customName && customName.trim()) return customName.trim();
+    const spec = PET_SPECIES_CATALOG.find((s) => s.type === (petType || 'cat'));
+    return spec ? spec.name : 'Gatinho';
+  };
+
+  // Hydrate from Cloud Firestore on initial boot (when Samella opens QR again on any device)
+  useEffect(() => {
+    let active = true;
+    const bootstrapCloud = async () => {
+      try {
+        await testFirestoreConnection();
+        const cloud: CloudWorldPayload | null = await loadCloudWorld();
+        if (!active) return;
+
+        if (cloud && cloud.journeyStarted) {
+          setJourneyStarted(true);
+          if (cloud.config) setConfig(cloud.config);
+          if (typeof cloud.coins === 'number') setCoins(cloud.coins);
+          if (typeof cloud.treeWaterCount === 'number') setTreeWaterCount(cloud.treeWaterCount);
+          if (typeof cloud.currentDailyIndex === 'number') setCurrentDailyIndex(cloud.currentDailyIndex);
+          if (cloud.treeState) setTreeState(cloud.treeState);
+          if (cloud.kitten) setKitten(cloud.kitten);
+          if (cloud.gameRecords) setGameRecords({ ...DEFAULT_GAME_RECORDS, ...cloud.gameRecords });
+          if (cloud.chatMessages && cloud.chatMessages.length > 0) {
+            setChatMessages(cloud.chatMessages);
+          }
+
+          if (cloud.lettersState) {
+            const readSet = new Set(cloud.lettersState.readIds || []);
+            const favSet = new Set(cloud.lettersState.favoriteIds || []);
+            const unsealedMap = cloud.lettersState.unsealedMap || {};
+            const baseLetters = INITIAL_LETTERS.map((l) => ({
+              ...l,
+              read: readSet.has(l.id),
+              isFavorite: favSet.has(l.id),
+              unsealedAt: unsealedMap[l.id] || l.unsealedAt,
+            }));
+            const custom = cloud.lettersState.customLetters || [];
+            setLetters([...custom, ...baseLetters]);
+          }
+
+          if (cloud.achievementsState) {
+            setAchievements(
+              INITIAL_ACHIEVEMENTS.map((a) => {
+                const st = cloud.achievementsState[a.id];
+                if (!st) return a;
+                return {
+                  ...a,
+                  unlocked: Boolean(st.unlocked),
+                  unlockedAt: st.unlockedAt,
+                  progress: st.progress ?? a.progress,
+                };
+              })
+            );
+          }
+
+          if (cloud.storeItemsState) {
+            setStoreItems(
+              INITIAL_STORE_ITEMS.map((item) => {
+                const st = cloud.storeItemsState[item.id];
+                if (!st) return item;
+                return {
+                  ...item,
+                  purchased: Boolean(st.purchased),
+                  redeemed: st.redeemed ?? item.redeemed,
+                  redeemedAt: st.redeemedAt ?? item.redeemedAt,
+                  equipped: st.equipped ?? item.equipped,
+                };
+              })
+            );
+          }
+
+          if (cloud.easterEggsState) {
+            setEasterEggs(
+              INITIAL_EASTER_EGGS.map((egg) => {
+                const st = cloud.easterEggsState[egg.id];
+                if (!st) return egg;
+                return {
+                  ...egg,
+                  discovered: Boolean(st.discovered),
+                  discoveredAt: st.discoveredAt,
+                };
+              })
+            );
+          }
+
+          if (cloud.phrasesState) {
+            setPhrases(
+              INITIAL_PHRASES.map((p) => ({
+                ...p,
+                isFavorite: Boolean(cloud.phrasesState[p.id]),
+              }))
+            );
+          }
+
+          if (cloud.customPhotos && cloud.customPhotos.length > 0) {
+            setPhotos((prev) => mergeInitialItems(cloud.customPhotos, prev));
+          }
+
+          if (cloud.customSongs && cloud.customSongs.length > 0) {
+            setSongs((prev) => mergeInitialItems(prev, cloud.customSongs));
+          }
+        }
+        setIsCloudSynced(true);
+      } catch (err) {
+        console.warn('Sincronização inicial em nuvem aguardando:', err);
+      } finally {
+        cloudHydratedRef.current = true;
+      }
+    };
+
+    bootstrapCloud();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Init Google Auth listener (Drive backup integration)
   useEffect(() => {
     const unsubscribe = initAuth(
       (user, token) => {
         setGoogleUser(user);
         setIsGoogleConnected(true);
         if (token) {
-          // Attempt auto-sync of photos if connected
           syncDrivePhotosWithToken(token).catch(() => {});
         }
       },
@@ -236,9 +468,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         soundEngine.playSparkle();
         showToast(`${drivePhotos.length} fotos sincronizadas do Google Drive! 📸`, '📸', 20);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao sincronizar pasta do Google Drive';
       console.warn('Sync drive folder notice:', err);
-      setDriveSyncError(err.message || 'Erro ao sincronizar pasta do Google Drive');
+      setDriveSyncError(msg);
     } finally {
       setIsDriveSyncing(false);
     }
@@ -256,9 +489,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         soundEngine.playSparkle();
         showToast('Google Drive conectado com sucesso! 💖', '✨');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Não foi possível conectar ao Google Drive';
       console.error('Google drive sign in failed:', err);
-      setDriveSyncError(err.message || 'Não foi possível conectar a conta do Google Drive');
+      setDriveSyncError(msg);
       showToast('Erro ao conectar Google Drive. Tente novamente.', '⚠️');
     } finally {
       setIsDriveSyncing(false);
@@ -281,10 +515,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await syncDrivePhotosWithToken(token);
   };
 
-  // Sync to localStorage
+  // Save ONLY after Samella has scanned/unlocked the world (journeyStarted === true)
   useEffect(() => {
+    if (!journeyStarted) return;
+
     try {
       const stateToSave = {
+        journeyStarted: true,
         config,
         coins,
         currentDailyIndex,
@@ -299,12 +536,82 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         treeWaterCount,
         treeState,
         phrases,
+        gameRecords,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
     } catch {
       // storage quota or private mode
     }
-  }, [config, coins, currentDailyIndex, letters, photos, songs, achievements, storeItems, kitten, chatMessages, easterEggs, treeWaterCount, treeState, phrases]);
+
+    if (syncTimeoutRef.current) {
+      window.clearTimeout(syncTimeoutRef.current);
+    }
+
+    syncTimeoutRef.current = window.setTimeout(() => {
+      saveCloudWorld({
+        journeyStarted: true,
+        coins,
+        treeWaterCount,
+        currentDailyIndex,
+        config,
+        treeState,
+        kitten,
+        letters,
+        achievements,
+        storeItems,
+        easterEggs,
+        phrases,
+        chatMessages,
+        gameRecords,
+        photos,
+        songs,
+        initialPhotoIds: INITIAL_PHOTO_IDS,
+        initialSongIds: INITIAL_SONG_IDS,
+      })
+        .then(() => setIsCloudSynced(true))
+        .catch((err) => {
+          console.warn('Cloud sync deferred:', err);
+        });
+    }, 900);
+
+    return () => {
+      if (syncTimeoutRef.current) {
+        window.clearTimeout(syncTimeoutRef.current);
+      }
+    };
+  }, [
+    journeyStarted,
+    config,
+    coins,
+    currentDailyIndex,
+    letters,
+    photos,
+    songs,
+    achievements,
+    storeItems,
+    kitten,
+    chatMessages,
+    easterEggs,
+    treeWaterCount,
+    treeState,
+    phrases,
+    gameRecords,
+  ]);
+
+  // Passive gentle energy recharge while pet sleeps in Quarto
+  useEffect(() => {
+    if (!kitten.isSleeping) return;
+    const sleepTimer = window.setInterval(() => {
+      setKitten((prev) => {
+        if (!prev.isSleeping || prev.energy >= 100) return prev;
+        return {
+          ...prev,
+          energy: Math.min(100, prev.energy + 3),
+        };
+      });
+    }, 2500);
+    return () => clearInterval(sleepTimer);
+  }, [kitten.isSleeping]);
 
   // Audio timer ticker when playing
   useEffect(() => {
@@ -313,7 +620,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       interval = window.setInterval(() => {
         setPlaybackTime((prev) => {
           if (prev >= currentSong.duration) {
-            // Next song loop
             const curIdx = songs.findIndex((s) => s.id === currentSong.id);
             const nextIdx = (curIdx + 1) % songs.length;
             setCurrentSong(songs[nextIdx]);
@@ -337,9 +643,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [heartRainTriggerCount, setHeartRainTriggerCount] = useState(0);
 
-  const triggerHeartExplosion = (x = 0.5, y = 0.5) => {
+  const triggerHeartExplosion = (_x = 0.5, _y = 0.5) => {
     soundEngine.playHeartPop();
-    setHeartRainTriggerCount(prev => prev + 1);
+    setHeartRainTriggerCount((prev) => prev + 1);
+  };
+
+  const setIsLoggedIn = (loggedIn: boolean) => {
+    setIsLoggedInState(loggedIn);
+    try {
+      if (loggedIn) {
+        localStorage.setItem(UNLOCK_STORAGE_KEY, 'true');
+      } else {
+        localStorage.removeItem(UNLOCK_STORAGE_KEY);
+      }
+    } catch {
+      // ignore storage errors
+    }
+    if (loggedIn) {
+      setIsLoadingDone(true);
+      if (!journeyStarted) {
+        setJourneyStarted(true);
+        // Unlock first welcome achievement when Samella scans & unlocks for the very first time
+        setTimeout(() => {
+          unlockAchievement('ach-welcome');
+        }, 500);
+      }
+    }
   };
 
   const setActiveTab = (tab: ActiveTab) => {
@@ -350,6 +679,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const setExtendedView = (view: ExtendedView) => {
     soundEngine.playHeartPop();
+    if (view === 'config') {
+      setIsDrawerOpen(false);
+      setIsSettingsOpen(true);
+      return;
+    }
     setExtendedViewState(view);
     setIsDrawerOpen(false);
     if (['inicio', 'cartas', 'fotos', 'musica', 'perfil'].includes(view)) {
@@ -374,27 +708,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const unlockAchievement = (id: string) => {
+    let rewardToGrant = 0;
+    let unlockedTitle = '';
+
     setAchievements((prev) =>
       prev.map((ach) => {
         if (ach.id === id && !ach.unlocked) {
-          addCoins(ach.rewardCoins, `Conquista: ${ach.title}`);
-          triggerHeartExplosion();
+          rewardToGrant = ach.rewardCoins;
+          unlockedTitle = ach.title;
           return {
             ...ach,
             unlocked: true,
-            unlockedAt: 'Hoje',
+            unlockedAt: new Date().toLocaleDateString('pt-BR'),
             progress: ach.maxProgress,
           };
         }
         return ach;
       })
     );
+
+    if (rewardToGrant > 0) {
+      addCoins(rewardToGrant, `Conquista: ${unlockedTitle}`);
+      triggerHeartExplosion();
+    }
   };
 
   const nextDailyMessage = () => {
     soundEngine.playHeartPop();
     if (dailyMessages.length <= 1) return;
-    // Pick randomly from messages, avoiding the current and immediate previous
     let nextIdx = Math.floor(Math.random() * dailyMessages.length);
     let attempts = 0;
     while (nextIdx === currentDailyIndex && attempts < 10) {
@@ -565,18 +906,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         prev.map((i) => (i.id === id ? { ...i, purchased: true, equipped: true } : i))
       );
 
-      // Handle pet adoption: immediately activate the new pet and add to inventory
+      // Handle pet adoption: keep name empty/custom so user names it themselves
       if (item.category === 'pets' || (item.petTypeTarget && item.petTypeTarget !== 'all')) {
         const targetType = (item.petTypeTarget || 'cat') as PetType;
-        const speciesInfo = PET_SPECIES_CATALOG.find((s) => s.type === targetType);
         setKitten((prev) => {
           const owned = prev.ownedPets || ['cat'];
           const newOwned = owned.includes(targetType) ? owned : [...owned, targetType];
+          const existingCustom = prev.customNames?.[targetType] || '';
           return {
             ...prev,
             ownedPets: newOwned,
             petType: targetType,
-            name: speciesInfo ? speciesInfo.defaultName : prev.name,
+            name: existingCustom,
             mood: 'feliz',
           };
         });
@@ -588,11 +929,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           if (item.id === 'item-tree-fairy-lights') {
             return { ...prev, lightsEnabled: true };
           }
-          if (item.id === 'item-tree-magic-butterfly' && !prev.creaturesUnlocked.includes('Borboleta Lilás')) {
-            return { ...prev, creaturesUnlocked: [...prev.creaturesUnlocked, 'Borboleta Lilás'] };
+          if (
+            item.id === 'item-tree-magic-butterfly' &&
+            !prev.creaturesUnlocked.includes('Borboleta Lilás')
+          ) {
+            return {
+              ...prev,
+              creaturesUnlocked: [...prev.creaturesUnlocked, 'Borboleta Lilás'],
+            };
           }
-          if (item.id === 'item-tree-songbird' && !prev.creaturesUnlocked.includes('Passarinho Cantor')) {
-            return { ...prev, creaturesUnlocked: [...prev.creaturesUnlocked, 'Passarinho Cantor'] };
+          if (
+            item.id === 'item-tree-songbird' &&
+            !prev.creaturesUnlocked.includes('Passarinho Cantor')
+          ) {
+            return {
+              ...prev,
+              creaturesUnlocked: [...prev.creaturesUnlocked, 'Passarinho Cantor'],
+            };
           }
           return prev;
         });
@@ -630,25 +983,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const gainKittenXp = (amount: number) => {
+    let leveledUpTo = 0;
+    let displayPet = '';
+
     setKitten((prev) => {
       let newXp = (prev.xp || 0) + amount;
       let newLevel = prev.level || 1;
       let newMaxXp = prev.maxXp || 100;
-      let leveledUp = false;
 
       while (newXp >= newMaxXp) {
         newXp -= newMaxXp;
         newLevel += 1;
         newMaxXp = Math.round(newMaxXp * 1.35);
-        leveledUp = true;
+        leveledUpTo = newLevel;
       }
 
-      if (leveledUp) {
-        soundEngine.playSparkle();
-        triggerHeartExplosion();
-        showToast(`Mimi subiu para o Nível ${newLevel}! 🎉`, '👑', 15);
-        addCoins(15, `Subiu para o Nível ${newLevel} do Gatinho`);
-      }
+      displayPet = getSpeciesDisplayName(prev.petType, prev.name);
 
       return {
         ...prev,
@@ -657,55 +1007,72 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         maxXp: newMaxXp,
       };
     });
+
+    if (leveledUpTo > 0) {
+      soundEngine.playSparkle();
+      triggerHeartExplosion();
+      addCoins(10, `${displayPet} subiu para o Nível ${leveledUpTo}!`);
+    }
   };
 
   const petKitten = () => {
     soundEngine.playPurr();
     triggerHeartExplosion(0.5, 0.4);
+    let reached10 = false;
+    let rewardCoin = false;
+    let petLabel = 'seu mascote';
+
     setKitten((prev) => {
       const newPetCount = (prev.petCount || 0) + 1;
-      if (newPetCount === 10) {
-        unlockAchievement('ach-pet-cat');
-      }
+      petLabel = getSpeciesDisplayName(prev.petType, prev.name);
+      if (newPetCount === 10) reached10 = true;
+      if (newPetCount % 6 === 0) rewardCoin = true;
+
       return {
         ...prev,
         happiness: Math.min(100, (prev.happiness || 50) + 5),
-        fun: Math.min(100, (prev.fun || 50) + 4),
+        fun: Math.min(100, (prev.fun || 50) + 5),
+        affectionLevel: (prev.affectionLevel || 0) + 1,
         mood: 'ronronando',
         petCount: newPetCount,
       };
     });
 
+    setAchievements((prev) =>
+      prev.map((a) =>
+        a.id === 'ach-pet-cat' && !a.unlocked
+          ? { ...a, progress: Math.min(a.maxProgress, a.progress + 1) }
+          : a
+      )
+    );
+
+    if (reached10) unlockAchievement('ach-pet-cat');
+    if (rewardCoin) addCoins(1, `Carinho em ${petLabel}`);
     gainKittenXp(5);
-    // Harder coin economy: 1 diamond every 6 pets
-    setKitten((prev) => {
-      if (prev.petCount % 6 === 0) {
-        addCoins(1, 'Carinho dedicado ao Mimi');
-      }
-      return prev;
-    });
   };
 
-  const feedKitten = (foodName = 'Peixinho Delicioso 🐟') => {
+  const feedKitten = (foodName = 'Comidinha Especial', hungerBoost = 30, happyBoost = 10) => {
     soundEngine.playEat();
     triggerHeartExplosion(0.5, 0.4);
+    const label = getSpeciesDisplayName(kitten.petType, kitten.name);
     setKitten((prev) => ({
       ...prev,
-      hunger: Math.min(100, (prev.hunger || 50) + 30),
-      happiness: Math.min(100, (prev.happiness || 50) + 10),
+      hunger: Math.min(100, (prev.hunger || 50) + hungerBoost),
+      happiness: Math.min(100, (prev.happiness || 50) + happyBoost),
       mood: 'feliz',
       isEating: true,
       lastFed: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     }));
     gainKittenXp(12);
-    showToast(`Mimi devorou o ${foodName}!`, '😋');
+    showToast(`${label} saboreou ${foodName}!`, '😋');
     setTimeout(() => {
       setKitten((prev) => ({ ...prev, isEating: false }));
-    }, 2000);
+    }, 1800);
   };
 
   const giveWaterKitten = () => {
     soundEngine.playDrink();
+    const label = getSpeciesDisplayName(kitten.petType, kitten.name);
     setKitten((prev) => ({
       ...prev,
       thirst: Math.min(100, (prev.thirst || 50) + 35),
@@ -714,51 +1081,55 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       isDrinking: true,
     }));
     gainKittenXp(8);
-    showToast('Mimi bebeu água fresquinha e matou a sede! 💧', '🥛');
+    showToast(`${label} bebeu água fresquinha! 💧`, '🥛');
     setTimeout(() => {
       setKitten((prev) => ({ ...prev, isDrinking: false }));
-    }, 1800);
+    }, 1600);
   };
 
-  const batheKitten = () => {
+  const batheKitten = (boostAmount = 100) => {
     soundEngine.playBathSplash();
     triggerHeartExplosion(0.5, 0.4);
+    const label = getSpeciesDisplayName(kitten.petType, kitten.name);
     setKitten((prev) => ({
       ...prev,
-      hygiene: 100,
+      hygiene: boostAmount >= 100 ? 100 : Math.min(100, (prev.hygiene || 50) + boostAmount),
       happiness: Math.min(100, (prev.happiness || 50) + 8),
       mood: 'feliz',
       isBathing: true,
       lastBathed: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     }));
-    gainKittenXp(15);
-    showToast('Mimi tomou banho de espuminha e ficou cheirosinho! 🫧', '🛁');
+    gainKittenXp(12);
+    if (boostAmount >= 100) {
+      showToast(`${label} tomou um banho fresquinho e ficou cheiroso! 🫧`, '🛁');
+    }
     setTimeout(() => {
       setKitten((prev) => ({ ...prev, isBathing: false }));
-    }, 2500);
+    }, 2000);
   };
 
   const toggleSleepKitten = () => {
+    const label = getSpeciesDisplayName(kitten.petType, kitten.name);
     setKitten((prev) => {
       const willSleep = !prev.isSleeping;
       if (willSleep) {
         soundEngine.playSleepSnore();
-        showToast('Mimi foi tirar um soninho gostoso... 💤', '🌙');
+        showToast(`${label} apagou o abajur para descansar... 💤`, '🌙');
         return {
           ...prev,
           isSleeping: true,
           mood: 'dormindo',
-          energy: Math.min(100, (prev.energy || 50) + 20),
+          energy: Math.min(100, (prev.energy || 50) + 15),
           lastSlept: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
         };
       } else {
         soundEngine.playMeowHappy();
-        showToast('Mimi acordou cheio de energia! ☀️', '🐱');
+        showToast(`${label} acordou cheio de energia! ☀️`, '✨');
         return {
           ...prev,
           isSleeping: false,
           mood: 'feliz',
-          energy: Math.min(100, (prev.energy || 50) + 40),
+          energy: Math.min(100, (prev.energy || 50) + 25),
         };
       }
     });
@@ -767,28 +1138,39 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const playWithKitten = (toyName = 'Novelo de Lã') => {
     soundEngine.playToyBoing();
     triggerHeartExplosion(0.5, 0.4);
+    const label = getSpeciesDisplayName(kitten.petType, kitten.name);
     setKitten((prev) => ({
       ...prev,
-      fun: 100,
-      energy: Math.max(10, (prev.energy || 80) - 15),
+      fun: Math.min(100, (prev.fun || 50) + 30),
+      energy: Math.max(10, (prev.energy || 80) - 10),
+      hygiene: Math.max(15, (prev.hygiene || 70) - 5),
       happiness: Math.min(100, (prev.happiness || 50) + 15),
       mood: 'brincalhao',
       isPlayMode: true,
       lastPlayed: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     }));
-    gainKittenXp(18);
-    showToast(`Mimi brincou super alegre com o ${toyName}! 🧶`, '🐾');
+    gainKittenXp(16);
+    showToast(`${label} brincou alegremente com ${toyName}!`, '🐾');
     setTimeout(() => {
       setKitten((prev) => ({ ...prev, isPlayMode: false }));
-    }, 2200);
+    }, 2000);
   };
 
-  const equipKittenItem = (itemId: string, category: 'hat' | 'accessory' | 'outfit') => {
+  const equipKittenItem = (
+    itemId: string,
+    category: 'hat' | 'accessory' | 'outfit' | 'collar' | 'glasses'
+  ) => {
     soundEngine.playHeartPop();
     setKitten((prev) => {
       if (category === 'hat') {
         const isCurrent = prev.equippedHat === itemId;
         return { ...prev, equippedHat: isCurrent ? '' : itemId };
+      } else if (category === 'collar') {
+        const isCurrent = prev.equippedCollar === itemId;
+        return { ...prev, equippedCollar: isCurrent ? '' : itemId };
+      } else if (category === 'glasses') {
+        const isCurrent = prev.equippedGlasses === itemId;
+        return { ...prev, equippedGlasses: isCurrent ? '' : itemId };
       } else if (category === 'accessory') {
         const isCurrent = prev.equippedAccessory === itemId;
         return { ...prev, equippedAccessory: isCurrent ? '' : itemId };
@@ -797,77 +1179,110 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return { ...prev, equippedOutfit: isCurrent ? '' : itemId };
       }
     });
-    showToast('Acessório atualizado no mascote! ✨', '🎀');
+    showToast('Look do mascote atualizado! ✨', '🎀');
   };
 
   const switchPet = (petType: PetType) => {
     const species = PET_SPECIES_CATALOG.find((s) => s.type === petType);
-    const newName = species ? species.defaultName : 'Mimi';
     soundEngine.playSparkle();
     triggerHeartExplosion(0.5, 0.4);
-    setKitten((prev) => ({
-      ...prev,
-      petType,
-      name: newName,
-      mood: 'feliz',
-    }));
-    showToast(`Mascote ativo alterado para ${newName}! ${species?.emoji || '🐾'}`, species?.emoji || '🐾');
+    setKitten((prev) => {
+      const savedName = prev.customNames?.[petType] || '';
+      return {
+        ...prev,
+        petType,
+        name: savedName,
+        mood: 'feliz',
+      };
+    });
+    const displayName = kitten.customNames?.[petType] || species?.name || 'Mascote';
+    showToast(`Agora cuidando de ${displayName}! ${species?.emoji || '🐾'}`, species?.emoji || '🐾');
   };
 
   const renamePet = (newName: string) => {
-    if (!newName.trim()) return;
+    const cleaned = newName.trim();
+    if (!cleaned) return;
     soundEngine.playHeartPop();
-    setKitten((prev) => ({
-      ...prev,
-      name: newName.trim(),
-    }));
-    showToast(`Nome do mascote alterado para "${newName.trim()}"! 💖`, '✨');
+    setKitten((prev) => {
+      const typeKey = (prev.petType || 'cat') as PetType;
+      return {
+        ...prev,
+        name: cleaned,
+        customNames: {
+          ...(prev.customNames || {}),
+          [typeKey]: cleaned,
+        },
+      };
+    });
+    showToast(`Nome salvo: "${cleaned}"! 💖`, '✨');
   };
 
   const adoptPet = (petType: PetType) => {
     const species = PET_SPECIES_CATALOG.find((s) => s.type === petType);
     setKitten((prev) => {
       const currentOwned = prev.ownedPets || ['cat'];
-      if (!currentOwned.includes(petType)) {
-        return {
-          ...prev,
-          ownedPets: [...currentOwned, petType],
-          petType,
-          name: species ? species.defaultName : 'Mascote',
-        };
-      }
+      const newOwned = currentOwned.includes(petType) ? currentOwned : [...currentOwned, petType];
+      const existingName = prev.customNames?.[petType] || '';
       return {
         ...prev,
+        ownedPets: newOwned,
         petType,
-        name: species ? species.defaultName : 'Mascote',
+        name: existingName,
       };
     });
     soundEngine.playSparkle();
     triggerHeartExplosion(0.5, 0.4);
-    showToast(`Adotou ${species?.name || 'Novo Mascote'} com sucesso! 🎉`, species?.emoji || '🐾');
+    showToast(`Adotou ${species?.name || 'Novo Mascote'}! Escolha o nome dele(a)! 🎉`, species?.emoji || '🐾');
+  };
+
+  const applyTreeXpGain = (xpGain: number, careType: 'water' | 'sun' | 'prune') => {
+    let evolvedTo = 0;
+
+    setTreeState((prev) => {
+      let newXp = (prev.xp || 0) + xpGain;
+      let newLevel = prev.level || 1;
+      let newMaxXp = prev.maxXp || 100;
+
+      while (newXp >= newMaxXp && newLevel < 10) {
+        newXp -= newMaxXp;
+        newLevel += 1;
+        newMaxXp = Math.round(newMaxXp * 1.25);
+        evolvedTo = newLevel;
+      }
+
+      if (newLevel >= 10) {
+        newXp = Math.min(newXp, newMaxXp);
+      }
+
+      return {
+        ...prev,
+        waterCount: careType === 'water' ? (prev.waterCount || 0) + 1 : prev.waterCount || 0,
+        sunCount: careType === 'sun' ? (prev.sunCount || 0) + 1 : prev.sunCount || 0,
+        pruneCount: careType === 'prune' ? (prev.pruneCount || 0) + 1 : prev.pruneCount || 0,
+        xp: newXp,
+        maxXp: newMaxXp,
+        level: newLevel,
+        stageName: getTreeStageName(newLevel),
+        lastWatered:
+          careType === 'water'
+            ? new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+            : prev.lastWatered,
+      };
+    });
+
+    if (evolvedTo > 0) {
+      addCoins(10, `Árvore do Amor evoluiu para Nv.${evolvedTo} 🌳`);
+      if (evolvedTo >= 2) unlockAchievement('ach-tree-lvl2');
+      if (evolvedTo >= 5) unlockAchievement('ach-tree-lvl5');
+      if (evolvedTo >= 8) unlockAchievement('ach-tree-lvl8');
+      if (evolvedTo >= 10) unlockAchievement('ach-tree-lvl10');
+    }
   };
 
   const waterLoveTree = () => {
     soundEngine.playWaterDrop();
     setTreeWaterCount((prev) => prev + 1);
-    setTreeState((prev) => {
-      const newWater = (prev.waterCount || 0) + 1;
-      const newXp = (prev.xp || 0) + 20;
-      let newLevel = prev.level || 1;
-      let newMaxXp = prev.maxXp || 100;
-      if (newXp >= newMaxXp && newLevel < 10) {
-        newLevel += 1;
-        showToast(`Árvore do Amor evoluiu para o Nível ${newLevel}! 🌳✨`, '🌱', 10);
-        addCoins(10, `Evolução da Árvore do Amor Nv.${newLevel}`);
-      }
-      return {
-        ...prev,
-        waterCount: newWater,
-        xp: newXp,
-        level: newLevel,
-        lastWatered: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      };
-    });
+    applyTreeXpGain(25, 'water');
     unlockAchievement('ach-tree-water');
     addCoins(2, 'Regou a Árvore do Amor 🌱');
     triggerHeartExplosion(0.5, 0.4);
@@ -875,25 +1290,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const sunLoveTree = () => {
     soundEngine.playSparkle();
-    setTreeState((prev) => ({
-      ...prev,
-      sunCount: (prev.sunCount || 0) + 1,
-      xp: (prev.xp || 0) + 15,
-    }));
+    applyTreeXpGain(20, 'sun');
     triggerHeartExplosion(0.5, 0.3);
-    showToast('O Sol do Amor banhou a árvore com luz e carinho! ☀️');
     addCoins(1, 'Banho de Sol na Árvore ☀️');
   };
 
   const pruneLoveTree = () => {
     soundEngine.playHeartPop();
-    setTreeState((prev) => ({
-      ...prev,
-      pruneCount: (prev.pruneCount || 0) + 1,
-      xp: (prev.xp || 0) + 10,
-    }));
+    applyTreeXpGain(15, 'prune');
     triggerHeartExplosion(0.5, 0.35);
-    showToast('Galhos podados com amor e folhas perfumadas! ✂️🌿');
     addCoins(1, 'Cuidado de Jardinagem 🌿');
   };
 
@@ -904,8 +1309,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       ...prev,
       promiseRibbons: [...(prev.promiseRibbons || []), promiseText.trim()],
     }));
+    addCoins(5, 'Fita de Promessa amarrada nos galhos 🎀');
     triggerHeartExplosion(0.5, 0.4);
-    showToast('Nova Fita de Promessa amarrada aos galhos da árvore! 🎗️💖');
   };
 
   const harvestTreeFruit = (index: number): string => {
@@ -922,7 +1327,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       ...prev,
       fruitsHarvested: (prev.fruitsHarvested || 0) + 1,
     }));
-    addCoins(3, 'Colheita de Fruto do Amor');
     return fruitMessages[index % fruitMessages.length];
   };
 
@@ -938,7 +1342,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
     setChatMessages((prev) => [...prev, newMsg]);
 
-    // Sweet auto reply simulation from Samella
     setTimeout(() => {
       const partnerReplies = [
         'Você é o amor da minha vida inteira! 💖',
@@ -984,8 +1387,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showToast('Configurações atualizadas! 💖');
   };
 
-  const resetAllData = () => {
+  const updateGameRecord = (partial: Partial<GameRecords>) => {
+    setGameRecords((prev) => ({ ...prev, ...partial }));
+  };
+
+  const resetAllData = async () => {
+    setJourneyStarted(false);
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(UNLOCK_STORAGE_KEY);
+    localStorage.removeItem('NOSSO_MUNDO_APP_STATE_V2');
+    try {
+      await clearCloudWorld();
+    } catch (e) {
+      console.warn('Erro ao limpar nuvem:', e);
+    }
     window.location.reload();
   };
 
@@ -997,8 +1412,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         activeTab,
         extendedView,
         isDrawerOpen,
+        isSettingsOpen,
         isLoggedIn,
         isLoadingDone,
+        isLoading: !isLoadingDone,
+        isLocked: !isLoggedIn,
+        journeyStarted,
+        isCloudSynced,
         phrases,
         dailyMessages,
         currentDailyIndex,
@@ -1021,6 +1441,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         treeState,
         loveTree: treeState,
         hasSeenIntro,
+        gameRecords,
         isGoogleConnected,
         googleUser,
         isDriveSyncing,
@@ -1031,6 +1452,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setActiveTab,
         setExtendedView,
         setIsDrawerOpen,
+        setIsSettingsOpen,
         setIsLoggedIn,
         setIsLoadingDone,
         addCoins,
@@ -1079,6 +1501,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         closeEasterEggModal,
         showToast,
         updateConfig,
+        updateGameRecord,
         triggerHeartExplosion,
         heartRainTriggerCount,
         resetAllData,

@@ -1,0 +1,109 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 64 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isCoupleWorldId(worldId) {
+      return worldId == 'gabriel-samella-1206';
+    }
+
+    function isValidCoupleWorld(data) {
+      return data.keys().hasAll(['worldId', 'journeyStarted', 'coins', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'worldId',
+          'journeyStarted',
+          'coins',
+          'treeWaterCount',
+          'currentDailyIndex',
+          'config',
+          'treeState',
+          'kitten',
+          'lettersState',
+          'achievementsState',
+          'storeItemsState',
+          'easterEggsState',
+          'phrasesState',
+          'chatMessages',
+          'gameRecords',
+          'customPhotos',
+          'customSongs',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.worldId is string && data.worldId.size() <= 64 && data.worldId == 'gabriel-samella-1206'
+        && data.journeyStarted is bool
+        && data.coins is int && data.coins >= 0 && data.coins <= 500000
+        && (!('treeWaterCount' in data) || (data.treeWaterCount is int && data.treeWaterCount >= 0 && data.treeWaterCount <= 500000))
+        && (!('currentDailyIndex' in data) || (data.currentDailyIndex is int && data.currentDailyIndex >= 0 && data.currentDailyIndex <= 5000))
+        && (!('config' in data) || (data.config is map && data.config.keys().size() <= 12))
+        && (!('treeState' in data) || (data.treeState is map && data.treeState.keys().size() <= 20))
+        && (!('kitten' in data) || (data.kitten is map && data.kitten.keys().size() <= 40))
+        && (!('lettersState' in data) || (data.lettersState is map && data.lettersState.keys().size() <= 10))
+        && (!('achievementsState' in data) || (data.achievementsState is map && data.achievementsState.keys().size() <= 60))
+        && (!('storeItemsState' in data) || (data.storeItemsState is map && data.storeItemsState.keys().size() <= 100))
+        && (!('easterEggsState' in data) || (data.easterEggsState is map && data.easterEggsState.keys().size() <= 30))
+        && (!('phrasesState' in data) || (data.phrasesState is map && data.phrasesState.keys().size() <= 150))
+        && (!('chatMessages' in data) || (data.chatMessages is list && data.chatMessages.size() <= 200))
+        && (!('gameRecords' in data) || (data.gameRecords is map && data.gameRecords.keys().size() <= 20))
+        && (!('customPhotos' in data) || (data.customPhotos is list && data.customPhotos.size() <= 60))
+        && (!('customSongs' in data) || (data.customSongs is list && data.customSongs.size() <= 40));
+    }
+
+    match /couple_worlds/{worldId} {
+      // Never allow collection listing/scraping
+      allow list: if false;
+
+      // Single-document access for the couple's designated QR world without requiring login
+      allow get: if isValidId(worldId) && isCoupleWorldId(worldId);
+
+      allow create: if isValidId(worldId)
+        && isCoupleWorldId(worldId)
+        && isValidCoupleWorld(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isValidId(worldId)
+        && isCoupleWorldId(worldId)
+        && isValidCoupleWorld(incoming())
+        && incoming().worldId == existing().worldId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'journeyStarted',
+          'coins',
+          'treeWaterCount',
+          'currentDailyIndex',
+          'config',
+          'treeState',
+          'kitten',
+          'lettersState',
+          'achievementsState',
+          'storeItemsState',
+          'easterEggsState',
+          'phrasesState',
+          'chatMessages',
+          'gameRecords',
+          'customPhotos',
+          'customSongs',
+          'updatedAt'
+        ]);
+
+      allow delete: if isValidId(worldId) && isCoupleWorldId(worldId);
+    }
+  }
+}

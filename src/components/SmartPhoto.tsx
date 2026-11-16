@@ -39,16 +39,11 @@ export const SmartPhoto: React.FC<SmartPhotoProps> = ({
     if (photo?.url && photo.url !== src) list.push(photo.url);
     if (photo?.localPath && !list.includes(photo.localPath)) list.push(photo.localPath);
 
-    // Real photos crops
-    if (index >= 1 && index <= 4) {
-      list.push(`/assets/img/real/photo_${index}.jpg`);
-    }
-
-    // Try both /assets/photos/ and /assets/img/
+    // Try local couple photos under /assets/img/ and /assets/photos/
     const extensions = ['jpg', 'jpeg', 'png', 'webp'];
     for (const ext of extensions) {
-      list.push(`/assets/photos/${index}.${ext}`);
       list.push(`/assets/img/${index}.${ext}`);
+      list.push(`/assets/photos/${index}.${ext}`);
     }
 
     return Array.from(new Set(list));
@@ -127,7 +122,7 @@ export const SmartPhoto: React.FC<SmartPhotoProps> = ({
           <span className="text-[10px] text-pink-300/70 mt-0.5">{date}</span>
           {!hideDetails && (
             <span className="mt-2 text-[9px] px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-300/80 border border-pink-500/20 font-mono">
-              assets/photos/{index}.jpg
+              public/assets/img/{index}.jpg
             </span>
           )}
         </div>

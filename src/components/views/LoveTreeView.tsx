@@ -2,11 +2,9 @@ import React, { useState, useMemo } from 'react';
 import {
   Trees,
   Droplets,
-  Heart,
   Sparkles,
   Sun,
   Award,
-  Flower2,
   Ribbon,
   Apple,
   Scissors,
@@ -14,12 +12,13 @@ import {
   X,
   ChevronRight,
   Calendar,
+  Orbit,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { soundEngine } from '../../utils/audioSynth';
-import { FantasyTreeCanvas } from '../3d/FantasyTreeCanvas';
 import { LoveTree2D } from '../tree/LoveTree2D';
+import { FantasyTreeCanvas } from '../3d/FantasyTreeCanvas';
 
 interface PromiseRibbon {
   id: string;
@@ -55,16 +54,9 @@ const DEFAULT_RIBBONS: PromiseRibbon[] = [
   },
 ];
 
-const FRUIT_MESSAGES = [
-  '“Você é o amor mais doce que a vida me deu.” 💖',
-  '“Seu riso tem gosto de felicidade plena.” ✨',
-  '“Amo a mulher forte e bondosa que você é.” 🌹',
-  '“Hoje e sempre, meu coração bate no compasso do seu.” 🍎',
-  '“Obrigado por ser minha melhor companhia de todos os dias.” 🍓',
-];
-
 export const LoveTreeView: React.FC = () => {
   const {
+    config,
     treeState,
     waterLoveTree,
     sunLoveTree,
@@ -81,67 +73,66 @@ export const LoveTreeView: React.FC = () => {
   const currentWater = treeState.waterCount || 0;
   const currentSun = treeState.sunCount || 0;
   const currentPrune = treeState.pruneCount || 0;
-  const xpCurrent = Math.min(100, Math.round(((treeState.xp || 0) % 100)));
+  const maxXp = treeState.maxXp || 100;
+  const currentXp = treeState.xp || 0;
+  const xpPercent = currentLevel >= 10 ? 100 : Math.min(100, Math.round((currentXp / maxXp) * 100));
 
   const [isWatering, setIsWatering] = useState(false);
   const [isSunbathing, setIsSunbathing] = useState(false);
   const [isPruning, setIsPruning] = useState(false);
-  const [treeRenderMode, setTreeRenderMode] = useState<'2.5d' | '3d'>('2.5d');
   const [selectedRibbon, setSelectedRibbon] = useState<PromiseRibbon | null>(null);
   const [harvestedFruitMsg, setHarvestedFruitMsg] = useState<string | null>(null);
   const [harvestedFruits, setHarvestedFruits] = useState<number[]>([]);
   const [isAddingRibbon, setIsAddingRibbon] = useState(false);
   const [newRibbonText, setNewRibbonText] = useState('');
+  const [treeViewMode, setTreeViewMode] = useState<'3d' | '2d'>('3d');
 
-  // Real relationship days since June 12, 2023
+  // Real relationship days since anniversaryDate
   const daysTogether = useMemo(() => {
-    const start = new Date('2023-06-12T00:00:00').getTime();
+    const start = new Date(config.anniversaryDate || '2023-06-12T00:00:00').getTime();
     const now = Date.now();
     return Math.max(1, Math.floor((now - start) / (1000 * 60 * 60 * 24)));
-  }, []);
+  }, [config.anniversaryDate]);
 
   // Store unlocks
-  const hasSakuraTheme = storeItems.find((i) => i.id === 'item-tree-sakura')?.purchased;
-  const hasGoldenApples = storeItems.find((i) => i.id === 'item-tree-golden-apples')?.purchased;
-  const hasFairyLights = storeItems.find((i) => i.id === 'item-tree-fairy-lights')?.purchased;
+  const hasSakuraTheme = Boolean(storeItems.find((i) => i.id === 'item-tree-sakura')?.purchased);
+  const hasGoldenApples = Boolean(storeItems.find((i) => i.id === 'item-tree-golden-apples')?.purchased);
+  const hasFairyLights = Boolean(storeItems.find((i) => i.id === 'item-tree-fairy-lights')?.purchased);
+  const hasSwing = Boolean(storeItems.find((i) => i.id === 'item-tree-swing')?.purchased);
+  const hasLanterns = Boolean(storeItems.find((i) => i.id === 'item-tree-lanterns')?.purchased);
+  const hasCrystals = Boolean(storeItems.find((i) => i.id === 'item-tree-crystals')?.purchased);
+  const hasButterfly =
+    Boolean(storeItems.find((i) => i.id === 'item-tree-magic-butterfly')?.purchased) ||
+    (treeState.creaturesUnlocked || []).includes('Borboleta Lilás');
+  const hasSongbird =
+    Boolean(storeItems.find((i) => i.id === 'item-tree-songbird')?.purchased) ||
+    (treeState.creaturesUnlocked || []).includes('Passarinho Cantor');
 
-  // Tree evolution stage titles & descriptors
   const getStageInfo = (lvl: number) => {
     if (lvl === 1) {
       return {
-        title: 'Brotinho de Luz Encantado 🌱',
-        desc: 'Uma semente de amor acabou de germinar, alimentada pelos primeiros carinhos.',
-        color: '#10b981',
+        title: 'Semente do Amor 🌱',
+        desc: 'Um brotinho recém-nascido. Regue, dê banho de sol e cuide dela para crescer forte e frondosa.',
       };
     } else if (lvl <= 3) {
       return {
-        title: 'Muda de Sakura em Flor 🌸',
-        desc: 'O tronco ganha força e os primeiros botões cor-de-rosa começam a se abrir.',
-        color: '#ec4899',
+        title: 'Muda em Crescimento 🌸',
+        desc: 'O tronco está se firmando e os primeiros galhos e flores começam a aparecer.',
       };
-    } else if (lvl <= 5) {
+    } else if (lvl <= 6) {
       return {
-        title: 'Cerejeira Frondosa dos Apaixonados 🌳',
-        desc: 'Copa ampla com pétalas de sakura que dançam com o vento suave.',
-        color: '#f43f5e',
-      };
-    } else if (lvl <= 7) {
-      return {
-        title: 'Árvore dos Frutos Sagrados do Amor 🍎✨',
-        desc: 'Galhos carregados de frutos dourados que guardam doces segredos de amor.',
-        color: '#eab308',
+        title: 'Cerejeira Florida 🌳',
+        desc: 'Copa ampla com flores de sakura e frutos doces nascendo nos galhos.',
       };
     } else if (lvl <= 9) {
       return {
-        title: 'Árvore Encantada com Fitas de Promessas 🎀🕯️',
-        desc: 'Luzes de fadas iluminam as promessas eternas de Gabriel para Samella.',
-        color: '#a855f7',
+        title: 'Árvore Encantada das Promessas 🎀',
+        desc: 'Luzes suaves, fitas de promessas e criaturas mágicas visitam nossa árvore.',
       };
     } else {
       return {
         title: 'Árvore Cósmica da Eternidade 🌌👑',
-        desc: 'Atingiu a plenitude máxima! Uma aura celestial de estrelas envolve suas raízes e flores eternas.',
-        color: '#38bdf8',
+        desc: 'Plenitude máxima alcançada com todo o cuidado e carinho de vocês!',
       };
     }
   };
@@ -152,42 +143,30 @@ export const LoveTreeView: React.FC = () => {
     if (isWatering) return;
     setIsWatering(true);
     waterLoveTree();
-
-    setTimeout(() => {
-      setIsWatering(false);
-    }, 1600);
+    setTimeout(() => setIsWatering(false), 1600);
   };
 
   const handleSun = () => {
     if (isSunbathing) return;
     setIsSunbathing(true);
     sunLoveTree();
-
-    setTimeout(() => {
-      setIsSunbathing(false);
-    }, 1800);
+    setTimeout(() => setIsSunbathing(false), 1800);
   };
 
   const handlePrune = () => {
     if (isPruning) return;
     setIsPruning(true);
     pruneLoveTree();
-
-    setTimeout(() => {
-      setIsPruning(false);
-    }, 1600);
+    setTimeout(() => setIsPruning(false), 1600);
   };
 
   const handleHarvestFruit = (index: number) => {
     if (harvestedFruits.includes(index)) {
-      showToast('Este fruto já foi colhido hoje! Em breve nascerá outro docinho.', '🍎');
+      showToast('Este fruto já foi colhido! Continue cuidando da árvore para nascer mais.', '🍎');
       return;
     }
-    soundEngine.playFruitHarvest();
-    triggerHeartExplosion(0.5, 0.45);
+    const msg = harvestTreeFruit(index);
     setHarvestedFruits((prev) => [...prev, index]);
-    harvestTreeFruit(index);
-    const msg = FRUIT_MESSAGES[index % FRUIT_MESSAGES.length];
     setHarvestedFruitMsg(msg);
     addCoins(1, 'Fruto do Amor Colhido 🍎');
   };
@@ -205,7 +184,7 @@ export const LoveTreeView: React.FC = () => {
     ...DEFAULT_RIBBONS,
     ...(treeState.promiseRibbons || []).map((text, i) => ({
       id: `custom-r-${i}`,
-      title: `Promessa #${i + 1} de Amor 💌`,
+      title: `Promessa #${i + 1} 💌`,
       message: text,
       color: '#ec4899',
     })),
@@ -223,97 +202,97 @@ export const LoveTreeView: React.FC = () => {
       <div className="space-y-1">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/20 border border-teal-400/30 text-xs font-semibold text-teal-300 mb-1">
           <Trees className="w-3.5 h-3.5" />
-          <span>Evolução da Árvore do Amor</span>
+          <span>Árvore do Amor</span>
         </div>
         <h2 className="text-2xl md:text-3xl font-bold text-white font-display">
-          Nossa Árvore em Evolução 🌱✨
+          Nossa Árvore em Evolução ♡
         </h2>
-        <p className="text-xs md:text-sm text-purple-200/70">
-          Cada rega, cuidado e banho de sol faz nossa árvore subir de nível, florescer e dar frutos sagrados.
+        <p className="text-xs md:text-sm text-purple-200/75 max-w-md mx-auto">
+          {stage.desc}
         </p>
       </div>
 
-      {/* Main Interactive Tree Card */}
-      <div className="glass-card-glow rounded-3xl p-6 md:p-8 border border-teal-400/30 shadow-2xl relative overflow-hidden flex flex-col items-center">
-        {/* Dynamic Sky Ambient Background */}
+      {/* Main Interactive Botanical Tree Card */}
+      <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-teal-400/30 shadow-2xl relative overflow-hidden flex flex-col items-center">
         <div
-          className={`absolute inset-0 transition-opacity duration-1000 pointer-events-none ${
+          className={`absolute inset-0 transition-opacity duration-700 pointer-events-none ${
             isSunbathing
-              ? 'bg-gradient-to-b from-amber-500/25 via-pink-600/15 to-transparent'
+              ? 'bg-gradient-to-b from-amber-500/20 via-pink-600/15 to-transparent'
               : isWatering
-              ? 'bg-gradient-to-b from-cyan-600/25 via-teal-900/35 to-black/50'
+              ? 'bg-gradient-to-b from-cyan-600/20 via-teal-900/30 to-black/50'
               : isPruning
               ? 'bg-gradient-to-b from-emerald-600/20 via-teal-950/30 to-black/50'
-              : 'bg-gradient-to-b from-purple-950/40 via-teal-950/20 to-black/60'
+              : 'bg-gradient-to-b from-purple-950/35 via-teal-950/15 to-black/55'
           }`}
         />
 
-        {/* Floating Stars & Fireflies */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute w-1.5 h-1.5 rounded-full bg-teal-300 shadow-[0_0_8px_#2dd4bf]"
-              style={{
-                left: `${(i * 19 + 7) % 95}%`,
-                top: `${(i * 23 + 12) % 80}%`,
-              }}
-              animate={{
-                y: [-10, 10, -10],
-                x: [-6, 6, -6],
-                opacity: [0.2, 0.9, 0.2],
-                scale: [0.8, 1.4, 0.8],
-              }}
-              transition={{
-                duration: 3 + (i % 3),
-                repeat: Infinity,
-                delay: i * 0.4,
-                ease: 'easeInOut',
+        {/* Stage & Relationship Days + 3D 360° / 2D Toggle */}
+        <div className="z-10 w-full flex items-center justify-between gap-2 mb-2 px-1 flex-wrap">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+            <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+            <span>{stage.title}</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center bg-purple-950/80 border border-teal-400/30 rounded-full p-0.5 text-[10px] font-bold">
+              <button
+                type="button"
+                onClick={() => setTreeViewMode('3d')}
+                className={`px-2.5 py-1 rounded-full flex items-center gap-1 transition cursor-pointer ${
+                  treeViewMode === '3d'
+                    ? 'bg-gradient-to-r from-teal-500 to-pink-500 text-white shadow'
+                    : 'text-purple-200/75 hover:text-white'
+                }`}
+              >
+                <Orbit className="w-3 h-3" />
+                <span>3D 360°</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTreeViewMode('2d')}
+                className={`px-2.5 py-1 rounded-full transition cursor-pointer ${
+                  treeViewMode === '2d'
+                    ? 'bg-gradient-to-r from-teal-500 to-pink-500 text-white shadow'
+                    : 'text-purple-200/75 hover:text-white'
+                }`}
+              >
+                2D
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1 text-xs text-pink-300 font-medium">
+              <Calendar className="w-3.5 h-3.5 text-pink-400" />
+              <span className="tabular-nums">{daysTogether}d</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 3D 360° Clay Tree or 2.5D Botanical Tree */}
+        <div className="relative w-full my-1">
+          {treeViewMode === '3d' ? (
+            <FantasyTreeCanvas
+              level={currentLevel}
+              isWatering={isWatering}
+              isSunbathing={isSunbathing}
+              isPruning={isPruning}
+              hasSakuraTheme={hasSakuraTheme}
+              hasGoldenApples={hasGoldenApples}
+              hasFairyLights={hasFairyLights}
+              hasSwing={hasSwing}
+              hasLanterns={hasLanterns}
+              hasCrystals={hasCrystals}
+              hasButterfly={hasButterfly}
+              hasSongbird={hasSongbird}
+              ribbons={allRibbons}
+              harvestedFruits={harvestedFruits}
+              onHarvestFruit={handleHarvestFruit}
+              onTreeInteract={() => {
+                soundEngine.playSparkle();
+                triggerHeartExplosion();
+                showToast('A Árvore do Amor vibra com o carinho de vocês! 🌿💖', '✨');
               }}
             />
-          ))}
-        </div>
-
-        {/* Render mode selector + Stage Badge */}
-        <div className="z-10 w-full flex items-center justify-between mb-2 px-1">
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 border border-teal-400/40 backdrop-blur-md">
-            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" />
-            <span className="text-xs font-bold text-white tracking-wide">{stage.title}</span>
-          </div>
-
-          <div className="flex items-center p-0.5 rounded-xl bg-purple-950/80 border border-purple-500/30 text-[11px] font-bold">
-            <button
-              onClick={() => {
-                setTreeRenderMode('2.5d');
-                soundEngine.playSparkle();
-              }}
-              className={`px-2.5 py-0.5 rounded-lg transition-all ${
-                treeRenderMode === '2.5d'
-                  ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-sm'
-                  : 'text-purple-300/70 hover:text-white'
-              }`}
-            >
-              🌿 2.5D Encantado
-            </button>
-            <button
-              onClick={() => {
-                setTreeRenderMode('3d');
-                soundEngine.playSparkle();
-              }}
-              className={`px-2.5 py-0.5 rounded-lg transition-all ${
-                treeRenderMode === '3d'
-                  ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-sm'
-                  : 'text-purple-300/70 hover:text-white'
-              }`}
-            >
-              🎮 3D
-            </button>
-          </div>
-        </div>
-
-        {/* Tree Experience (2.5D Animated Vector or 3D Mesh) */}
-        <div className="relative w-full my-1">
-          {treeRenderMode === '2.5d' ? (
+          ) : (
             <LoveTree2D
               level={currentLevel}
               isWatering={isWatering}
@@ -322,6 +301,9 @@ export const LoveTreeView: React.FC = () => {
               hasSakuraTheme={hasSakuraTheme}
               hasGoldenApples={hasGoldenApples}
               hasFairyLights={hasFairyLights}
+              hasSwing={hasSwing}
+              hasLanterns={hasLanterns}
+              hasCrystals={hasCrystals}
               ribbons={allRibbons}
               creatures={treeState.creaturesUnlocked || []}
               harvestedFruits={harvestedFruits}
@@ -332,32 +314,16 @@ export const LoveTreeView: React.FC = () => {
                 showToast('A Árvore do Amor vibra com o carinho de vocês! 🌿💖', '✨');
               }}
             />
-          ) : (
-            <FantasyTreeCanvas
-              level={currentLevel}
-              isWatering={isWatering}
-              isSunbathing={isSunbathing}
-              isPruning={isPruning}
-              hasSakuraTheme={hasSakuraTheme}
-              hasGoldenApples={hasGoldenApples}
-              hasFairyLights={hasFairyLights}
-              ribbons={DEFAULT_RIBBONS}
-              onTreeInteract={() => {
-                soundEngine.playSparkle();
-                triggerHeartExplosion();
-                showToast('A Árvore do Amor vibra com o carinho de vocês! 🌿💖', '✨');
-              }}
-            />
           )}
 
-          {/* Quick Floating Harvest Button for Sacred Fruits */}
+          {/* Quick Harvest Button */}
           {(currentLevel >= 3 || hasGoldenApples) && (
             <div className="absolute top-3 right-3 z-20">
               <motion.button
-                whileHover={{ scale: 1.08 }}
+                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => handleHarvestFruit(0)}
-                className="px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-rose-500 text-white text-xs font-bold shadow-[0_0_15px_#f59e0b] flex items-center gap-1.5 cursor-pointer border border-amber-300/40"
+                onClick={() => handleHarvestFruit(harvestedFruits.length % 5)}
+                className="px-3 min-h-[38px] rounded-full bg-gradient-to-r from-amber-500 to-rose-500 text-white text-xs font-bold shadow-[0_0_15px_rgba(245,158,11,0.5)] flex items-center gap-1.5 cursor-pointer border border-amber-300/40"
               >
                 <Apple className="w-3.5 h-3.5 fill-amber-200" />
                 <span>Colher Fruto (+1 💎)</span>
@@ -366,72 +332,92 @@ export const LoveTreeView: React.FC = () => {
           )}
         </div>
 
-        {/* Level Progress Stats with Relationship Days Integration */}
-        <div className="w-full max-w-sm space-y-2 mt-1">
+        {/* Level Progress Stats */}
+        <div className="w-full max-w-md space-y-2 mt-2 z-10">
           <div className="flex items-center justify-between text-xs text-purple-200">
-            <span className="font-semibold flex items-center gap-1">
-              <Award className="w-3.5 h-3.5 text-teal-300" />
-              <span>Nível da Árvore</span>
+            <span className="font-semibold flex items-center gap-1.5">
+              <Award className="w-4 h-4 text-teal-300" />
+              <span>Crescimento da Árvore</span>
             </span>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-pink-300 flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-pink-400" />
-                {daysTogether} dias de amor
-              </span>
-              <span className="font-bold text-teal-300 font-mono text-sm">
-                Nv. {currentLevel}/10
-              </span>
-            </div>
+            <span className="font-bold text-teal-300 font-mono text-sm tabular-nums">
+              Nível {currentLevel} / 10
+            </span>
           </div>
 
-          {/* XP Bar */}
           <div className="h-2.5 w-full bg-purple-950 rounded-full overflow-hidden border border-teal-500/30 relative">
             <div
               className="h-full bg-gradient-to-r from-teal-400 via-pink-400 to-rose-400 rounded-full transition-all duration-500 shadow-[0_0_10px_#2dd4bf]"
-              style={{ width: `${currentLevel === 10 ? 100 : Math.max(15, xpCurrent)}%` }}
+              style={{ width: `${xpPercent}%` }}
             />
           </div>
 
-          <div className="flex items-center justify-between text-[11px] text-purple-300/80 pt-0.5">
-            <span>Regas: <strong>{currentWater}x</strong> | Sol: <strong>{currentSun}x</strong></span>
-            <span>{currentLevel === 10 ? '✨ Nível Máximo' : `XP: ${xpCurrent}%`}</span>
+          <div className="flex items-center justify-between text-[11px] text-purple-300/80 pt-0.5 tabular-nums">
+            <span>
+              Regas: <strong>{currentWater}x</strong> · Sol: <strong>{currentSun}x</strong> · Podas: <strong>{currentPrune}x</strong>
+            </span>
+            <span>{currentLevel >= 10 ? '✨ Nível Máximo' : `${currentXp}/${maxXp} XP (${xpPercent}%)`}</span>
           </div>
         </div>
 
         {/* Action Buttons: Water, Sun, Prune */}
-        <div className="grid grid-cols-3 gap-2.5 mt-5 w-full max-w-md">
+        <div className="grid grid-cols-3 gap-2.5 mt-5 w-full max-w-md z-10">
           <motion.button
-            whileHover={{ scale: 1.03 }}
+            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.96 }}
             onClick={handleWater}
             disabled={isWatering}
-            className="p-3 rounded-2xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-bold text-xs shadow-md flex flex-col items-center justify-center gap-1 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+            className="min-h-[56px] p-3 rounded-2xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-bold text-xs shadow-md flex flex-col items-center justify-center gap-1 hover:brightness-110 transition-all disabled:opacity-50 cursor-pointer"
           >
-            <Droplets className={`w-4 h-4 text-cyan-200 ${isWatering ? 'animate-spin' : 'animate-bounce'}`} />
+            <Droplets className={`w-4 h-4 text-cyan-100 ${isWatering ? 'animate-bounce' : ''}`} />
             <span>Regar (+2 💎)</span>
           </motion.button>
 
           <motion.button
-            whileHover={{ scale: 1.03 }}
+            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.96 }}
             onClick={handleSun}
             disabled={isSunbathing}
-            className="p-3 rounded-2xl bg-gradient-to-r from-amber-500 to-rose-500 text-white font-bold text-xs shadow-md flex flex-col items-center justify-center gap-1 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+            className="min-h-[56px] p-3 rounded-2xl bg-gradient-to-r from-amber-500 to-rose-500 text-white font-bold text-xs shadow-md flex flex-col items-center justify-center gap-1 hover:brightness-110 transition-all disabled:opacity-50 cursor-pointer"
           >
-            <Sun className="w-4 h-4 text-amber-200 animate-spin" />
+            <Sun className="w-4 h-4 text-amber-100" />
             <span>Banho de Sol</span>
           </motion.button>
 
           <motion.button
-            whileHover={{ scale: 1.03 }}
+            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.96 }}
             onClick={handlePrune}
             disabled={isPruning}
-            className="p-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold text-xs shadow-md flex flex-col items-center justify-center gap-1 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+            className="min-h-[56px] p-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold text-xs shadow-md flex flex-col items-center justify-center gap-1 hover:brightness-110 transition-all disabled:opacity-50 cursor-pointer"
           >
-            <Scissors className="w-4 h-4 text-emerald-200" />
+            <Scissors className="w-4 h-4 text-emerald-100" />
             <span>Podar Folhas</span>
           </motion.button>
+        </div>
+
+        {/* Evolution Milestones Strip */}
+        <div className="w-full max-w-md mt-4 pt-3 border-t border-white/10 grid grid-cols-4 gap-2 text-[10px] z-10">
+          {[
+            { lvl: 2, label: 'Primeiro Broto' },
+            { lvl: 5, label: 'Copa Florida' },
+            { lvl: 8, label: 'Frutos Sagrados' },
+            { lvl: 10, label: 'Eternidade' },
+          ].map((m) => {
+            const reached = currentLevel >= m.lvl;
+            return (
+              <div
+                key={m.lvl}
+                className={`p-2 rounded-xl border text-center ${
+                  reached
+                    ? 'bg-teal-500/20 border-teal-400/40 text-teal-200 font-semibold'
+                    : 'bg-purple-950/30 border-white/10 text-purple-300/60'
+                }`}
+              >
+                <div className="font-mono">Nv.{m.lvl}</div>
+                <div className="truncate">{m.label}</div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

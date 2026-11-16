@@ -19,11 +19,12 @@ import { ProfileView } from './components/views/ProfileView';
 import { EasterEggModal } from './components/EasterEggModal';
 import { HeartRain } from './components/HeartRain';
 import { Sidebar } from './components/Sidebar';
+import { AdminSettingsModal } from './components/views/AdminSettingsModal';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowLeft, Sparkles, Heart } from 'lucide-react';
+import { ArrowLeft, Sparkles } from 'lucide-react';
 
 const MainAppContent: React.FC = () => {
-  const { isLoading, isLocked, extendedView, setExtendedView, toastMessage } = useApp();
+  const { isLoading, isLocked, extendedView, setExtendedView, toastMessage, isSettingsOpen, setIsSettingsOpen } = useApp();
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -51,13 +52,13 @@ const MainAppContent: React.FC = () => {
           <div className="flex items-center justify-between py-2 mb-2">
             <button
               onClick={() => setExtendedView('inicio')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl glass-panel-interactive text-purple-200 hover:text-white text-xs font-semibold border border-purple-500/30 shadow-md"
+              className="flex items-center gap-1.5 px-3.5 min-h-[44px] rounded-2xl glass-panel-interactive text-purple-200 hover:text-white text-xs font-semibold border border-purple-500/30 shadow-md cursor-pointer"
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
+              <ArrowLeft className="w-4 h-4" />
               <span>Voltar ao Início</span>
             </button>
 
-            <span className="text-xs font-script text-pink-300">Nosso Mundo ♡</span>
+            <span className="text-sm font-script text-pink-300">Nosso Mundo ♡</span>
           </div>
         )}
 
@@ -94,6 +95,11 @@ const MainAppContent: React.FC = () => {
 
       {/* Global Easter Egg Modal */}
       <EasterEggModal />
+
+      {/* Global Settings Modal */}
+      <AnimatePresence>
+        {isSettingsOpen && <AdminSettingsModal onClose={() => setIsSettingsOpen(false)} />}
+      </AnimatePresence>
 
       {/* Global Toast Notification */}
       <AnimatePresence>

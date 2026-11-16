@@ -1,51 +1,89 @@
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { useApp } from '../context/AppContext';
 import { Heart } from 'lucide-react';
 
+interface FallingHeart {
+  id: string;
+  batchId: number;
+  left: number;
+  size: number;
+  delay: number;
+  duration: number;
+  rotate: number;
+  isRose: boolean;
+}
+
 export const HeartRain: React.FC = () => {
   const { heartRainTriggerCount } = useApp();
-  const [hearts, setHearts] = useState<{ id: string; left: number; size: number; delay: number; duration: number }[]>([]);
+  const prefersReducedMotion = useReducedMotion();
+  const [hearts, setHearts] = useState<FallingHeart[]>([]);
+  const batchCounterRef = useRef(0);
+  const lastHandledTriggerRef = useRef(0);
+  const timersRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
-    if (heartRainTriggerCount === 0) return;
+    const timers = timersRef.current;
+    return () => {
+      timers.forEach((timerId) => window.clearTimeout(timerId));
+      timers.clear();
+    };
+  }, []);
 
-    // Generate 30 hearts falling from the top
-    const newHearts = Array.from({ length: 30 }).map((_, i) => ({
-      id: `${heartRainTriggerCount}-${i}`,
-      left: Math.random() * 100, // percentage
-      size: Math.random() * 20 + 12, // 12 to 32px
-      delay: Math.random() * 0.5, // 0 to 0.5s stagger
-      duration: Math.random() * 1.5 + 2, // 2 to 3.5s falling
+  useEffect(() => {
+    if (
+      heartRainTriggerCount === 0 ||
+      heartRainTriggerCount === lastHandledTriggerRef.current
+    ) {
+      return;
+    }
+    lastHandledTriggerRef.current = heartRainTriggerCount;
+
+    const batchId = ++batchCounterRef.current;
+    const count = prefersReducedMotion ? 10 : 24;
+
+    const newHearts: FallingHeart[] = Array.from({ length: count }).map((_, i) => ({
+      id: `heart-${batchId}-${Date.now()}-${i}`,
+      batchId,
+      left: Math.random() * 96 + 2,
+      size: Math.random() * 18 + 13,
+      delay: Math.random() * 0.45,
+      duration: Math.random() * 1.4 + 2.0,
+      rotate: Math.random() * 320 - 160,
+      isRose: i % 2 === 0,
     }));
 
-    setHearts(prev => [...prev, ...newHearts]);
+    setHearts((prev) => [...prev.slice(-60), ...newHearts]);
 
-    // Clean up hearts after they finish falling to prevent DOM bloating
-    const timeout = setTimeout(() => {
-      setHearts(prev => prev.filter(h => !newHearts.includes(h)));
+    const timeoutId = window.setTimeout(() => {
+      setHearts((prev) => prev.filter((h) => h.batchId !== batchId));
+      timersRef.current.delete(timeoutId);
     }, 4500);
 
-    return () => clearTimeout(timeout);
-  }, [heartRainTriggerCount]);
+    timersRef.current.add(timeoutId);
+  }, [heartRainTriggerCount, prefersReducedMotion]);
 
   return (
     <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden">
       <AnimatePresence>
-        {hearts.map(heart => (
+        {hearts.map((heart) => (
           <motion.div
             key={heart.id}
-            initial={{ y: -50, opacity: 1, rotate: 0 }}
-            animate={{ 
-              y: window.innerHeight + 100, 
-              opacity: [1, 1, 0], 
-              rotate: Math.random() * 360 - 180 
-            }}
+            initial={{ y: -40, opacity: 1, rotate: 0 }}
+            animate={
+              prefersReducedMotion
+                ? { opacity: [1, 0] }
+                : {
+                    y: (typeof window !== 'undefined' ? window.innerHeight : 800) + 80,
+                    opacity: [1, 1, 0],
+                    rotate: heart.rotate,
+                  }
+            }
             exit={{ opacity: 0 }}
             transition={{
               duration: heart.duration,
               delay: heart.delay,
-              ease: "easeIn"
+              ease: 'easeIn',
             }}
             style={{
               position: 'absolute',
@@ -53,11 +91,11 @@ export const HeartRain: React.FC = () => {
             }}
             className="text-pink-400 drop-shadow-md"
           >
-            <Heart 
-              width={heart.size} 
-              height={heart.size} 
-              fill="currentColor" 
-              className={Math.random() > 0.5 ? "text-rose-500" : "text-pink-400"} 
+            <Heart
+              width={heart.size}
+              height={heart.size}
+              fill="currentColor"
+              className={heart.isRose ? 'text-rose-500' : 'text-pink-400'}
             />
           </motion.div>
         ))}

@@ -19,7 +19,18 @@ import { StoreItem } from '../../types';
 import { soundEngine } from '../../utils/audioSynth';
 
 export const StoreView: React.FC = () => {
-  const { storeItems, buyStoreItem, redeemVoucher, coins, showToast, triggerEasterEgg, triggerHeartExplosion, renamePet } = useApp();
+  const {
+    storeItems,
+    buyStoreItem,
+    redeemVoucher,
+    coins,
+    showToast,
+    triggerEasterEgg,
+    triggerHeartExplosion,
+    renamePet,
+    equipKittenItem,
+    kitten,
+  } = useApp();
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
   const [activeModalItem, setActiveModalItem] = useState<StoreItem | null>(null);
   const [petCustomName, setPetCustomName] = useState<string>('');
@@ -48,9 +59,7 @@ export const StoreView: React.FC = () => {
   const handleOpenItemModal = (item: StoreItem) => {
     setActiveModalItem(item);
     if (item.category === 'pets') {
-      const parts = item.title.replace('Adoção: ', '').trim().split(' ');
-      const suggested = parts.length > 1 ? parts[1] : parts[0];
-      setPetCustomName(suggested);
+      setPetCustomName('');
     }
   };
 
@@ -199,23 +208,39 @@ export const StoreView: React.FC = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    const isWearable = ['hat', 'outfit', 'collar', 'glasses', 'accessory'].includes(
+                      item.slotType || ''
+                    );
                     if (!item.purchased) {
                       if (item.category === 'pets') {
                         handleOpenItemModal(item);
                       } else {
                         buyStoreItem(item.id);
                       }
+                    } else if (isWearable && item.slotType) {
+                      equipKittenItem(
+                        item.id,
+                        item.slotType as 'hat' | 'outfit' | 'collar' | 'glasses' | 'accessory'
+                      );
                     } else {
                       handleOpenItemModal(item);
                     }
                   }}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 ${
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer ${
                     item.purchased
                       ? item.redeemed
                         ? 'bg-purple-900/60 text-purple-300 border border-purple-500/20'
                         : isVoucher
                         ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                        : 'bg-purple-600 text-white'
+                        : [
+                            kitten.equippedHat,
+                            kitten.equippedOutfit,
+                            kitten.equippedCollar,
+                            kitten.equippedGlasses,
+                            kitten.equippedAccessory,
+                          ].includes(item.id)
+                        ? 'bg-pink-600 hover:bg-pink-500 text-white'
+                        : 'bg-purple-600 hover:bg-purple-500 text-white'
                       : coins >= item.price
                       ? 'bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white'
                       : 'bg-purple-950/60 text-purple-400/60 border border-purple-500/20 cursor-not-allowed'
@@ -226,7 +251,17 @@ export const StoreView: React.FC = () => {
                       ? 'Ver Comprovante'
                       : isVoucher
                       ? 'Resgatar'
-                      : 'Equipado'
+                      : ['hat', 'outfit', 'collar', 'glasses', 'accessory'].includes(item.slotType || '')
+                      ? [
+                          kitten.equippedHat,
+                          kitten.equippedOutfit,
+                          kitten.equippedCollar,
+                          kitten.equippedGlasses,
+                          kitten.equippedAccessory,
+                        ].includes(item.id)
+                        ? 'Equipado ✓'
+                        : 'Equipar'
+                      : 'Ativo ✓'
                     : 'Adquirir'}
                 </button>
               </div>
@@ -281,9 +316,9 @@ export const StoreView: React.FC = () => {
                   <div className="p-3 rounded-2xl bg-gradient-to-r from-pink-950/60 to-purple-950/60 border border-pink-500/30 text-xs text-pink-200 flex items-center gap-2.5">
                     <span className="text-2xl">{activeModalItem.icon}</span>
                     <div>
-                      <span className="font-bold text-white block">Mascote Interativo Real</span>
+                      <span className="font-bold text-white block">Mascote 3D 360° & 2D Interativo</span>
                       <span className="text-[11px] text-purple-200/80">
-                        Ilustração 2.5D viva, carinhos, alimentação, banho e brincadeiras reais.
+                        Danças, animações, roupas, carinhos, alimentação, banho e descanso.
                       </span>
                     </div>
                   </div>
@@ -297,7 +332,7 @@ export const StoreView: React.FC = () => {
                         type="text"
                         value={petCustomName}
                         onChange={(e) => setPetCustomName(e.target.value)}
-                        placeholder="Ex: Pipoca, Floquinho, Thor..."
+                        placeholder="Digite o nome que você escolher..."
                         className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-purple-500/40 text-white text-xs focus:outline-none focus:border-pink-400 font-medium"
                       />
                       <p className="text-[10px] text-purple-300/70">
@@ -312,8 +347,8 @@ export const StoreView: React.FC = () => {
                 <div className="p-3 rounded-2xl bg-gradient-to-r from-teal-950/60 to-purple-950/60 border border-teal-500/30 text-xs text-teal-200 flex items-center gap-2.5">
                   <span className="text-2xl">{activeModalItem.icon}</span>
                   <div>
-                    <span className="font-bold text-white block">Efeito para a Árvore do Amor</span>
-                    <span className="text-[11px] text-teal-200/80">Aparece e brilha em tempo real no cenário da Árvore.</span>
+                    <span className="font-bold text-white block">Enfeite 360° para a Árvore do Amor</span>
+                    <span className="text-[11px] text-teal-200/80">Brilha em tempo real na Árvore 3D e 2D.</span>
                   </div>
                 </div>
               )}
@@ -376,6 +411,26 @@ export const StoreView: React.FC = () => {
                     className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md"
                   >
                     {activeModalItem.actionLabel || 'Resgatar Vale Agora'}
+                  </button>
+                ) : ['hat', 'outfit', 'collar', 'glasses', 'accessory'].includes(activeModalItem.slotType || '') ? (
+                  <button
+                    onClick={() => {
+                      equipKittenItem(
+                        activeModalItem.id,
+                        activeModalItem.slotType as 'hat' | 'outfit' | 'collar' | 'glasses' | 'accessory'
+                      );
+                    }}
+                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold shadow-md cursor-pointer"
+                  >
+                    {[
+                      kitten.equippedHat,
+                      kitten.equippedOutfit,
+                      kitten.equippedCollar,
+                      kitten.equippedGlasses,
+                      kitten.equippedAccessory,
+                    ].includes(activeModalItem.id)
+                      ? 'Tirar Look'
+                      : 'Equipar no Mascote ✨'}
                   </button>
                 ) : null}
               </div>

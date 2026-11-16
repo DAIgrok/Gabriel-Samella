@@ -21,16 +21,23 @@ import {
   Heart,
 } from 'lucide-react';
 import { PET_SPECIES_CATALOG } from '../data/initialData';
+import { getCouplePhotoUrl, REAL_PHOTO_SLOTS } from '../data/mediaAssets';
 
 export const HomeView: React.FC = () => {
-  const { setExtendedView, triggerEasterEgg, treeState, loveTree, kitten } = useApp();
+  const { setExtendedView, triggerEasterEgg, treeState, loveTree, kitten, photos, achievements } = useApp();
   const [isCapsuleOpen, setIsCapsuleOpen] = useState(false);
 
   const activeTree = treeState || loveTree;
-  const treeLevel = activeTree?.level ?? 2;
+  const treeLevel = activeTree?.level ?? 1;
   const treeProgress = activeTree?.maxXp
-    ? Math.min(100, Math.round(((activeTree.xp || 45) / activeTree.maxXp) * 100))
-    : 45;
+    ? Math.min(100, Math.round(((activeTree.xp ?? 0) / activeTree.maxXp) * 100))
+    : 0;
+
+  const nextAch = achievements.find((a) => !a.unlocked);
+  const nextAchTitle = nextAch ? nextAch.title : 'Todas concluídas!';
+  const nextAchCurrent = nextAch ? nextAch.progress : achievements.length;
+  const nextAchMax = nextAch ? Math.max(1, nextAch.maxProgress) : Math.max(1, achievements.length);
+  const nextAchPercent = Math.min(100, Math.round((nextAchCurrent / nextAchMax) * 100));
 
   const calculateCapsuleRemaining = () => {
     const target = new Date('2028-12-25T00:00:00');
@@ -66,12 +73,15 @@ export const HomeView: React.FC = () => {
 
       {/* 2. Romantic Hero Section matching reference screenshot */}
       <section className="relative rounded-3xl overflow-hidden p-6 md:p-8 min-h-[220px] md:min-h-[250px] bg-gradient-to-r from-[#0d041c] via-[#15072e]/90 to-transparent border border-purple-500/20 shadow-[0_12px_40px_rgba(0,0,0,0.5)] flex flex-col justify-between">
-        {/* Blended Couple Photo on the Right */}
+        {/* Blended Real Couple Photo on the Right */}
         <div className="absolute top-0 right-0 bottom-0 w-full md:w-2/3 pointer-events-none overflow-hidden opacity-90">
           <img
-            src="/assets/img/real/hero_couple.jpg"
+            src={getCouplePhotoUrl(photos, 0, REAL_PHOTO_SLOTS.heroCouple)}
             alt="Gabriel e Samella"
             className="w-full h-full object-cover object-right md:object-center mix-blend-screen scale-105"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = '/assets/img/1.jpg';
+            }}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[#0d041c] via-[#0d041c]/70 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0d041c] via-transparent to-transparent" />
@@ -202,9 +212,12 @@ export const HomeView: React.FC = () => {
           <div className="flex items-center gap-3">
             <div className="w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0 border border-purple-500/30 bg-purple-950/60 shadow-md">
               <img
-                src="/assets/img/real/tree_thumb.jpg"
+                src={getCouplePhotoUrl(photos, 8, REAL_PHOTO_SLOTS.homeCardTree)}
                 alt="Nossa Árvore"
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/assets/img/9.jpg';
+                }}
               />
             </div>
             <div className="flex-1 min-w-0 space-y-1.5">
@@ -219,11 +232,11 @@ export const HomeView: React.FC = () => {
               <div className="space-y-0.5">
                 <div className="w-full h-1.5 bg-purple-950/80 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"
+                    className="h-full bg-gradient-to-r from-purple-400 to-pink-400 rounded-full transition-all duration-300"
                     style={{ width: `${treeProgress}%` }}
                   />
                 </div>
-                <div className="text-right text-[10px] text-purple-300/70 font-mono">
+                <div className="text-right text-[10px] text-purple-300/70 font-mono tabular-nums">
                   {treeProgress}%
                 </div>
               </div>
@@ -231,7 +244,7 @@ export const HomeView: React.FC = () => {
           </div>
           <button
             onClick={() => setExtendedView('arvore')}
-            className="w-full mt-3 py-2 rounded-full bg-[#200c3e]/80 hover:bg-[#321262] border border-purple-500/30 text-xs text-purple-200 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+            className="w-full mt-3 min-h-[44px] py-2 rounded-full bg-[#200c3e]/80 hover:bg-[#321262] border border-purple-500/30 text-xs text-purple-200 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
           >
             <span>Cuidar da árvore</span>
             <ArrowRight className="w-3 h-3 text-purple-300" />
@@ -240,9 +253,9 @@ export const HomeView: React.FC = () => {
 
         {/* Card 2: Meu Pet */}
         {(() => {
-          const currentPetType = (kitten?.petType || 'cat');
+          const currentPetType = kitten?.petType || 'cat';
           const currentPetSpecies = PET_SPECIES_CATALOG.find((s) => s.type === currentPetType) || PET_SPECIES_CATALOG[0];
-          const petName = kitten?.name || currentPetSpecies.defaultName;
+          const petName = kitten?.name?.trim() || currentPetSpecies.name;
 
           return (
             <div className="rounded-3xl p-4 bg-gradient-to-br from-[#160a2c]/90 to-[#070210]/95 border border-purple-500/25 shadow-lg relative overflow-hidden flex flex-col items-center justify-between text-center">
@@ -258,9 +271,12 @@ export const HomeView: React.FC = () => {
 
               <div className="w-20 h-20 rounded-2xl overflow-hidden border border-purple-500/30 shadow-md bg-purple-950/60 my-1 relative flex items-center justify-center">
                 <img
-                  src="/assets/img/real/cat_thumb.jpg"
+                  src={getCouplePhotoUrl(photos, 9, REAL_PHOTO_SLOTS.homeCardPet)}
                   alt="Meu Pet"
-                  className="w-full h-full object-cover opacity-60 absolute inset-0"
+                  className="w-full h-full object-cover opacity-55 absolute inset-0"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/assets/img/10.jpg';
+                  }}
                 />
                 <span className="relative z-10 text-3xl filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
                   {currentPetSpecies.emoji}
@@ -269,18 +285,18 @@ export const HomeView: React.FC = () => {
 
               <div className="space-y-0.5 my-1.5">
                 <h4 className="text-xs font-bold text-white leading-tight">
-                  {petName} ({currentPetSpecies.name})
+                  {kitten?.name?.trim() ? `${petName} (${currentPetSpecies.name})` : currentPetSpecies.name}
                 </h4>
                 <p className="text-[11px] text-purple-200/80 capitalize">
-                  Humor: {kitten?.mood || 'Feliz'} 🥰
+                  {kitten?.name?.trim() ? `Humor: ${kitten?.mood || 'feliz'} 🥰` : 'Toque para escolher um nome'}
                 </p>
               </div>
 
               <button
                 onClick={() => setExtendedView('gatinho')}
-                className="w-full py-2 rounded-full bg-[#200c3e]/80 hover:bg-[#321262] border border-purple-500/30 text-xs text-purple-200 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                className="w-full min-h-[44px] py-2 rounded-full bg-[#200c3e]/80 hover:bg-[#321262] border border-purple-500/30 text-xs text-purple-200 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
               >
-                <span>Cuidar de {petName}</span>
+                <span>{kitten?.name?.trim() ? `Cuidar de ${petName}` : `Cuidar do ${currentPetSpecies.name}`}</span>
                 <ArrowRight className="w-3 h-3 text-purple-300" />
               </button>
             </div>
@@ -299,9 +315,12 @@ export const HomeView: React.FC = () => {
 
           <div className="w-20 h-20 rounded-2xl overflow-hidden border border-purple-500/30 shadow-md bg-purple-950/60 my-1">
             <img
-              src="/assets/img/real/chest_thumb.jpg"
+              src={getCouplePhotoUrl(photos, 10, REAL_PHOTO_SLOTS.homeCardChest)}
               alt="Baú de Surpresas"
               className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/assets/img/11.jpg';
+              }}
             />
           </div>
 
@@ -311,7 +330,7 @@ export const HomeView: React.FC = () => {
 
           <button
             onClick={() => triggerEasterEgg('egg-chest')}
-            className="w-full py-2 rounded-full bg-[#200c3e]/80 hover:bg-[#321262] border border-purple-500/30 text-xs text-purple-200 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+            className="w-full min-h-[44px] py-2 rounded-full bg-[#200c3e]/80 hover:bg-[#321262] border border-purple-500/30 text-xs text-purple-200 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
           >
             <span>Abrir baú</span>
             <ArrowRight className="w-3 h-3 text-purple-300" />
@@ -319,10 +338,13 @@ export const HomeView: React.FC = () => {
         </div>
       </section>
 
-      {/* 7. Row 6: 3 Bottom Info Cards matching screenshot */}
+      {/* 7. Row 6: 3 Bottom Info Cards */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-        {/* Card 1: Próxima conquista */}
-        <div className="rounded-2xl p-3.5 bg-[#120524]/80 border border-purple-500/20 flex items-center gap-3">
+        {/* Card 1: Próxima conquista (Dynamic real data) */}
+        <div
+          onClick={() => setExtendedView('conquistas')}
+          className="rounded-2xl p-3.5 bg-[#120524]/80 border border-purple-500/20 flex items-center gap-3 cursor-pointer hover:border-pink-400/40 transition-colors"
+        >
           <div className="w-9 h-9 rounded-xl bg-purple-900/50 flex items-center justify-center text-pink-300 border border-purple-400/25 flex-shrink-0">
             <Star className="w-4 h-4 text-pink-400" />
           </div>
@@ -331,13 +353,18 @@ export const HomeView: React.FC = () => {
               Próxima conquista
             </span>
             <span className="text-xs font-semibold text-white truncate block">
-              Ler 10 cartas
+              {nextAchTitle}
             </span>
             <div className="w-full h-1 bg-purple-950 rounded-full overflow-hidden mt-1.5">
-              <div className="w-[30%] h-full bg-gradient-to-r from-purple-400 to-pink-400 rounded-full" />
+              <div
+                className="h-full bg-gradient-to-r from-purple-400 to-pink-400 rounded-full transition-all duration-300"
+                style={{ width: `${nextAchPercent}%` }}
+              />
             </div>
           </div>
-          <span className="text-[10px] text-purple-300/60 font-mono flex-shrink-0">3/10</span>
+          <span className="text-[10px] text-purple-300/60 font-mono tabular-nums flex-shrink-0">
+            {nextAchCurrent}/{nextAchMax}
+          </span>
         </div>
 
         {/* Card 2: Dia especial */}

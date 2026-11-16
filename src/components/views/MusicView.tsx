@@ -26,6 +26,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Song } from '../../types';
 import { realAudio } from '../../services/realAudio';
 import { soundEngine } from '../../utils/audioSynth';
+import { REAL_PHOTO_SLOTS } from '../../data/mediaAssets';
 
 export const MusicView: React.FC = () => {
   const {
@@ -50,7 +51,7 @@ export const MusicView: React.FC = () => {
   const [newSongTitle, setNewSongTitle] = useState('');
   const [newSongArtist, setNewSongArtist] = useState('Gabriel & Samella');
   const [newSongUrl, setNewSongUrl] = useState('');
-  const [newSongCover, setNewSongCover] = useState('/assets/img/real/photo_1.jpg');
+  const [newSongCover, setNewSongCover] = useState(REAL_PHOTO_SLOTS.musicCovers[0]);
   const [newSongDuration, setNewSongDuration] = useState('3:30');
   const [newSongLyrics, setNewSongLyrics] = useState('');
   const [audioState, setAudioState] = useState(realAudio.getState());
@@ -149,7 +150,7 @@ export const MusicView: React.FC = () => {
           duration: dur,
           durationFormatted: durFormatted,
           audioUrl: dataUrl,
-          coverUrl: '/assets/img/real/music_cover.jpg',
+          coverUrl: REAL_PHOTO_SLOTS.musicCovers[0],
           lyrics: [
             'Nossa canção de amor...',
             'Gravada com carinho no coração.',
@@ -183,7 +184,7 @@ export const MusicView: React.FC = () => {
       duration: 210,
       durationFormatted: newSongDuration.trim() || '3:30',
       audioUrl: newSongUrl.trim(),
-      coverUrl: newSongCover || '/assets/img/real/photo_1.jpg',
+      coverUrl: newSongCover || REAL_PHOTO_SLOTS.musicCovers[0],
       lyrics: lyricsArray,
     };
 
