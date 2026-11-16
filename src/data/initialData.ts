@@ -2,7 +2,9 @@ import {
   Achievement,
   ChatMessage,
   CoupleConfig,
+  CoupleGoal,
   DailyMessage,
+  DailyWheelState,
   EasterEgg,
   KittenState,
   Letter,
@@ -12,6 +14,7 @@ import {
   Phrase,
   Song,
   StoreItem,
+  TimeCapsuleItem,
 } from '../types';
 import { ROMANTIC_DAILY_MESSAGES } from './dailyMessages';
 
@@ -21,6 +24,7 @@ export const INITIAL_COUPLE_CONFIG: CoupleConfig = {
   anniversaryDate: '2023-06-12T00:00:00',
   subtitle: 'Que bom ter você aqui de novo... 💖',
   passcode: '1206', // 12 de Junho
+  creatorPasscode: '2023', // Senha separada do criador para Configurações
   themeGlowColor: '#c084fc',
 };
 
@@ -411,7 +415,7 @@ export const INITIAL_PHOTOS: MemoryPhoto[] = Array.from({ length: 38 }, (_, inde
     localPath: `/assets/img/${num}.jpg`,
     aspect: index % 3 === 0 ? 'portrait' : index % 3 === 1 ? 'landscape' : 'square',
     isFavorite: false,
-    caption: `Foto #${num} — Guardada com amor em public/assets/img/${num}.jpg`,
+    caption: `Memória #${num} — Momento guardado com amor ♡`,
   };
 });
 
@@ -973,6 +977,7 @@ export const INITIAL_TREE_STATE: LoveTreeState = {
   lightsEnabled: false,
   creaturesUnlocked: [],
   lastWatered: undefined,
+  cooldowns: {},
 };
 
 // Initial Store Items (Purchasable with 💎)
@@ -1650,6 +1655,7 @@ export const INITIAL_KITTEN: KittenState = {
   equippedGlasses: '',
   ownedPets: ['cat'],
   customNames: {},
+  cooldowns: {},
 };
 
 // Initial Sweet Chat Messages
@@ -1746,3 +1752,58 @@ export const INITIAL_EASTER_EGGS: EasterEgg[] = [
     discovered: false,
   },
 ];
+
+// Light Cooldowns (5 to 15 min) for Pet Care, Tree Care & Daily Wheel (24h)
+export const COOLDOWN_MS = {
+  pet_pet: 5 * 60 * 1000,
+  pet_water: 5 * 60 * 1000,
+  pet_play: 6 * 60 * 1000,
+  pet_dance: 6 * 60 * 1000,
+  pet_feed: 8 * 60 * 1000,
+  pet_sleep: 10 * 60 * 1000,
+  pet_bath: 12 * 60 * 1000,
+  tree_sun: 8 * 60 * 1000,
+  tree_water: 10 * 60 * 1000,
+  tree_ribbon: 10 * 60 * 1000,
+  tree_prune: 12 * 60 * 1000,
+  tree_fruit: 15 * 60 * 1000,
+  wheel_spin: 24 * 60 * 60 * 1000,
+} as const;
+
+export const INITIAL_TIME_CAPSULES: TimeCapsuleItem[] = [
+  {
+    id: 'capsule-natal-2028',
+    title: 'Natal de 5+ Anos Juntos 🎄',
+    message:
+      'Minha Samella, se estamos abrindo esta cápsula juntos hoje, quero que você lembre de cada passo lindo que demos desde 12 de Junho de 2023. Você continua sendo a melhor escolha da minha vida inteira. Eu te amo além do tempo!',
+    unlockDate: '2028-12-25',
+    author: 'Gabriel',
+    createdAt: '2025-06-12',
+  },
+  {
+    id: 'capsule-aniversario-4anos',
+    title: 'Nosso Dia 12 de Junho Especial 💍',
+    message:
+      'Mais um ano celebrando o dia em que nossos caminhos se tornaram um só. Obrigado por cada risada, cada abraço nos dias difíceis e por construir nosso mundo com tanto carinho.',
+    unlockDate: '2027-06-12',
+    author: 'Gabriel',
+    createdAt: '2025-06-12',
+  },
+];
+
+export const INITIAL_COUPLE_GOALS: CoupleGoal[] = [
+  { id: 'goal-1', title: 'Fazer uma viagem romântica só nós dois', category: 'Viagens', icon: '✈️', completed: false },
+  { id: 'goal-2', title: 'Assistir ao pôr do sol abraçadinhos na praia', category: 'Momentos', icon: '🌅', completed: false },
+  { id: 'goal-3', title: 'Montar nosso álbum físico com fotos favoritas', category: 'Memórias', icon: '📸', completed: false },
+  { id: 'goal-4', title: 'Cozinhar um jantar especial à luz de velas juntos', category: 'Casa', icon: '🍝', completed: false },
+  { id: 'goal-5', title: 'Fazer um piquenique no parque em um domingo', category: 'Encontros', icon: '🧺', completed: false },
+  { id: 'goal-6', title: 'Escolher e decorar o nosso cantinho do amor', category: 'Futuro', icon: '🏡', completed: false },
+  { id: 'goal-7', title: 'Ir a um show ou evento para cantar nossa música', category: 'Música', icon: '🎶', completed: false },
+  { id: 'goal-8', title: 'Olhar as estrelas longe das luzes da cidade', category: 'Noites', icon: '🌌', completed: false },
+];
+
+export const INITIAL_DAILY_WHEEL: DailyWheelState = {
+  lastSpinAt: 0,
+  totalSpins: 0,
+};
+

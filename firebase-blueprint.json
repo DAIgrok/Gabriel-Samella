@@ -75,6 +75,22 @@
           "type": "array",
           "description": "Metadados de músicas adicionadas à playlist."
         },
+        "customQuizQuestions": {
+          "type": "array",
+          "description": "Perguntas personalizadas criadas pelo casal para o Quiz."
+        },
+        "timeCapsules": {
+          "type": "array",
+          "description": "Mensagens da Cápsula do Tempo travadas por data futura."
+        },
+        "coupleGoals": {
+          "type": "array",
+          "description": "Metas e sonhos do casal com status de conclusão."
+        },
+        "dailyWheelState": {
+          "type": "object",
+          "description": "Estado da roleta diária de prêmios e último giro."
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time",

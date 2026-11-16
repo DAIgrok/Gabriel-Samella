@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
@@ -137,13 +138,13 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
     triggerHeartExplosion(0.5, 0.5);
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/95 backdrop-blur-2xl flex flex-col justify-between select-none overflow-hidden"
+        className="fixed inset-0 z-[90] bg-black/95 backdrop-blur-2xl flex flex-col justify-between select-none overflow-hidden"
         onClick={() => {
           if (!isSlideshow) onClose();
         }}
@@ -182,7 +183,7 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
           {/* Center Title (Desktop) */}
           <div className="hidden md:flex flex-col items-center text-center">
             <h3 className="text-sm font-bold text-white tracking-wide font-display">{photo.title}</h3>
-            <span className="text-[11px] text-purple-300/80 font-mono">assets/photos/{photo.index}.jpg</span>
+            <span className="text-[11px] text-purple-300/80">{photo.date}</span>
           </div>
 
           {/* Right Action Tools */}
@@ -317,12 +318,12 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
 
                   <div className="p-3 rounded-xl bg-purple-950/60 border border-purple-500/20 text-xs space-y-1.5">
                     <div className="flex justify-between text-purple-300/70">
-                      <span>Arquivo Local:</span>
-                      <span className="font-mono text-white font-medium">assets/img/{photo.index}.jpg</span>
+                      <span>Data:</span>
+                      <span className="text-white font-medium">{photo.date}</span>
                     </div>
                     <div className="flex justify-between text-purple-300/70">
-                      <span>Orientação:</span>
-                      <span className="capitalize text-white">{photo.aspect}</span>
+                      <span>Memória:</span>
+                      <span className="text-white">#{photo.index}</span>
                     </div>
                     <div className="flex justify-between text-purple-300/70">
                       <span>Status:</span>
@@ -415,6 +416,7 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
           </div>
         </footer>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };

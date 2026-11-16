@@ -11,12 +11,16 @@ import {
 import { useApp } from '../context/AppContext';
 import { realAudio } from '../services/realAudio';
 import { getCouplePhotoUrl, REAL_PHOTO_SLOTS } from '../data/mediaAssets';
+import { useResolvedMediaUrl } from '../services/localMediaStore';
 
 export const MiniMusicPlayer: React.FC = () => {
-  const { currentSong, photos, playbackTime, nextSong, prevSong, isPlaying, playSong, pauseSong, toggleFavoriteSong } = useApp();
+  const { currentSong, photos, playbackTime, nextSong, prevSong, isPlaying, togglePlay, toggleFavoriteSong } = useApp();
   const [audioState, setAudioState] = useState(realAudio.getState());
   const [isShuffle, setIsShuffle] = useState(false);
   const [isLoop, setIsLoop] = useState(true);
+  const resolvedCoverUrl = useResolvedMediaUrl(
+    currentSong.coverUrl || getCouplePhotoUrl(photos, 11, REAL_PHOTO_SLOTS.musicCovers[0])
+  );
 
   useEffect(() => {
     const unsubscribe = realAudio.subscribe(() => {
@@ -45,13 +49,7 @@ export const MiniMusicPlayer: React.FC = () => {
 
   const handlePlayToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (audioState.isPlaying || isPlaying) {
-      realAudio.pause();
-      pauseSong();
-    } else {
-      realAudio.playSong(currentSong);
-      playSong(currentSong);
-    }
+    togglePlay();
   };
 
   return (
@@ -65,7 +63,7 @@ export const MiniMusicPlayer: React.FC = () => {
         {/* Album Artwork Cover matching screenshot */}
         <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 relative border border-purple-500/30 shadow-md bg-purple-950/60">
           <img
-            src={currentSong.coverUrl || getCouplePhotoUrl(photos, 11, REAL_PHOTO_SLOTS.musicCovers[0])}
+            src={resolvedCoverUrl || '/assets/img/12.jpg'}
             alt={currentSong.title}
             className={`w-full h-full object-cover transition-transform duration-500 ${
               audioState.isPlaying || isPlaying ? 'scale-105' : ''

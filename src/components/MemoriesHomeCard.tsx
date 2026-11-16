@@ -3,6 +3,7 @@ import { Camera, ChevronRight, Heart } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { motion } from 'motion/react';
 import { getCouplePhotoUrl, REAL_PHOTO_SLOTS } from '../data/mediaAssets';
+import { SmartPhoto } from './SmartPhoto';
 
 export const MemoriesHomeCard: React.FC = () => {
   const { setExtendedView, setSelectedPhoto, photos } = useApp();
@@ -62,16 +63,16 @@ export const MemoriesHomeCard: React.FC = () => {
             onClick={() => handleOpenPhoto(item, idx)}
             className="aspect-[3/4] rounded-2xl overflow-hidden relative cursor-pointer group border border-purple-500/30 shadow-md bg-purple-950/40"
           >
-            <img
+            <SmartPhoto
+              photo={item.memory}
+              photoIndex={idx + 5}
               src={item.url}
               alt={item.title}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = `/assets/img/${idx + 5}.jpg`;
-              }}
+              hideDetails
+              className="w-full h-full rounded-none"
             />
 
-            <div className="absolute bottom-1.5 right-1.5 p-1 rounded-full bg-black/40 backdrop-blur-sm pointer-events-none">
+            <div className="absolute bottom-1.5 right-1.5 p-1 rounded-full bg-black/40 backdrop-blur-sm pointer-events-none z-10">
               <Heart className="w-3 h-3 text-pink-400 stroke-[2.2] drop-shadow-[0_0_6px_rgba(244,114,182,0.8)]" />
             </div>
           </motion.div>

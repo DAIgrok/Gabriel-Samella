@@ -17,14 +17,18 @@ import {
   Achievement,
   ChatMessage,
   CoupleConfig,
+  CoupleGoal,
+  DailyWheelState,
   EasterEgg,
   KittenState,
   Letter,
   LoveTreeState,
   MemoryPhoto,
   Phrase,
+  QuizQuestion,
   Song,
   StoreItem,
+  TimeCapsuleItem,
 } from '../types';
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
@@ -86,6 +90,8 @@ export interface GameRecords {
   bestMemoryMoves: number;
   bestQuizScore: number;
   ticTacToeWins: number;
+  gamesPlayed?: number;
+  highestScore?: number;
 }
 
 export interface CloudWorldPayload {
@@ -111,6 +117,10 @@ export interface CloudWorldPayload {
   gameRecords: GameRecords;
   customPhotos: MemoryPhoto[];
   customSongs: Song[];
+  customQuizQuestions?: QuizQuestion[];
+  timeCapsules?: TimeCapsuleItem[];
+  coupleGoals?: CoupleGoal[];
+  dailyWheelState?: DailyWheelState;
   createdAt?: Timestamp | ReturnType<typeof serverTimestamp>;
   updatedAt?: Timestamp | ReturnType<typeof serverTimestamp>;
 }
@@ -182,6 +192,10 @@ export interface SaveCloudInput {
   gameRecords: GameRecords;
   photos: MemoryPhoto[];
   songs: Song[];
+  customQuizQuestions: QuizQuestion[];
+  timeCapsules: TimeCapsuleItem[];
+  coupleGoals: CoupleGoal[];
+  dailyWheelState: DailyWheelState;
   initialPhotoIds: Set<string>;
   initialSongIds: Set<string>;
 }
@@ -241,11 +255,11 @@ export async function saveCloudWorld(input: SaveCloudInput): Promise<void> {
 
   // Never upload large inline base64 data URLs to Firestore (stay well under 1MB Firestore limit)
   const customPhotos = input.photos
-    .filter((p) => !input.initialPhotoIds.has(p.id) && (!p.url.startsWith('data:') || p.url.length < 40000))
+    .filter((p) => !input.initialPhotoIds.has(p.id) && !p.url.startsWith('idb://') && (!p.url.startsWith('data:') || p.url.length < 40000))
     .slice(0, 50);
 
   const customSongs = input.songs
-    .filter((s) => !input.initialSongIds.has(s.id) && (!s.audioUrl?.startsWith('data:') || s.audioUrl.length < 40000))
+    .filter((s) => !input.initialSongIds.has(s.id) && !s.audioUrl?.startsWith('idb://') && (!s.audioUrl?.startsWith('data:') || s.audioUrl.length < 40000))
     .slice(0, 30);
 
   try {
@@ -268,6 +282,10 @@ export async function saveCloudWorld(input: SaveCloudInput): Promise<void> {
       gameRecords: input.gameRecords,
       customPhotos,
       customSongs,
+      customQuizQuestions: input.customQuizQuestions.slice(0, 80),
+      timeCapsules: input.timeCapsules.slice(0, 30),
+      coupleGoals: input.coupleGoals.slice(0, 60),
+      dailyWheelState: input.dailyWheelState,
     });
 
     const mutableFields = {

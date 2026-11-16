@@ -1,4 +1,6 @@
 import { Song } from '../types';
+import { resolveMediaUrl } from './localMediaStore';
+import { soundEngine } from '../utils/audioSynth';
 
 export type AudioEventListener = () => void;
 
@@ -60,12 +62,11 @@ class RealAudioService {
         window.dispatchEvent(new CustomEvent('realaudio:ended'));
       });
 
-      this.audio.addEventListener('error', (e) => {
-        console.warn('RealAudio: Could not load audio source.', e);
+      this.audio.addEventListener('error', () => {
         this.isPlaying = false;
         this.isFileAvailable = false;
         if (this.currentSong) {
-          this.fileNotFoundNotice = `Arquivo de áudio '${this.currentSong.audioUrl || 'Te-Vivo.mp3'}' não encontrado em 'assets/audio/'. Coloque o arquivo .mp3 na pasta 'public/assets/audio/'.`;
+          this.fileNotFoundNotice = 'Tocando melodia acústica romântica ✨';
         }
         this.notify();
       });
@@ -92,24 +93,34 @@ class RealAudioService {
   public async playSong(song: Song) {
     if (!this.audio) return;
     this.currentSong = song;
-    const targetUrl = song.audioUrl || `/assets/audio/${song.title.replace(/\s+/g, '-')}.mp3`;
-    
-    // Check if url already loaded
+    const rawUrl = song.audioUrl || `/assets/audio/${song.title.replace(/\s+/g, '-')}.mp3`;
+    const targetUrl = await resolveMediaUrl(rawUrl);
+
+    if (!targetUrl) {
+      this.isPlaying = false;
+      this.isFileAvailable = false;
+      this.fileNotFoundNotice = 'Tocando melodia acústica romântica ✨';
+      soundEngine.startSongMelody(song.id);
+      this.notify();
+      return;
+    }
+
     if (this.audio.src !== targetUrl && !this.audio.src.endsWith(targetUrl)) {
       this.audio.src = targetUrl;
       this.currentTime = 0;
     }
 
     try {
+      soundEngine.stopMelodyLoop();
       await this.audio.play();
       this.isPlaying = true;
       this.isFileAvailable = true;
       this.fileNotFoundNotice = '';
-    } catch (err) {
-      console.log('RealAudio Playback waiting or file unavailable', err);
+    } catch {
       this.isPlaying = false;
       this.isFileAvailable = false;
-      this.fileNotFoundNotice = `Coloque '${song.title}.mp3' em 'assets/audio/' para tocar a faixa real!`;
+      this.fileNotFoundNotice = 'Tocando melodia acústica romântica ✨';
+      soundEngine.startSongMelody(song.id);
     }
     this.notify();
   }
@@ -117,15 +128,20 @@ class RealAudioService {
   public async play() {
     if (!this.audio) return;
     try {
+      soundEngine.stopMelodyLoop();
       await this.audio.play();
       this.isPlaying = true;
-    } catch (err) {
-      console.warn('Playback error', err);
+      this.isFileAvailable = true;
+    } catch {
+      if (this.currentSong) {
+        soundEngine.startSongMelody(this.currentSong.id);
+      }
     }
     this.notify();
   }
 
   public pause() {
+    soundEngine.stopMelodyLoop();
     if (!this.audio) return;
     this.audio.pause();
     this.isPlaying = false;

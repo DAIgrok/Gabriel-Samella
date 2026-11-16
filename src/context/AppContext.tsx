@@ -12,7 +12,9 @@ import {
   ActiveTab,
   ChatMessage,
   CoupleConfig,
+  CoupleGoal,
   DailyMessage,
+  DailyWheelState,
   EasterEgg,
   ExtendedView,
   KittenState,
@@ -21,14 +23,19 @@ import {
   MemoryPhoto,
   PetType,
   Phrase,
+  QuizQuestion,
   Song,
   StoreItem,
+  TimeCapsuleItem,
 } from '../types';
 import {
+  COOLDOWN_MS,
   INITIAL_ACHIEVEMENTS,
   INITIAL_CHAT_MESSAGES,
   INITIAL_COUPLE_CONFIG,
+  INITIAL_COUPLE_GOALS,
   INITIAL_DAILY_MESSAGES,
+  INITIAL_DAILY_WHEEL,
   INITIAL_EASTER_EGGS,
   INITIAL_KITTEN,
   INITIAL_LETTERS,
@@ -36,10 +43,13 @@ import {
   INITIAL_PHRASES,
   INITIAL_SONGS,
   INITIAL_STORE_ITEMS,
+  INITIAL_TIME_CAPSULES,
   INITIAL_TREE_STATE,
   PET_SPECIES_CATALOG,
 } from '../data/initialData';
 import { soundEngine } from '../utils/audioSynth';
+import { realAudio } from '../services/realAudio';
+import { deleteMediaBlob } from '../services/localMediaStore';
 import {
   initAuth,
   googleSignIn,
@@ -55,6 +65,19 @@ import {
   saveCloudWorld,
   testFirestoreConnection,
 } from '../services/cloudSync';
+
+export function getCooldownRemaining(cooldowns: Record<string, number> | undefined, key: string): number {
+  const until = cooldowns?.[key] || 0;
+  return Math.max(0, until - Date.now());
+}
+
+export function formatCooldownMs(ms: number): string {
+  if (ms <= 0) return '';
+  const totalSec = Math.ceil(ms / 1000);
+  const mins = Math.floor(totalSec / 60);
+  const secs = totalSec % 60;
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+}
 
 const INITIAL_PHOTO_IDS = new Set(INITIAL_PHOTOS.map((p) => p.id));
 const INITIAL_SONG_IDS = new Set(INITIAL_SONGS.map((s) => s.id));
@@ -129,6 +152,10 @@ interface AppContextType {
   loveTree: LoveTreeState;
   hasSeenIntro: boolean;
   gameRecords: GameRecords;
+  customQuizQuestions: QuizQuestion[];
+  timeCapsules: TimeCapsuleItem[];
+  coupleGoals: CoupleGoal[];
+  dailyWheel: DailyWheelState;
 
   // Google Drive & Auth
   isGoogleConnected: boolean;
@@ -158,6 +185,8 @@ interface AppContextType {
   toggleFavoritePhoto: (id: string) => void;
   setSelectedPhoto: (photo: MemoryPhoto | null) => void;
   updatePhotoUrl: (id: string, url: string, title?: string) => void;
+  editPhoto: (id: string, updates: Partial<MemoryPhoto>) => void;
+  togglePhotoInLoop: (id: string) => void;
   addPhoto: (photo: Omit<MemoryPhoto, 'id' | 'index'>) => void;
   removePhoto: (id: string) => void;
   playSong: (song?: Song) => void;
@@ -168,31 +197,40 @@ interface AppContextType {
   seekSong: (time: number) => void;
   toggleFavoriteSong: (id: string) => void;
   addSong: (song: Omit<Song, 'id'>) => void;
+  editSong: (id: string, updates: Partial<Song>) => void;
   removeSong: (id: string) => void;
   unlockAchievement: (id: string) => void;
   buyStoreItem: (id: string) => boolean;
   redeemVoucher: (id: string) => void;
   petKitten: (part?: 'head' | 'belly' | 'paw') => void;
-  feedKitten: (foodName?: string, hungerBoost?: number, happyBoost?: number) => void;
-  giveWaterKitten: () => void;
-  batheKitten: (boostAmount?: number) => void;
-  toggleSleepKitten: () => void;
-  playWithKitten: (toyName?: string) => void;
+  feedKitten: (foodName?: string, hungerBoost?: number, happyBoost?: number) => boolean;
+  giveWaterKitten: () => boolean;
+  batheKitten: (boostAmount?: number) => boolean;
+  toggleSleepKitten: () => boolean;
+  playWithKitten: (toyName?: string, source?: 'toy' | 'dance') => boolean;
   equipKittenItem: (itemId: string, category: 'hat' | 'accessory' | 'outfit' | 'collar' | 'glasses') => void;
   switchPet: (petType: PetType) => void;
   renamePet: (newName: string) => void;
   adoptPet: (petType: PetType) => void;
-  waterLoveTree: () => void;
-  sunLoveTree: () => void;
-  pruneLoveTree: () => void;
-  addPromiseRibbon: (promiseText: string) => void;
-  harvestTreeFruit: (index: number) => string;
+  waterLoveTree: () => boolean;
+  sunLoveTree: () => boolean;
+  pruneLoveTree: () => boolean;
+  addPromiseRibbon: (promiseText: string) => boolean;
+  harvestTreeFruit: (index: number) => string | null;
   sendChatMessage: (text: string) => void;
   triggerEasterEgg: (id: string) => void;
   closeEasterEggModal: () => void;
   showToast: (text: string, icon?: string, reward?: number) => void;
   updateConfig: (newConfig: Partial<CoupleConfig>) => void;
   updateGameRecord: (partial: Partial<GameRecords>) => void;
+  addQuizQuestion: (q: Omit<QuizQuestion, 'id' | 'isCustom'>) => void;
+  removeQuizQuestion: (id: string) => void;
+  addTimeCapsule: (capsule: Omit<TimeCapsuleItem, 'id' | 'createdAt'>) => void;
+  removeTimeCapsule: (id: string) => void;
+  addCoupleGoal: (goal: Omit<CoupleGoal, 'id' | 'completed'>) => void;
+  toggleCoupleGoal: (id: string) => void;
+  removeCoupleGoal: (id: string) => void;
+  spinDailyWheel: (prizeLabel: string, coinReward: number) => boolean;
   triggerHeartExplosion: (x?: number, y?: number) => void;
   heartRainTriggerCount: number;
   resetAllData: () => Promise<void>;
@@ -306,6 +344,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   );
   const [gameRecords, setGameRecords] = useState<GameRecords>(
     savedData?.gameRecords || DEFAULT_GAME_RECORDS
+  );
+  const [customQuizQuestions, setCustomQuizQuestions] = useState<QuizQuestion[]>(
+    savedData?.customQuizQuestions || []
+  );
+  const [timeCapsules, setTimeCapsules] = useState<TimeCapsuleItem[]>(
+    mergeInitialItems(savedData?.timeCapsules, INITIAL_TIME_CAPSULES)
+  );
+  const [coupleGoals, setCoupleGoals] = useState<CoupleGoal[]>(
+    mergeInitialItems(savedData?.coupleGoals, INITIAL_COUPLE_GOALS)
+  );
+  const [dailyWheel, setDailyWheel] = useState<DailyWheelState>(
+    savedData?.dailyWheel || INITIAL_DAILY_WHEEL
   );
   const [toastMessage, setToastMessage] = useState<{
     text: string;
@@ -425,6 +475,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           if (cloud.customSongs && cloud.customSongs.length > 0) {
             setSongs((prev) => mergeInitialItems(prev, cloud.customSongs));
           }
+
+          if (cloud.customQuizQuestions && cloud.customQuizQuestions.length > 0) {
+            setCustomQuizQuestions(cloud.customQuizQuestions);
+          }
+
+          if (cloud.timeCapsules && cloud.timeCapsules.length > 0) {
+            setTimeCapsules((prev) => mergeInitialItems(cloud.timeCapsules, prev));
+          }
+
+          if (cloud.coupleGoals && cloud.coupleGoals.length > 0) {
+            setCoupleGoals((prev) => mergeInitialItems(cloud.coupleGoals, prev));
+          }
+
+          if (cloud.dailyWheelState) {
+            setDailyWheel(cloud.dailyWheelState);
+          }
         }
         setIsCloudSynced(true);
       } catch (err) {
@@ -537,6 +603,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         treeState,
         phrases,
         gameRecords,
+        customQuizQuestions,
+        timeCapsules,
+        coupleGoals,
+        dailyWheel,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
     } catch {
@@ -565,6 +635,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         gameRecords,
         photos,
         songs,
+        customQuizQuestions,
+        timeCapsules,
+        coupleGoals,
+        dailyWheelState: dailyWheel,
         initialPhotoIds: INITIAL_PHOTO_IDS,
         initialSongIds: INITIAL_SONG_IDS,
       })
@@ -596,6 +670,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     treeState,
     phrases,
     gameRecords,
+    customQuizQuestions,
+    timeCapsules,
+    coupleGoals,
+    dailyWheel,
   ]);
 
   // Passive gentle energy recharge while pet sleeps in Quarto
@@ -804,6 +882,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showToast('Foto atualizada com sucesso! 📸');
   };
 
+  const editPhoto = (id: string, updates: Partial<MemoryPhoto>) => {
+    setPhotos((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
+    );
+    showToast('Detalhes da foto atualizados! ✨');
+  };
+
+  const togglePhotoInLoop = (id: string) => {
+    soundEngine.playHeartPop();
+    setPhotos((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, inHomeLoop: !p.inHomeLoop } : p))
+    );
+  };
+
   const addPhoto = (newPhotoData: Omit<MemoryPhoto, 'id' | 'index'>) => {
     soundEngine.playSparkle();
     const newPhoto: MemoryPhoto = {
@@ -811,6 +903,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       id: `photo-${Date.now()}`,
       index: photos.length + 1,
       isFavorite: false,
+      inHomeLoop: newPhotoData.inHomeLoop ?? true,
     };
     setPhotos((prev) => [newPhoto, ...prev]);
     showToast('Nova foto adicionada ao álbum! 📸✨');
@@ -819,6 +912,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const removePhoto = (id: string) => {
     soundEngine.playHeartPop();
+    const target = photos.find((p) => p.id === id);
+    if (target?.url.startsWith('idb://')) {
+      deleteMediaBlob(target.url).catch(() => {});
+    }
     setPhotos((prev) => prev.filter((p) => p.id !== id));
     showToast('Foto removida da galeria.');
   };
@@ -827,12 +924,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const target = song || currentSong;
     setCurrentSong(target);
     setIsPlaying(true);
-    soundEngine.startSongMelody(target.id);
+    realAudio.playSong(target);
     unlockAchievement('ach-first-song');
   };
 
   const pauseSong = () => {
     setIsPlaying(false);
+    realAudio.pause();
     soundEngine.pauseCustomAudio();
   };
 
@@ -851,7 +949,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setCurrentSong(nextItem);
     setPlaybackTime(0);
     if (isPlaying) {
-      soundEngine.startSongMelody(nextItem.id);
+      realAudio.playSong(nextItem);
     }
   };
 
@@ -862,12 +960,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setCurrentSong(prevItem);
     setPlaybackTime(0);
     if (isPlaying) {
-      soundEngine.startSongMelody(prevItem.id);
+      realAudio.playSong(prevItem);
     }
   };
 
   const seekSong = (time: number) => {
     setPlaybackTime(time);
+    realAudio.seek(time);
   };
 
   const toggleFavoriteSong = (id: string) => {
@@ -888,8 +987,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showToast(`Música "${newSong.title}" adicionada à playlist! 🎵✨`);
   };
 
+  const editSong = (id: string, updates: Partial<Song>) => {
+    setSongs((prev) => prev.map((s) => (s.id === id ? { ...s, ...updates } : s)));
+    setCurrentSong((prev) => (prev.id === id ? { ...prev, ...updates } : prev));
+    showToast('Música atualizada! 🎶');
+  };
+
   const removeSong = (id: string) => {
     soundEngine.playHeartPop();
+    const target = songs.find((s) => s.id === id);
+    if (target?.audioUrl?.startsWith('idb://')) {
+      deleteMediaBlob(target.audioUrl).catch(() => {});
+    }
     setSongs((prev) => prev.filter((s) => s.id !== id));
     showToast('Música removida da playlist.');
   };
@@ -1011,30 +1120,38 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (leveledUpTo > 0) {
       soundEngine.playSparkle();
       triggerHeartExplosion();
-      addCoins(10, `${displayPet} subiu para o Nível ${leveledUpTo}!`);
+      addCoins(8, `${displayPet} subiu para o Nível ${leveledUpTo}!`);
     }
   };
 
   const petKitten = () => {
     soundEngine.playPurr();
     triggerHeartExplosion(0.5, 0.4);
+    const rem = getCooldownRemaining(kitten.cooldowns, 'pet_pet');
+    if (rem > 0) {
+      showToast(`Carinho retribuído! Próximo bônus em ${formatCooldownMs(rem)} ⏳`, '🐾');
+      return;
+    }
+
     let reached10 = false;
-    let rewardCoin = false;
     let petLabel = 'seu mascote';
 
     setKitten((prev) => {
       const newPetCount = (prev.petCount || 0) + 1;
       petLabel = getSpeciesDisplayName(prev.petType, prev.name);
       if (newPetCount === 10) reached10 = true;
-      if (newPetCount % 6 === 0) rewardCoin = true;
 
       return {
         ...prev,
-        happiness: Math.min(100, (prev.happiness || 50) + 5),
-        fun: Math.min(100, (prev.fun || 50) + 5),
+        happiness: Math.min(100, (prev.happiness || 50) + 8),
+        fun: Math.min(100, (prev.fun || 50) + 6),
         affectionLevel: (prev.affectionLevel || 0) + 1,
         mood: 'ronronando',
         petCount: newPetCount,
+        cooldowns: {
+          ...(prev.cooldowns || {}),
+          pet_pet: Date.now() + COOLDOWN_MS.pet_pet,
+        },
       };
     });
 
@@ -1047,11 +1164,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
 
     if (reached10) unlockAchievement('ach-pet-cat');
-    if (rewardCoin) addCoins(1, `Carinho em ${petLabel}`);
-    gainKittenXp(5);
+    addCoins(1, `Carinho em ${petLabel}`);
+    gainKittenXp(8);
   };
 
-  const feedKitten = (foodName = 'Comidinha Especial', hungerBoost = 30, happyBoost = 10) => {
+  const feedKitten = (foodName = 'Comidinha Especial', hungerBoost = 30, happyBoost = 10): boolean => {
+    const rem = getCooldownRemaining(kitten.cooldowns, 'pet_feed');
+    if (rem > 0) {
+      showToast(`Cheio por agora! Alimente de novo em ${formatCooldownMs(rem)} ⏳`, '🍽️');
+      return false;
+    }
+
     soundEngine.playEat();
     triggerHeartExplosion(0.5, 0.4);
     const label = getSpeciesDisplayName(kitten.petType, kitten.name);
@@ -1062,98 +1185,149 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       mood: 'feliz',
       isEating: true,
       lastFed: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      cooldowns: {
+        ...(prev.cooldowns || {}),
+        pet_feed: Date.now() + COOLDOWN_MS.pet_feed,
+      },
     }));
     gainKittenXp(12);
-    showToast(`${label} saboreou ${foodName}!`, '😋');
+    addCoins(2, `${label} saboreou ${foodName}`);
     setTimeout(() => {
       setKitten((prev) => ({ ...prev, isEating: false }));
     }, 1800);
+    return true;
   };
 
-  const giveWaterKitten = () => {
+  const giveWaterKitten = (): boolean => {
+    const rem = getCooldownRemaining(kitten.cooldowns, 'pet_water');
+    if (rem > 0) {
+      showToast(`Hidratado! Próxima água em ${formatCooldownMs(rem)} ⏳`, '💧');
+      return false;
+    }
+
     soundEngine.playDrink();
     const label = getSpeciesDisplayName(kitten.petType, kitten.name);
     setKitten((prev) => ({
       ...prev,
       thirst: Math.min(100, (prev.thirst || 50) + 35),
-      happiness: Math.min(100, (prev.happiness || 50) + 5),
+      happiness: Math.min(100, (prev.happiness || 50) + 6),
       mood: 'feliz',
       isDrinking: true,
+      cooldowns: {
+        ...(prev.cooldowns || {}),
+        pet_water: Date.now() + COOLDOWN_MS.pet_water,
+      },
     }));
     gainKittenXp(8);
-    showToast(`${label} bebeu água fresquinha! 💧`, '🥛');
+    addCoins(1, `${label} bebeu água fresquinha`);
     setTimeout(() => {
       setKitten((prev) => ({ ...prev, isDrinking: false }));
     }, 1600);
+    return true;
   };
 
-  const batheKitten = (boostAmount = 100) => {
+  const batheKitten = (boostAmount = 100): boolean => {
+    const rem = getCooldownRemaining(kitten.cooldowns, 'pet_bath');
+    if (rem > 0) {
+      showToast(`Limpinho! Próximo banho em ${formatCooldownMs(rem)} ⏳`, '🛁');
+      return false;
+    }
+
     soundEngine.playBathSplash();
     triggerHeartExplosion(0.5, 0.4);
     const label = getSpeciesDisplayName(kitten.petType, kitten.name);
     setKitten((prev) => ({
       ...prev,
       hygiene: boostAmount >= 100 ? 100 : Math.min(100, (prev.hygiene || 50) + boostAmount),
-      happiness: Math.min(100, (prev.happiness || 50) + 8),
+      happiness: Math.min(100, (prev.happiness || 50) + 10),
       mood: 'feliz',
       isBathing: true,
       lastBathed: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      cooldowns: {
+        ...(prev.cooldowns || {}),
+        pet_bath: Date.now() + COOLDOWN_MS.pet_bath,
+      },
     }));
-    gainKittenXp(12);
-    if (boostAmount >= 100) {
-      showToast(`${label} tomou um banho fresquinho e ficou cheiroso! 🫧`, '🛁');
-    }
+    gainKittenXp(14);
+    addCoins(2, `${label} tomou um banho cheiroso`);
     setTimeout(() => {
       setKitten((prev) => ({ ...prev, isBathing: false }));
     }, 2000);
+    return true;
   };
 
-  const toggleSleepKitten = () => {
+  const toggleSleepKitten = (): boolean => {
     const label = getSpeciesDisplayName(kitten.petType, kitten.name);
-    setKitten((prev) => {
-      const willSleep = !prev.isSleeping;
-      if (willSleep) {
-        soundEngine.playSleepSnore();
-        showToast(`${label} apagou o abajur para descansar... 💤`, '🌙');
-        return {
-          ...prev,
-          isSleeping: true,
-          mood: 'dormindo',
-          energy: Math.min(100, (prev.energy || 50) + 15),
-          lastSlept: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        };
-      } else {
-        soundEngine.playMeowHappy();
-        showToast(`${label} acordou cheio de energia! ☀️`, '✨');
-        return {
-          ...prev,
-          isSleeping: false,
-          mood: 'feliz',
-          energy: Math.min(100, (prev.energy || 50) + 25),
-        };
+    if (!kitten.isSleeping) {
+      const rem = getCooldownRemaining(kitten.cooldowns, 'pet_sleep');
+      if (rem > 0) {
+        showToast(`Sem soninho ainda! Descanso disponível em ${formatCooldownMs(rem)} ⏳`, '🌙');
+        return false;
       }
-    });
+      soundEngine.playSleepSnore();
+      showToast(`${label} apagou o abajur para descansar... 💤`, '🌙');
+      setKitten((prev) => ({
+        ...prev,
+        isSleeping: true,
+        mood: 'dormindo',
+        energy: Math.min(100, (prev.energy || 50) + 15),
+        lastSlept: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        cooldowns: {
+          ...(prev.cooldowns || {}),
+          pet_sleep: Date.now() + COOLDOWN_MS.pet_sleep,
+        },
+      }));
+      return true;
+    }
+
+    soundEngine.playMeowHappy();
+    showToast(`${label} acordou cheio de energia! ☀️`, '✨');
+    setKitten((prev) => ({
+      ...prev,
+      isSleeping: false,
+      mood: 'feliz',
+      energy: Math.min(100, (prev.energy || 50) + 25),
+    }));
+    return true;
   };
 
-  const playWithKitten = (toyName = 'Novelo de Lã') => {
+  const playWithKitten = (toyName = 'Novelo de Lã', source: 'toy' | 'dance' = 'toy'): boolean => {
+    const cdKey = source === 'dance' ? 'pet_dance' : 'pet_play';
+    const cdDuration = source === 'dance' ? COOLDOWN_MS.pet_dance : COOLDOWN_MS.pet_play;
+    const rem = getCooldownRemaining(kitten.cooldowns, cdKey);
+    if (rem > 0) {
+      showToast(
+        source === 'dance'
+          ? `Descansando os passinhos! Nova dança premiada em ${formatCooldownMs(rem)} ⏳`
+          : `Descansando da brincadeira! Disponível em ${formatCooldownMs(rem)} ⏳`,
+        source === 'dance' ? '💃' : '🐾'
+      );
+      return false;
+    }
+
     soundEngine.playToyBoing();
     triggerHeartExplosion(0.5, 0.4);
     const label = getSpeciesDisplayName(kitten.petType, kitten.name);
     setKitten((prev) => ({
       ...prev,
       fun: Math.min(100, (prev.fun || 50) + 30),
-      energy: Math.max(10, (prev.energy || 80) - 10),
-      hygiene: Math.max(15, (prev.hygiene || 70) - 5),
+      energy: Math.max(10, (prev.energy || 80) - 8),
+      hygiene: Math.max(15, (prev.hygiene || 70) - 4),
       happiness: Math.min(100, (prev.happiness || 50) + 15),
       mood: 'brincalhao',
       isPlayMode: true,
       lastPlayed: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      cooldowns: {
+        ...(prev.cooldowns || {}),
+        [cdKey]: Date.now() + cdDuration,
+      },
     }));
-    gainKittenXp(16);
-    showToast(`${label} brincou alegremente com ${toyName}!`, '🐾');
+    gainKittenXp(15);
+    addCoins(2, source === 'dance' ? `${label} arrasou na dança` : `${label} brincou com ${toyName}`);
     setTimeout(() => {
       setKitten((prev) => ({ ...prev, isPlayMode: false }));
     }, 2000);
+    return true;
   };
 
   const equipKittenItem = (
@@ -1235,7 +1409,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showToast(`Adotou ${species?.name || 'Novo Mascote'}! Escolha o nome dele(a)! 🎉`, species?.emoji || '🐾');
   };
 
-  const applyTreeXpGain = (xpGain: number, careType: 'water' | 'sun' | 'prune') => {
+  const applyTreeXpGain = (xpGain: number, careType: 'water' | 'sun' | 'prune', cdKey: string, cdDuration: number) => {
     let evolvedTo = 0;
 
     setTreeState((prev) => {
@@ -1267,11 +1441,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           careType === 'water'
             ? new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
             : prev.lastWatered,
+        cooldowns: {
+          ...(prev.cooldowns || {}),
+          [cdKey]: Date.now() + cdDuration,
+        },
       };
     });
 
     if (evolvedTo > 0) {
-      addCoins(10, `Árvore do Amor evoluiu para Nv.${evolvedTo} 🌳`);
+      addCoins(8, `Árvore do Amor evoluiu para Nv.${evolvedTo} 🌳`);
       if (evolvedTo >= 2) unlockAchievement('ach-tree-lvl2');
       if (evolvedTo >= 5) unlockAchievement('ach-tree-lvl5');
       if (evolvedTo >= 8) unlockAchievement('ach-tree-lvl8');
@@ -1279,41 +1457,74 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const waterLoveTree = () => {
+  const waterLoveTree = (): boolean => {
+    const rem = getCooldownRemaining(treeState.cooldowns, 'tree_water');
+    if (rem > 0) {
+      showToast(`Solo bem regado! Próxima rega em ${formatCooldownMs(rem)} ⏳`, '💧');
+      return false;
+    }
     soundEngine.playWaterDrop();
     setTreeWaterCount((prev) => prev + 1);
-    applyTreeXpGain(25, 'water');
+    applyTreeXpGain(25, 'water', 'tree_water', COOLDOWN_MS.tree_water);
     unlockAchievement('ach-tree-water');
     addCoins(2, 'Regou a Árvore do Amor 🌱');
     triggerHeartExplosion(0.5, 0.4);
+    return true;
   };
 
-  const sunLoveTree = () => {
+  const sunLoveTree = (): boolean => {
+    const rem = getCooldownRemaining(treeState.cooldowns, 'tree_sun');
+    if (rem > 0) {
+      showToast(`Raios absorvidos! Novo banho de sol em ${formatCooldownMs(rem)} ⏳`, '☀️');
+      return false;
+    }
     soundEngine.playSparkle();
-    applyTreeXpGain(20, 'sun');
+    applyTreeXpGain(20, 'sun', 'tree_sun', COOLDOWN_MS.tree_sun);
     triggerHeartExplosion(0.5, 0.3);
     addCoins(1, 'Banho de Sol na Árvore ☀️');
+    return true;
   };
 
-  const pruneLoveTree = () => {
+  const pruneLoveTree = (): boolean => {
+    const rem = getCooldownRemaining(treeState.cooldowns, 'tree_prune');
+    if (rem > 0) {
+      showToast(`Folhagem cuidada! Nova poda em ${formatCooldownMs(rem)} ⏳`, '🌿');
+      return false;
+    }
     soundEngine.playHeartPop();
-    applyTreeXpGain(15, 'prune');
+    applyTreeXpGain(15, 'prune', 'tree_prune', COOLDOWN_MS.tree_prune);
     triggerHeartExplosion(0.5, 0.35);
     addCoins(1, 'Cuidado de Jardinagem 🌿');
+    return true;
   };
 
-  const addPromiseRibbon = (promiseText: string) => {
-    if (!promiseText.trim()) return;
+  const addPromiseRibbon = (promiseText: string): boolean => {
+    if (!promiseText.trim()) return false;
+    const rem = getCooldownRemaining(treeState.cooldowns, 'tree_ribbon');
+    if (rem > 0) {
+      showToast(`Aguarde ${formatCooldownMs(rem)} para amarrar outra fita 🎀`, '⏳');
+      return false;
+    }
     soundEngine.playSparkle();
     setTreeState((prev) => ({
       ...prev,
       promiseRibbons: [...(prev.promiseRibbons || []), promiseText.trim()],
+      cooldowns: {
+        ...(prev.cooldowns || {}),
+        tree_ribbon: Date.now() + COOLDOWN_MS.tree_ribbon,
+      },
     }));
-    addCoins(5, 'Fita de Promessa amarrada nos galhos 🎀');
+    addCoins(3, 'Fita de Promessa amarrada nos galhos 🎀');
     triggerHeartExplosion(0.5, 0.4);
+    return true;
   };
 
-  const harvestTreeFruit = (index: number): string => {
+  const harvestTreeFruit = (index: number): string | null => {
+    const rem = getCooldownRemaining(treeState.cooldowns, 'tree_fruit');
+    if (rem > 0) {
+      showToast(`Novos frutos amadurecendo! Volte em ${formatCooldownMs(rem)} ⏳`, '🍎');
+      return null;
+    }
     const fruitMessages = [
       '“Você é o amor mais doce que a vida me deu.” 💖',
       '“Seu riso tem gosto de felicidade plena.” ✨',
@@ -1326,7 +1537,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setTreeState((prev) => ({
       ...prev,
       fruitsHarvested: (prev.fruitsHarvested || 0) + 1,
+      cooldowns: {
+        ...(prev.cooldowns || {}),
+        tree_fruit: Date.now() + COOLDOWN_MS.tree_fruit,
+      },
     }));
+    addCoins(2, 'Colheu um Fruto do Amor');
     return fruitMessages[index % fruitMessages.length];
   };
 
@@ -1391,6 +1607,96 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setGameRecords((prev) => ({ ...prev, ...partial }));
   };
 
+  const addQuizQuestion = (q: Omit<QuizQuestion, 'id' | 'isCustom'>) => {
+    soundEngine.playSparkle();
+    const item: QuizQuestion = {
+      ...q,
+      id: `quiz-custom-${Date.now()}`,
+      isCustom: true,
+    };
+    setCustomQuizQuestions((prev) => [item, ...prev]);
+    showToast('Pergunta adicionada ao Mega Quiz! 🎯');
+  };
+
+  const removeQuizQuestion = (id: string) => {
+    setCustomQuizQuestions((prev) => prev.filter((q) => q.id !== id));
+    showToast('Pergunta removida do Quiz.');
+  };
+
+  const addTimeCapsule = (capsule: Omit<TimeCapsuleItem, 'id' | 'createdAt'>) => {
+    soundEngine.playSparkle();
+    const item: TimeCapsuleItem = {
+      ...capsule,
+      id: `capsule-${Date.now()}`,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    setTimeCapsules((prev) => [item, ...prev]);
+    showToast('Nova mensagem guardada na Cápsula do Tempo! ⏳💖');
+  };
+
+  const removeTimeCapsule = (id: string) => {
+    setTimeCapsules((prev) => prev.filter((c) => c.id !== id));
+    showToast('Cápsula removida.');
+  };
+
+  const addCoupleGoal = (goal: Omit<CoupleGoal, 'id' | 'completed'>) => {
+    soundEngine.playSparkle();
+    const item: CoupleGoal = {
+      ...goal,
+      id: `goal-${Date.now()}`,
+      completed: false,
+    };
+    setCoupleGoals((prev) => [item, ...prev]);
+    showToast('Novo sonho adicionado à lista do casal! ✨');
+  };
+
+  const toggleCoupleGoal = (id: string) => {
+    soundEngine.playHeartPop();
+    let justCompleted = false;
+    setCoupleGoals((prev) =>
+      prev.map((g) => {
+        if (g.id !== id) return g;
+        const nextCompleted = !g.completed;
+        if (nextCompleted) justCompleted = true;
+        return {
+          ...g,
+          completed: nextCompleted,
+          completedAt: nextCompleted ? new Date().toLocaleDateString('pt-BR') : undefined,
+        };
+      })
+    );
+    if (justCompleted) {
+      triggerHeartExplosion();
+      addCoins(5, 'Meta do casal realizada!');
+    }
+  };
+
+  const removeCoupleGoal = (id: string) => {
+    setCoupleGoals((prev) => prev.filter((g) => g.id !== id));
+    showToast('Meta removida.');
+  };
+
+  const spinDailyWheel = (prizeLabel: string, coinReward: number): boolean => {
+    const now = Date.now();
+    const elapsed = now - (dailyWheel.lastSpinAt || 0);
+    if (dailyWheel.lastSpinAt > 0 && elapsed < COOLDOWN_MS.wheel_spin) {
+      return false;
+    }
+    setDailyWheel((prev) => ({
+      lastSpinAt: now,
+      lastPrize: prizeLabel,
+      totalSpins: (prev.totalSpins || 0) + 1,
+    }));
+    if (coinReward > 0) {
+      addCoins(coinReward, `Roleta Diária: ${prizeLabel}`);
+    } else {
+      soundEngine.playSparkle();
+      showToast(`Roleta Diária: ${prizeLabel}`, '🎡');
+    }
+    triggerHeartExplosion();
+    return true;
+  };
+
   const resetAllData = async () => {
     setJourneyStarted(false);
     localStorage.removeItem(STORAGE_KEY);
@@ -1442,6 +1748,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         loveTree: treeState,
         hasSeenIntro,
         gameRecords,
+        customQuizQuestions,
+        timeCapsules,
+        coupleGoals,
+        dailyWheel,
         isGoogleConnected,
         googleUser,
         isDriveSyncing,
@@ -1467,6 +1777,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         toggleFavoritePhoto,
         setSelectedPhoto,
         updatePhotoUrl,
+        editPhoto,
+        togglePhotoInLoop,
         addPhoto,
         removePhoto,
         playSong,
@@ -1477,6 +1789,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         seekSong,
         toggleFavoriteSong,
         addSong,
+        editSong,
         removeSong,
         unlockAchievement,
         buyStoreItem,
@@ -1502,6 +1815,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         showToast,
         updateConfig,
         updateGameRecord,
+        addQuizQuestion,
+        removeQuizQuestion,
+        addTimeCapsule,
+        removeTimeCapsule,
+        addCoupleGoal,
+        toggleCoupleGoal,
+        removeCoupleGoal,
+        spinDailyWheel,
         triggerHeartExplosion,
         heartRainTriggerCount,
         resetAllData,

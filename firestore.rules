@@ -42,6 +42,10 @@ service cloud.firestore {
           'gameRecords',
           'customPhotos',
           'customSongs',
+          'customQuizQuestions',
+          'timeCapsules',
+          'coupleGoals',
+          'dailyWheelState',
           'createdAt',
           'updatedAt'
         ])
@@ -50,18 +54,22 @@ service cloud.firestore {
         && data.coins is int && data.coins >= 0 && data.coins <= 500000
         && (!('treeWaterCount' in data) || (data.treeWaterCount is int && data.treeWaterCount >= 0 && data.treeWaterCount <= 500000))
         && (!('currentDailyIndex' in data) || (data.currentDailyIndex is int && data.currentDailyIndex >= 0 && data.currentDailyIndex <= 5000))
-        && (!('config' in data) || (data.config is map && data.config.keys().size() <= 12))
-        && (!('treeState' in data) || (data.treeState is map && data.treeState.keys().size() <= 20))
-        && (!('kitten' in data) || (data.kitten is map && data.kitten.keys().size() <= 40))
+        && (!('config' in data) || (data.config is map && data.config.keys().size() <= 16))
+        && (!('treeState' in data) || (data.treeState is map && data.treeState.keys().size() <= 24))
+        && (!('kitten' in data) || (data.kitten is map && data.kitten.keys().size() <= 45))
         && (!('lettersState' in data) || (data.lettersState is map && data.lettersState.keys().size() <= 10))
         && (!('achievementsState' in data) || (data.achievementsState is map && data.achievementsState.keys().size() <= 60))
-        && (!('storeItemsState' in data) || (data.storeItemsState is map && data.storeItemsState.keys().size() <= 100))
+        && (!('storeItemsState' in data) || (data.storeItemsState is map && data.storeItemsState.keys().size() <= 120))
         && (!('easterEggsState' in data) || (data.easterEggsState is map && data.easterEggsState.keys().size() <= 30))
         && (!('phrasesState' in data) || (data.phrasesState is map && data.phrasesState.keys().size() <= 150))
         && (!('chatMessages' in data) || (data.chatMessages is list && data.chatMessages.size() <= 200))
-        && (!('gameRecords' in data) || (data.gameRecords is map && data.gameRecords.keys().size() <= 20))
+        && (!('gameRecords' in data) || (data.gameRecords is map && data.gameRecords.keys().size() <= 40))
         && (!('customPhotos' in data) || (data.customPhotos is list && data.customPhotos.size() <= 60))
-        && (!('customSongs' in data) || (data.customSongs is list && data.customSongs.size() <= 40));
+        && (!('customSongs' in data) || (data.customSongs is list && data.customSongs.size() <= 40))
+        && (!('customQuizQuestions' in data) || (data.customQuizQuestions is list && data.customQuizQuestions.size() <= 100))
+        && (!('timeCapsules' in data) || (data.timeCapsules is list && data.timeCapsules.size() <= 40))
+        && (!('coupleGoals' in data) || (data.coupleGoals is list && data.coupleGoals.size() <= 80))
+        && (!('dailyWheelState' in data) || (data.dailyWheelState is map && data.dailyWheelState.keys().size() <= 10));
     }
 
     match /couple_worlds/{worldId} {
@@ -100,6 +108,10 @@ service cloud.firestore {
           'gameRecords',
           'customPhotos',
           'customSongs',
+          'customQuizQuestions',
+          'timeCapsules',
+          'coupleGoals',
+          'dailyWheelState',
           'updatedAt'
         ]);
 

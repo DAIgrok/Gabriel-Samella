@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Header } from './Header';
 import { MiniMusicPlayer } from './MiniMusicPlayer';
 import { RelationshipCounter } from './RelationshipCounter';
 import { DailyMessageCard } from './DailyMessageCard';
 import { MemoriesHomeCard } from './MemoriesHomeCard';
+import { HomePhotoLoopCard } from './HomePhotoLoopCard';
+import { DailyWheelModal, formatWheelRemaining } from './DailyWheelModal';
+import { SmartPhoto } from './SmartPhoto';
 import { useApp } from '../context/AppContext';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import {
   Mail,
   Gamepad2,
@@ -19,13 +23,38 @@ import {
   Hourglass,
   ArrowRight,
   Heart,
+  Gift,
+  Target,
+  Lock,
+  Unlock,
+  X,
 } from 'lucide-react';
-import { PET_SPECIES_CATALOG } from '../data/initialData';
+import { COOLDOWN_MS, PET_SPECIES_CATALOG } from '../data/initialData';
 import { getCouplePhotoUrl, REAL_PHOTO_SLOTS } from '../data/mediaAssets';
 
 export const HomeView: React.FC = () => {
-  const { setExtendedView, triggerEasterEgg, treeState, loveTree, kitten, photos, achievements } = useApp();
+  const {
+    setExtendedView,
+    triggerEasterEgg,
+    treeState,
+    loveTree,
+    kitten,
+    photos,
+    achievements,
+    timeCapsules,
+    coupleGoals,
+    dailyWheel,
+  } = useApp();
+  const prefersReducedMotion = useReducedMotion();
+
   const [isCapsuleOpen, setIsCapsuleOpen] = useState(false);
+  const [isWheelOpen, setIsWheelOpen] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const t = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, []);
 
   const activeTree = treeState || loveTree;
   const treeLevel = activeTree?.level ?? 1;
@@ -39,10 +68,16 @@ export const HomeView: React.FC = () => {
   const nextAchMax = nextAch ? Math.max(1, nextAch.maxProgress) : Math.max(1, achievements.length);
   const nextAchPercent = Math.min(100, Math.round((nextAchCurrent / nextAchMax) * 100));
 
-  const calculateCapsuleRemaining = () => {
-    const target = new Date('2028-12-25T00:00:00');
-    const now = new Date();
-    if (now >= target) return 'Pronta para abrir hoje! 🎁';
+  const wheelRemMs = dailyWheel.lastSpinAt
+    ? Math.max(0, dailyWheel.lastSpinAt + COOLDOWN_MS.wheel_spin - nowMs)
+    : 0;
+
+  const completedGoals = coupleGoals.filter((g) => g.completed).length;
+
+  const formatCountdownTo = (unlockDate: string) => {
+    const target = new Date(`${unlockDate}T00:00:00`);
+    const now = new Date(nowMs);
+    if (now >= target) return 'Desbloqueada hoje! 🎁';
 
     let years = target.getFullYear() - now.getFullYear();
     let months = target.getMonth() - now.getMonth();
@@ -58,36 +93,36 @@ export const HomeView: React.FC = () => {
       months += 12;
     }
 
-    const parts = [];
+    const parts: string[] = [];
     if (years > 0) parts.push(`${years} ${years === 1 ? 'ano' : 'anos'}`);
     if (months > 0) parts.push(`${months} ${months === 1 ? 'mês' : 'meses'}`);
     if (days > 0) parts.push(`${days} ${days === 1 ? 'dia' : 'dias'}`);
-
-    return `Faltam ${parts.join(', ')}`;
+    return parts.length > 0 ? `Faltam ${parts.join(', ')}` : 'Abre amanhã!';
   };
+
+  const nextCapsule = timeCapsules[0];
 
   return (
     <div className="w-full space-y-4 md:space-y-5 pb-32 sm:pb-28">
-      {/* 1. Header with Script Title & Diamonds/Settings */}
+      {/* 1. Header */}
       <Header />
 
-      {/* 2. Romantic Hero Section matching reference screenshot */}
-      <section className="relative rounded-3xl overflow-hidden p-6 md:p-8 min-h-[220px] md:min-h-[250px] bg-gradient-to-r from-[#0d041c] via-[#15072e]/90 to-transparent border border-purple-500/20 shadow-[0_12px_40px_rgba(0,0,0,0.5)] flex flex-col justify-between">
-        {/* Blended Real Couple Photo on the Right */}
+      {/* 2. Romantic Hero Section */}
+      <section className="relative rounded-3xl overflow-hidden p-6 md:p-8 min-h-[210px] md:min-h-[240px] bg-gradient-to-r from-[#0d041c] via-[#15072e]/90 to-transparent border border-purple-500/20 shadow-[0_12px_40px_rgba(0,0,0,0.5)] flex flex-col justify-between">
         <div className="absolute top-0 right-0 bottom-0 w-full md:w-2/3 pointer-events-none overflow-hidden opacity-90">
-          <img
+          <SmartPhoto
+            photo={photos[0]}
+            photoIndex={1}
             src={getCouplePhotoUrl(photos, 0, REAL_PHOTO_SLOTS.heroCouple)}
             alt="Gabriel e Samella"
-            className="w-full h-full object-cover object-right md:object-center mix-blend-screen scale-105"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = '/assets/img/1.jpg';
-            }}
+            className="w-full h-full rounded-none"
+            imgClassName="w-full h-full object-cover object-right md:object-center mix-blend-screen scale-105"
+            hideDetails
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[#0d041c] via-[#0d041c]/70 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0d041c] via-transparent to-transparent" />
         </div>
 
-        {/* Top Right: Tilted Floating Handwritten Cursive matching screenshot */}
         <div className="absolute top-4 right-6 text-right select-none pointer-events-none hidden sm:block">
           <div className="font-romantic text-xl md:text-2xl text-pink-200/90 rotate-[-4deg] drop-shadow-[0_0_10px_rgba(244,114,182,0.6)]">
             <div>Juntos</div>
@@ -100,16 +135,13 @@ export const HomeView: React.FC = () => {
           <span className="text-pink-300 text-xs block pr-3 pt-1">♡</span>
         </div>
 
-        {/* Left Side Content: Romantic Welcome Message */}
         <div className="relative z-10 max-w-lg space-y-2.5">
-          <div className="flex items-center gap-2">
-            <h2 className="font-romantic text-3xl sm:text-4xl md:text-5xl text-pink-200 neon-title-glow tracking-wide flex items-center gap-2">
-              Bem-vinda, meu amor
-              <span className="text-pink-400 font-sans text-2xl drop-shadow-[0_0_8px_rgba(244,114,182,0.8)]">
-                ♡
-              </span>
-            </h2>
-          </div>
+          <h2 className="font-romantic text-3xl sm:text-4xl md:text-5xl text-pink-200 neon-title-glow tracking-wide flex items-center gap-2">
+            Bem-vinda, meu amor
+            <span className="text-pink-400 font-sans text-2xl drop-shadow-[0_0_8px_rgba(244,114,182,0.8)]">
+              ♡
+            </span>
+          </h2>
 
           <div className="text-xs sm:text-sm text-purple-200/85 font-normal leading-relaxed space-y-0.5">
             <p>Que bom ter você aqui...</p>
@@ -120,104 +152,151 @@ export const HomeView: React.FC = () => {
             </p>
           </div>
         </div>
-
-        {/* Floating Sparkle Stars */}
-        <div className="absolute left-1/3 top-8 text-pink-300/40 text-sm animate-pulse">✦</div>
-        <div className="absolute left-1/2 bottom-6 text-purple-300/40 text-xs">✧</div>
       </section>
 
-      {/* 3. Row 2: Music Player & Nosso tempo (2 Columns) */}
+      {/* 3. Music Player & Relationship Timer */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <MiniMusicPlayer />
         <RelationshipCounter />
       </section>
 
-      {/* 4. Row 3: Mensagem do dia & Memórias (2 Columns) */}
+      {/* 4. Quadro de Memórias em Loop + Roleta Diária & Metas */}
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+        <div className="lg:col-span-2">
+          <HomePhotoLoopCard />
+        </div>
+
+        <div className="flex flex-col gap-3.5 justify-between">
+          {/* Roleta Diária */}
+          <button
+            type="button"
+            onClick={() => setIsWheelOpen(true)}
+            className="flex-1 text-left rounded-3xl p-4 sm:p-5 bg-gradient-to-br from-[#230b3f]/90 via-[#140628] to-[#0a0217] border border-pink-400/35 hover:border-pink-400/65 shadow-lg flex flex-col justify-between gap-3 cursor-pointer transition-all"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center text-white shadow-[0_0_16px_rgba(236,72,153,0.45)]">
+                <Gift className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-bold text-pink-200 tabular-nums">
+                {wheelRemMs === 0 ? 'Pronta agora! 🎡' : formatWheelRemaining(wheelRemMs)}
+              </span>
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white">Roleta Diária</h3>
+              <p className="text-xs text-purple-200/75 mt-0.5">
+                {wheelRemMs === 0
+                  ? 'Toque para girar e ganhar diamantes surpresa!'
+                  : `Último prêmio: ${dailyWheel.lastPrize || 'Coletado hoje'}`}
+              </p>
+            </div>
+          </button>
+
+          {/* Metas & Sonhos do Casal */}
+          <button
+            type="button"
+            onClick={() => setExtendedView('metas')}
+            className="flex-1 text-left rounded-3xl p-4 sm:p-5 bg-gradient-to-br from-[#190933]/90 to-[#0a0318] border border-purple-500/30 hover:border-pink-400/50 shadow-lg flex flex-col justify-between gap-3 cursor-pointer transition-all"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="w-11 h-11 rounded-2xl bg-purple-900/70 border border-purple-400/30 flex items-center justify-center text-pink-300">
+                <Target className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-mono text-purple-200 tabular-nums">
+                {completedGoals}/{coupleGoals.length} feitos
+              </span>
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white">Metas & Sonhos</h3>
+              <p className="text-xs text-purple-200/75 mt-0.5">
+                Lista dos nossos planos e conquistas futuras ♡
+              </p>
+            </div>
+          </button>
+        </div>
+      </section>
+
+      {/* 5. Mensagem do dia & Memórias */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <DailyMessageCard />
         <MemoriesHomeCard />
       </section>
 
-      {/* 5. Row 4: 4 Action Cards (Cartas, Jogos, Loja, Árvore) matching screenshot */}
+      {/* 6. 4 Action Cards (Cartas, Jogos, Loja, Árvore) */}
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        {/* Cartas */}
         <motion.div
-          whileHover={{ y: -3, scale: 1.02 }}
+          whileHover={prefersReducedMotion ? undefined : { y: -3, scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setExtendedView('cartas')}
           className="rounded-3xl p-5 bg-gradient-to-b from-[#18082f]/90 to-[#0e041c]/95 border border-purple-500/25 shadow-lg flex flex-col items-center text-center cursor-pointer group hover:border-pink-400/40 transition-all"
         >
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-800 to-pink-600 flex items-center justify-center text-white mb-3 shadow-[0_0_15px_rgba(236,72,153,0.35)] group-hover:scale-105 transition-transform">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-800 to-pink-600 flex items-center justify-center text-white mb-3 shadow-[0_0_15px_rgba(236,72,153,0.35)]">
             <Mail className="w-5 h-5 text-pink-100" />
           </div>
           <h4 className="text-sm font-bold text-white tracking-wide mb-1">Cartas</h4>
           <p className="text-[11px] text-purple-300/70 leading-snug">
-            Declarações, segredos e mensagens especiais
+            Pergaminhos antigos, selos e declarações
           </p>
         </motion.div>
 
-        {/* Jogos */}
         <motion.div
-          whileHover={{ y: -3, scale: 1.02 }}
+          whileHover={prefersReducedMotion ? undefined : { y: -3, scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setExtendedView('jogos')}
           className="rounded-3xl p-5 bg-gradient-to-b from-[#18082f]/90 to-[#0e041c]/95 border border-purple-500/25 shadow-lg flex flex-col items-center text-center cursor-pointer group hover:border-purple-400/40 transition-all"
         >
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-800 to-indigo-600 flex items-center justify-center text-white mb-3 shadow-[0_0_15px_rgba(168,85,247,0.35)] group-hover:scale-105 transition-transform">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-800 to-indigo-600 flex items-center justify-center text-white mb-3 shadow-[0_0_15px_rgba(168,85,247,0.35)]">
             <Gamepad2 className="w-5 h-5 text-purple-100" />
           </div>
-          <h4 className="text-sm font-bold text-white tracking-wide mb-1">Jogos</h4>
+          <h4 className="text-sm font-bold text-white tracking-wide mb-1">25 Jogos</h4>
           <p className="text-[11px] text-purple-300/70 leading-snug">
-            Desafios, quizzes e muita diversão
+            Mega Quiz, palavras, tabuleiro e ação
           </p>
         </motion.div>
 
-        {/* Loja */}
         <motion.div
-          whileHover={{ y: -3, scale: 1.02 }}
+          whileHover={prefersReducedMotion ? undefined : { y: -3, scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setExtendedView('loja')}
           className="rounded-3xl p-5 bg-gradient-to-b from-[#18082f]/90 to-[#0e041c]/95 border border-purple-500/25 shadow-lg flex flex-col items-center text-center cursor-pointer group hover:border-pink-400/40 transition-all"
         >
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-800 to-rose-600 flex items-center justify-center text-white mb-3 shadow-[0_0_15px_rgba(244,114,182,0.35)] group-hover:scale-105 transition-transform">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-800 to-rose-600 flex items-center justify-center text-white mb-3 shadow-[0_0_15px_rgba(244,114,182,0.35)]">
             <ShoppingBag className="w-5 h-5 text-rose-100" />
           </div>
           <h4 className="text-sm font-bold text-white tracking-wide mb-1">Loja</h4>
           <p className="text-[11px] text-purple-300/70 leading-snug">
-            Itens, pets e decorações
+            Roupas de pet, vales e acessórios
           </p>
         </motion.div>
 
-        {/* Árvore */}
         <motion.div
-          whileHover={{ y: -3, scale: 1.02 }}
+          whileHover={prefersReducedMotion ? undefined : { y: -3, scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setExtendedView('arvore')}
           className="rounded-3xl p-5 bg-gradient-to-b from-[#18082f]/90 to-[#0e041c]/95 border border-purple-500/25 shadow-lg flex flex-col items-center text-center cursor-pointer group hover:border-teal-400/40 transition-all"
         >
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-800 to-fuchsia-600 flex items-center justify-center text-white mb-3 shadow-[0_0_15px_rgba(217,70,239,0.35)] group-hover:scale-105 transition-transform">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-800 to-fuchsia-600 flex items-center justify-center text-white mb-3 shadow-[0_0_15px_rgba(217,70,239,0.35)]">
             <TreePine className="w-5 h-5 text-pink-100" />
           </div>
           <h4 className="text-sm font-bold text-white tracking-wide mb-1">Árvore</h4>
           <p className="text-[11px] text-purple-300/70 leading-snug">
-            Cuide, evolua e desbloqueie conquistas
+            Cuide para crescer até o nível 10
           </p>
         </motion.div>
       </section>
 
-      {/* 6. Row 5: 3 Interactive Status Cards (Nossa Árvore, Meu Pet, Baú de Surpresas) matching screenshot */}
+      {/* 7. 3 Interactive Status Cards */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
         {/* Card 1: Nossa Árvore */}
-        <div className="rounded-3xl p-4 bg-gradient-to-br from-[#160a2c]/90 to-[#070210]/95 border border-purple-500/25 shadow-lg relative overflow-hidden flex flex-col justify-between">
+        <div className="rounded-3xl p-4 bg-gradient-to-br from-[#160a2c]/90 to-[#070210]/95 border border-purple-500/25 shadow-lg flex flex-col justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0 border border-purple-500/30 bg-purple-950/60 shadow-md">
-              <img
+            <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 border border-purple-500/30 bg-purple-950/60 shadow-md">
+              <SmartPhoto
+                photo={photos[8]}
+                photoIndex={9}
                 src={getCouplePhotoUrl(photos, 8, REAL_PHOTO_SLOTS.homeCardTree)}
                 alt="Nossa Árvore"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/assets/img/9.jpg';
-                }}
+                className="w-full h-full rounded-none"
+                hideDetails
               />
             </div>
             <div className="flex-1 min-w-0 space-y-1.5">
@@ -225,10 +304,7 @@ export const HomeView: React.FC = () => {
                 <Trees className="w-3.5 h-3.5 text-pink-400" />
                 <span>Nossa Árvore</span>
               </div>
-              <div className="text-[11px] text-purple-300/80">
-                Nível {treeLevel}
-              </div>
-              {/* Progress bar */}
+              <div className="text-[11px] text-purple-300/80">Nível {treeLevel}</div>
               <div className="space-y-0.5">
                 <div className="w-full h-1.5 bg-purple-950/80 rounded-full overflow-hidden">
                   <div
@@ -243,6 +319,7 @@ export const HomeView: React.FC = () => {
             </div>
           </div>
           <button
+            type="button"
             onClick={() => setExtendedView('arvore')}
             className="w-full mt-3 min-h-[44px] py-2 rounded-full bg-[#200c3e]/80 hover:bg-[#321262] border border-purple-500/30 text-xs text-purple-200 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
           >
@@ -251,34 +328,33 @@ export const HomeView: React.FC = () => {
           </button>
         </div>
 
-        {/* Card 2: Meu Pet */}
+        {/* Card 2: Mascote Ativo */}
         {(() => {
           const currentPetType = kitten?.petType || 'cat';
-          const currentPetSpecies = PET_SPECIES_CATALOG.find((s) => s.type === currentPetType) || PET_SPECIES_CATALOG[0];
+          const currentPetSpecies =
+            PET_SPECIES_CATALOG.find((s) => s.type === currentPetType) || PET_SPECIES_CATALOG[0];
           const petName = kitten?.name?.trim() || currentPetSpecies.name;
 
           return (
-            <div className="rounded-3xl p-4 bg-gradient-to-br from-[#160a2c]/90 to-[#070210]/95 border border-purple-500/25 shadow-lg relative overflow-hidden flex flex-col items-center justify-between text-center">
+            <div className="rounded-3xl p-4 bg-gradient-to-br from-[#160a2c]/90 to-[#070210]/95 border border-purple-500/25 shadow-lg flex flex-col items-center justify-between text-center">
               <div className="w-full flex items-center justify-between text-xs text-white font-semibold mb-2">
                 <div className="flex items-center gap-1.5">
                   <Cat className="w-3.5 h-3.5 text-pink-400" />
                   <span>Mascote Ativo</span>
                 </div>
-                <span className="text-[10px] text-pink-300 font-medium px-2 py-0.5 rounded-full bg-purple-950/80 border border-purple-500/30">
-                  Nv. {kitten?.level || 1}
-                </span>
+                <span className="text-[11px] text-pink-300 font-mono">Nv. {kitten?.level || 1}</span>
               </div>
 
               <div className="w-20 h-20 rounded-2xl overflow-hidden border border-purple-500/30 shadow-md bg-purple-950/60 my-1 relative flex items-center justify-center">
-                <img
+                <SmartPhoto
+                  photo={photos[9]}
+                  photoIndex={10}
                   src={getCouplePhotoUrl(photos, 9, REAL_PHOTO_SLOTS.homeCardPet)}
                   alt="Meu Pet"
-                  className="w-full h-full object-cover opacity-55 absolute inset-0"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/assets/img/10.jpg';
-                  }}
+                  className="w-full h-full rounded-none opacity-55 absolute inset-0"
+                  hideDetails
                 />
-                <span className="relative z-10 text-3xl filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+                <span className="relative z-10 text-3xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
                   {currentPetSpecies.emoji}
                 </span>
               </div>
@@ -288,15 +364,16 @@ export const HomeView: React.FC = () => {
                   {kitten?.name?.trim() ? `${petName} (${currentPetSpecies.name})` : currentPetSpecies.name}
                 </h4>
                 <p className="text-[11px] text-purple-200/80 capitalize">
-                  {kitten?.name?.trim() ? `Humor: ${kitten?.mood || 'feliz'} 🥰` : 'Toque para escolher um nome'}
+                  Humor: {kitten?.mood || 'feliz'} 🥰
                 </p>
               </div>
 
               <button
+                type="button"
                 onClick={() => setExtendedView('gatinho')}
                 className="w-full min-h-[44px] py-2 rounded-full bg-[#200c3e]/80 hover:bg-[#321262] border border-purple-500/30 text-xs text-purple-200 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
               >
-                <span>{kitten?.name?.trim() ? `Cuidar de ${petName}` : `Cuidar do ${currentPetSpecies.name}`}</span>
+                <span>Cuidar de {petName}</span>
                 <ArrowRight className="w-3 h-3 text-purple-300" />
               </button>
             </div>
@@ -304,7 +381,7 @@ export const HomeView: React.FC = () => {
         })()}
 
         {/* Card 3: Baú de Surpresas */}
-        <div className="rounded-3xl p-4 bg-gradient-to-br from-[#160a2c]/90 to-[#070210]/95 border border-purple-500/25 shadow-lg relative overflow-hidden flex flex-col items-center justify-between text-center">
+        <div className="rounded-3xl p-4 bg-gradient-to-br from-[#160a2c]/90 to-[#070210]/95 border border-purple-500/25 shadow-lg flex flex-col items-center justify-between text-center">
           <div className="w-full flex items-center justify-between text-xs text-white font-semibold mb-2">
             <div className="flex items-center gap-1.5">
               <Package className="w-3.5 h-3.5 text-pink-400" />
@@ -314,21 +391,20 @@ export const HomeView: React.FC = () => {
           </div>
 
           <div className="w-20 h-20 rounded-2xl overflow-hidden border border-purple-500/30 shadow-md bg-purple-950/60 my-1">
-            <img
+            <SmartPhoto
+              photo={photos[10]}
+              photoIndex={11}
               src={getCouplePhotoUrl(photos, 10, REAL_PHOTO_SLOTS.homeCardChest)}
               alt="Baú de Surpresas"
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = '/assets/img/11.jpg';
-              }}
+              className="w-full h-full rounded-none"
+              hideDetails
             />
           </div>
 
-          <p className="text-xs text-purple-200/80 my-2">
-            Pode ter uma recompensa te esperando...
-          </p>
+          <p className="text-xs text-purple-200/80 my-2">Pode ter uma recompensa te esperando...</p>
 
           <button
+            type="button"
             onClick={() => triggerEasterEgg('egg-chest')}
             className="w-full min-h-[44px] py-2 rounded-full bg-[#200c3e]/80 hover:bg-[#321262] border border-purple-500/30 text-xs text-purple-200 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
           >
@@ -338,9 +414,8 @@ export const HomeView: React.FC = () => {
         </div>
       </section>
 
-      {/* 7. Row 6: 3 Bottom Info Cards */}
+      {/* 8. Bottom Info Cards */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-        {/* Card 1: Próxima conquista (Dynamic real data) */}
         <div
           onClick={() => setExtendedView('conquistas')}
           className="rounded-2xl p-3.5 bg-[#120524]/80 border border-purple-500/20 flex items-center gap-3 cursor-pointer hover:border-pink-400/40 transition-colors"
@@ -352,9 +427,7 @@ export const HomeView: React.FC = () => {
             <span className="text-[10px] text-purple-300/70 block uppercase font-medium">
               Próxima conquista
             </span>
-            <span className="text-xs font-semibold text-white truncate block">
-              {nextAchTitle}
-            </span>
+            <span className="text-xs font-semibold text-white truncate block">{nextAchTitle}</span>
             <div className="w-full h-1 bg-purple-950 rounded-full overflow-hidden mt-1.5">
               <div
                 className="h-full bg-gradient-to-r from-purple-400 to-pink-400 rounded-full transition-all duration-300"
@@ -367,7 +440,6 @@ export const HomeView: React.FC = () => {
           </span>
         </div>
 
-        {/* Card 2: Dia especial */}
         <div className="rounded-2xl p-3.5 bg-[#120524]/80 border border-purple-500/20 flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-purple-900/50 flex items-center justify-center text-pink-300 border border-purple-400/25 flex-shrink-0">
             <Calendar className="w-4 h-4 text-pink-400" />
@@ -379,94 +451,135 @@ export const HomeView: React.FC = () => {
             <span className="text-xs font-semibold text-white truncate block">
               Nosso aniversário
             </span>
-            <span className="text-[11px] text-pink-300 font-medium">
-              12 de junho ♡
-            </span>
+            <span className="text-[11px] text-pink-300 font-medium">12 de junho ♡</span>
           </div>
         </div>
 
-        {/* Card 3: Cápsula do tempo */}
-        <div
+        <button
+          type="button"
           onClick={() => setIsCapsuleOpen(true)}
-          className="rounded-2xl p-3.5 bg-[#120524]/80 border border-purple-500/20 flex items-center gap-3 cursor-pointer hover:border-pink-400/40 transition-colors group"
+          className="text-left rounded-2xl p-3.5 bg-[#120524]/80 border border-purple-500/20 flex items-center gap-3 cursor-pointer hover:border-pink-400/40 transition-colors group"
         >
-          <div className="w-9 h-9 rounded-xl bg-purple-900/50 flex items-center justify-center text-pink-300 border border-purple-400/25 flex-shrink-0 group-hover:scale-105 transition-transform">
+          <div className="w-9 h-9 rounded-xl bg-purple-900/50 flex items-center justify-center text-pink-300 border border-purple-400/25 flex-shrink-0">
             <Hourglass className="w-4 h-4 text-pink-400" />
           </div>
           <div className="flex-1 min-w-0">
             <span className="text-[10px] text-purple-300/70 block uppercase font-medium">
-              Cápsula do tempo
+              Cápsulas do tempo ({timeCapsules.length})
             </span>
             <span className="text-xs font-semibold text-white truncate block">
-              25 de dezembro de 2028
+              {nextCapsule ? nextCapsule.title : 'Nenhuma cápsula'}
             </span>
-            <span className="text-[10px] text-purple-300/70 block">
-              {calculateCapsuleRemaining()}
+            <span className="text-[10px] text-purple-300/75 block">
+              {nextCapsule ? formatCountdownTo(nextCapsule.unlockDate) : 'Toque para abrir'}
             </span>
           </div>
-        </div>
+        </button>
       </section>
 
-      {/* 8. Bottom Footer: Delicate Line & Romantic Signature matching screenshot */}
+      {/* Footer */}
       <footer className="pt-6 pb-2 text-center select-none relative">
         <div className="relative flex items-center justify-center mb-2">
           <div className="w-full border-t border-purple-500/20 max-w-md mx-auto" />
-          <div className="absolute px-3 bg-[#080214] text-pink-400 text-xs">
-            ✧
-          </div>
+          <div className="absolute px-3 bg-[#080214] text-pink-400 text-xs">✧</div>
         </div>
         <p className="font-romantic text-xl text-pink-300/80 drop-shadow-[0_0_8px_rgba(244,114,182,0.4)]">
           Nosso Mundo ♡ ♡
         </p>
       </footer>
 
-      {/* Time Capsule Modal */}
-      {isCapsuleOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
-          onClick={() => setIsCapsuleOpen(false)}
-        >
+      {/* Multi-Message Time Capsule Portaled Modal */}
+      {isCapsuleOpen &&
+        createPortal(
           <div
-            className="w-full max-w-md rounded-3xl p-6 bg-gradient-to-br from-[#1b0933] via-[#100424] to-[#080214] border border-purple-500/40 shadow-2xl space-y-4 text-center relative"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+            onClick={() => setIsCapsuleOpen(false)}
           >
-            <div className="w-16 h-16 rounded-full mx-auto bg-purple-900/40 border border-purple-400/30 flex items-center justify-center text-pink-300 shadow-[0_0_20px_rgba(244,114,182,0.4)]">
-              <Hourglass className="w-8 h-8 text-pink-400 animate-pulse" />
-            </div>
-
-            <div className="space-y-1">
-              <h3 className="text-xl font-bold text-white font-display">
-                Cápsula do Tempo Selada 🔒
-              </h3>
-              <p className="text-xs text-purple-300/80 font-mono">
-                Data de Abertura: 25 de Dezembro de 2028
-              </p>
-              <p className="text-xs text-pink-300 font-semibold pt-1">
-                {calculateCapsuleRemaining()}
-              </p>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-purple-950/40 border border-purple-500/25 text-xs text-purple-200/90 leading-relaxed text-left space-y-2">
-              <p className="font-semibold text-pink-200 flex items-center gap-1.5">
-                <span>💌 Carta Guardada para o Futuro:</span>
-              </p>
-              <p className="italic">
-                "Esta cápsula guarda os nossos primeiros sonhos, promessas e o amor imenso que nasceu em 12 de junho de 2023. No Natal de 2028, vamos abrir juntos para celebrar tudo o que já conquistamos lado a lado."
-              </p>
-              <p className="text-right text-[11px] text-pink-300 font-romantic text-base">
-                — Gabriel & Samella ♡
-              </p>
-            </div>
-
-            <button
-              onClick={() => setIsCapsuleOpen(false)}
-              className="w-full py-2.5 rounded-full bg-gradient-to-r from-purple-700 to-pink-600 text-white text-xs font-bold shadow-lg hover:brightness-110 active:scale-95 transition-all cursor-pointer"
+            <div
+              className="w-full max-w-md max-h-[88vh] overflow-y-auto rounded-3xl p-5 sm:p-6 bg-gradient-to-br from-[#1b0933] via-[#100424] to-[#080214] border border-purple-500/40 shadow-2xl space-y-4 relative"
+              onClick={(e) => e.stopPropagation()}
             >
-              Manter Selada com Amor ♡
-            </button>
-          </div>
-        </div>
-      )}
+              <button
+                type="button"
+                onClick={() => setIsCapsuleOpen(false)}
+                aria-label="Fechar cápsula"
+                className="absolute top-4 right-4 min-w-[40px] min-h-[40px] rounded-full bg-white/10 hover:bg-white/20 text-purple-200 hover:text-white flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="text-center space-y-1">
+                <div className="w-14 h-14 rounded-full mx-auto bg-purple-900/40 border border-purple-400/30 flex items-center justify-center text-pink-300">
+                  <Hourglass className="w-7 h-7 text-pink-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white font-display">
+                  Cápsulas do Tempo
+                </h3>
+                <p className="text-xs text-purple-300/80">
+                  Mensagens futuras protegidas pela data de abertura
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {timeCapsules.map((cap) => {
+                  const unlocked = nowMs >= new Date(`${cap.unlockDate}T00:00:00`).getTime();
+                  return (
+                    <div
+                      key={cap.id}
+                      className={`p-4 rounded-2xl border space-y-2 ${
+                        unlocked
+                          ? 'bg-emerald-950/30 border-emerald-400/40'
+                          : 'bg-purple-950/50 border-purple-500/25'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                            {unlocked ? (
+                              <Unlock className="w-4 h-4 text-emerald-300 shrink-0" />
+                            ) : (
+                              <Lock className="w-4 h-4 text-pink-300 shrink-0" />
+                            )}
+                            <span>{cap.title}</span>
+                          </h4>
+                          <p className="text-[11px] font-mono text-purple-300/75 mt-0.5">
+                            Abre em {new Date(`${cap.unlockDate}T00:00:00`).toLocaleDateString('pt-BR')} ·{' '}
+                            {formatCountdownTo(cap.unlockDate)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {unlocked ? (
+                        <div className="text-xs text-purple-100 leading-relaxed pt-1 space-y-1.5">
+                          <p className="italic">"{cap.message}"</p>
+                          <p className="text-right font-romantic text-base text-pink-300">
+                            — {cap.author} ♡
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-purple-300/70 italic">
+                          🔒 Mensagem selada por {cap.author}. Só poderá ser lida na data marcada!
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsCapsuleOpen(false)}
+                className="w-full min-h-[44px] rounded-full bg-gradient-to-r from-purple-700 to-pink-600 text-white text-xs font-bold shadow-lg cursor-pointer"
+              >
+                Fechar Cápsulas
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Daily Wheel Modal */}
+      {isWheelOpen && <DailyWheelModal onClose={() => setIsWheelOpen(false)} />}
     </div>
   );
 };

@@ -1519,10 +1519,6 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
   return (
     <div className="relative w-full h-64 sm:h-76 rounded-3xl overflow-hidden cursor-grab active:cursor-grabbing select-none touch-none flex items-center justify-center">
       <div ref={containerRef} className="w-full h-full" />
-
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-[#0d051d]/90 border border-white/15 text-[10px] text-pink-100 pointer-events-none flex items-center gap-1.5 shadow-md whitespace-nowrap">
-        <span>Arraste 360° • Toque no pet para carinho 🐾</span>
-      </div>
     </div>
   );
 };

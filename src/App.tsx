@@ -16,15 +16,28 @@ import { KittenView } from './components/views/KittenView';
 import { StoreView } from './components/views/StoreView';
 import { ChatView } from './components/views/ChatView';
 import { ProfileView } from './components/views/ProfileView';
+import { GoalsView } from './components/views/GoalsView';
 import { EasterEggModal } from './components/EasterEggModal';
 import { HeartRain } from './components/HeartRain';
 import { Sidebar } from './components/Sidebar';
 import { AdminSettingsModal } from './components/views/AdminSettingsModal';
+import { PhotoVisualizerModal } from './components/PhotoVisualizerModal';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 
 const MainAppContent: React.FC = () => {
-  const { isLoading, isLocked, extendedView, setExtendedView, toastMessage, isSettingsOpen, setIsSettingsOpen } = useApp();
+  const {
+    isLoading,
+    isLocked,
+    extendedView,
+    setExtendedView,
+    toastMessage,
+    isSettingsOpen,
+    setIsSettingsOpen,
+    selectedPhoto,
+    setSelectedPhoto,
+    photos,
+  } = useApp();
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -62,14 +75,14 @@ const MainAppContent: React.FC = () => {
           </div>
         )}
 
-        {/* Dynamic View Router with smooth transitions */}
+        {/* Dynamic View Router with smooth compositor transitions */}
         <AnimatePresence mode="wait">
           <motion.div
             key={extendedView}
-            initial={{ opacity: 0, filter: 'blur(8px)', y: 5 }}
-            animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
-            exit={{ opacity: 0, filter: 'blur(8px)', y: -5 }}
-            transition={{ duration: 0.4, ease: 'easeInOut' }}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
             className="w-full h-full"
           >
             {extendedView === 'inicio' && <HomeView />}
@@ -79,6 +92,7 @@ const MainAppContent: React.FC = () => {
             {extendedView === 'frases' && <PhrasesView />}
             {extendedView === 'arvore' && <LoveTreeView />}
             {extendedView === 'conquistas' && <AchievementsView />}
+            {extendedView === 'metas' && <GoalsView />}
             {extendedView === 'jogos' && <GamesView />}
             {extendedView === 'gatinho' && <KittenView />}
             {extendedView === 'loja' && <StoreView />}
@@ -100,6 +114,14 @@ const MainAppContent: React.FC = () => {
       <AnimatePresence>
         {isSettingsOpen && <AdminSettingsModal onClose={() => setIsSettingsOpen(false)} />}
       </AnimatePresence>
+
+      {/* Global Photo Visualizer Modal */}
+      <PhotoVisualizerModal
+        photo={selectedPhoto}
+        photos={photos}
+        onClose={() => setSelectedPhoto(null)}
+        onSelectPhoto={(p) => setSelectedPhoto(p)}
+      />
 
       {/* Global Toast Notification */}
       <AnimatePresence>

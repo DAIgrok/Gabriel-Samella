@@ -4,6 +4,7 @@ export interface CoupleConfig {
   anniversaryDate: string; // e.g. "2023-06-12T00:00:00"
   subtitle: string;
   passcode: string;
+  creatorPasscode?: string;
   themeGlowColor: string;
 }
 
@@ -20,6 +21,7 @@ export interface Letter {
   hiddenSecret?: string;
   unsealedAt?: string;
   attachedPhotoIndex?: number;
+  authorName?: string;
 }
 
 export interface Phrase {
@@ -43,11 +45,12 @@ export interface MemoryPhoto {
   title: string;
   subtitle: string;
   date: string;
-  url: string; // Local primary url (e.g. /assets/img/1.jpg) or drive url
+  url: string; // Local primary url (e.g. /assets/img/1.jpg), idb:// key, or external url
   localPath?: string;
   driveUrl?: string;
   aspect?: 'portrait' | 'landscape' | 'square';
   isFavorite?: boolean;
+  inHomeLoop?: boolean;
   caption?: string;
 }
 
@@ -58,7 +61,7 @@ export interface Song {
   duration: number; // in seconds
   durationFormatted: string;
   coverUrl: string;
-  audioUrl?: string; // Path like /assets/audio/Te-Vivo.mp3
+  audioUrl?: string; // Path like /assets/audio/Te-Vivo.mp3 or idb:// key
   lyrics?: string[];
   isFavorite?: boolean;
   isLocalAvailable?: boolean;
@@ -171,6 +174,7 @@ export interface KittenState {
   lastSlept?: string;
   lastBathed?: string;
   lastPlayed?: string;
+  cooldowns?: Record<string, number>;
   level: number;
   xp: number;
   maxXp: number;
@@ -199,6 +203,7 @@ export interface LoveTreeState {
   lightsEnabled: boolean;
   creaturesUnlocked: string[];
   lastWatered?: string;
+  cooldowns?: Record<string, number>;
 }
 
 export interface ChatMessage {
@@ -223,6 +228,42 @@ export interface EasterEgg {
   discoveredAt?: string;
 }
 
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation?: string;
+  category?: string;
+  isCustom?: boolean;
+}
+
+export interface TimeCapsuleItem {
+  id: string;
+  title: string;
+  message: string;
+  unlockDate: string; // YYYY-MM-DD
+  author: string;
+  createdAt: string;
+}
+
+export interface CoupleGoal {
+  id: string;
+  title: string;
+  category: string;
+  icon: string;
+  completed: boolean;
+  completedAt?: string;
+  targetDate?: string;
+}
+
+export interface DailyWheelState {
+  lastSpinAt: number;
+  lastPrize?: string;
+  totalSpins: number;
+}
+
 export type ActiveTab = 'inicio' | 'cartas' | 'fotos' | 'musica' | 'perfil';
-export type ExtendedView = ActiveTab | 'arvore' | 'conquistas' | 'jogos' | 'gatinho' | 'loja' | 'conversas' | 'frases' | 'config';
+export type ExtendedView = ActiveTab | 'arvore' | 'conquistas' | 'jogos' | 'gatinho' | 'loja' | 'conversas' | 'frases' | 'metas' | 'config';
+
 

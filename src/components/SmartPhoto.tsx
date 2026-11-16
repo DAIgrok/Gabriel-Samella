@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { Heart, Sparkles } from 'lucide-react';
 import { MemoryPhoto } from '../types';
+import { useResolvedMediaUrl } from '../services/localMediaStore';
 
 interface SmartPhotoProps {
   photo?: MemoryPhoto;
@@ -53,7 +54,8 @@ export const SmartPhoto: React.FC<SmartPhotoProps> = ({
   const [hasFailedAll, setHasFailedAll] = useState<boolean>(false);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
-  const currentSrc = candidateUrls[candidateIdx] || `/assets/photos/${index}.jpg`;
+  const rawCurrentSrc = candidateUrls[candidateIdx] || `/assets/photos/${index}.jpg`;
+  const resolvedSrc = useResolvedMediaUrl(rawCurrentSrc);
 
   useEffect(() => {
     setCandidateIdx(0);
@@ -90,24 +92,26 @@ export const SmartPhoto: React.FC<SmartPhotoProps> = ({
     >
       {!hasFailedAll ? (
         <>
-          <img
-            src={currentSrc}
-            alt={alt}
-            onError={handleError}
-            onLoad={handleLoad}
-            referrerPolicy="no-referrer"
-            loading="lazy"
-            className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
-              isLoaded ? 'opacity-100 filter-none' : 'opacity-0 scale-95'
-            } ${imgClassName}`}
-          />
+          {resolvedSrc && (
+            <img
+              src={resolvedSrc}
+              alt={alt}
+              onError={handleError}
+              onLoad={handleLoad}
+              referrerPolicy="no-referrer"
+              loading="lazy"
+              className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
+                isLoaded ? 'opacity-100 filter-none' : 'opacity-0 scale-95'
+              } ${imgClassName}`}
+            />
+          )}
 
           {/* Shimmer loading placeholder while loading */}
           {!isLoaded && (
             <div className="absolute inset-0 bg-gradient-to-tr from-purple-950/70 via-pink-950/40 to-indigo-950/70 animate-pulse flex items-center justify-center">
               <div className="flex flex-col items-center gap-2 text-pink-300/60">
                 <Sparkles className="w-5 h-5 animate-spin" />
-                <span className="text-[11px] font-mono">Carregando foto #{index}...</span>
+                <span className="text-[11px] font-mono">Carregando...</span>
               </div>
             </div>
           )}
@@ -121,9 +125,7 @@ export const SmartPhoto: React.FC<SmartPhotoProps> = ({
           <span className="text-xs font-bold text-pink-100 line-clamp-1 font-display">{title}</span>
           <span className="text-[10px] text-pink-300/70 mt-0.5">{date}</span>
           {!hideDetails && (
-            <span className="mt-2 text-[9px] px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-300/80 border border-pink-500/20 font-mono">
-              public/assets/img/{index}.jpg
-            </span>
+            <span className="mt-2 text-[10px] text-pink-300/75">Nosso Momento ♡</span>
           )}
         </div>
       )}

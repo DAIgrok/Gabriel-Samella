@@ -15,14 +15,15 @@ import {
   Settings,
   X,
   Heart,
-  Sparkles,
   ChevronRight,
+  Target,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { ActiveTab, ExtendedView } from '../types';
 import { PET_SPECIES_CATALOG } from '../data/initialData';
 import { getCouplePhotoUrl, REAL_PHOTO_SLOTS } from '../data/mediaAssets';
+import { SmartPhoto } from './SmartPhoto';
 
 export const Navigation: React.FC = () => {
   const {
@@ -56,12 +57,13 @@ export const Navigation: React.FC = () => {
     { id: 'musica', label: 'Nosso Player de Música', icon: Music, color: 'text-indigo-400' },
     { id: 'arvore', label: 'Árvore do Amor', icon: Trees, color: 'text-teal-300' },
     { id: 'conquistas', label: 'Conquistas & Selos', icon: Trophy, color: 'text-amber-300' },
-    { id: 'jogos', label: 'Jogos do Casal', icon: Gamepad2, color: 'text-indigo-400' },
+    { id: 'metas', label: 'Metas & Sonhos', icon: Target, color: 'text-pink-300' },
+    { id: 'jogos', label: '25 Jogos do Casal', icon: Gamepad2, color: 'text-indigo-400' },
     { id: 'gatinho', label: `Mascote (${petDisplayName})`, icon: Cat, color: 'text-pink-300', badge: kitten.hunger < 35 ? 'Fome!' : undefined },
     { id: 'loja', label: 'Loja do Amor', icon: ShoppingBag, color: 'text-rose-400', badge: `${coins} 💎` },
     { id: 'conversas', label: 'Conversas & Recados', icon: MessageCircle, color: 'text-purple-300' },
     { id: 'frases', label: '50+ Frases Românticas', icon: BookHeart, color: 'text-pink-300' },
-    { id: 'config', label: 'Configurações & Conteúdo', icon: Settings, color: 'text-slate-300' },
+    { id: 'config', label: 'Configurações (Criador)', icon: Settings, color: 'text-slate-300' },
   ];
 
   return (
@@ -154,14 +156,14 @@ export const Navigation: React.FC = () => {
               {/* Drawer Header */}
               <div className="flex items-center justify-between pb-4 border-b border-purple-500/20">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full p-0.5 bg-gradient-to-tr from-purple-600 via-pink-500 to-rose-400 shadow-[0_0_15px_rgba(244,114,182,0.5)]">
-                    <img
+                  <div className="w-12 h-12 rounded-full p-0.5 bg-gradient-to-tr from-purple-600 via-pink-500 to-rose-400 shadow-[0_0_15px_rgba(244,114,182,0.5)] overflow-hidden">
+                    <SmartPhoto
+                      photo={photos[3]}
+                      photoIndex={4}
                       src={getCouplePhotoUrl(photos, 3, REAL_PHOTO_SLOTS.drawerAvatar)}
                       alt="Gabriel e Samella"
-                      className="w-full h-full object-cover rounded-full"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/assets/img/4.jpg';
-                      }}
+                      className="w-full h-full rounded-full"
+                      hideDetails
                     />
                   </div>
                   <div>

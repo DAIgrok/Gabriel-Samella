@@ -1163,11 +1163,6 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
   return (
     <div className="relative w-full h-80 sm:h-96 rounded-3xl overflow-hidden cursor-grab active:cursor-grabbing select-none touch-none">
       <div ref={containerRef} className="w-full h-full" />
-
-      {/* Crisp solid HUD hint without backdrop-blur over WebGL */}
-      <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-[#0d051d]/90 border border-white/15 text-[10px] text-purple-100 pointer-events-none flex items-center gap-1.5 shadow-md whitespace-nowrap">
-        <span>Arraste 360° • Pinça p/ zoom • Toque nos frutos 🍎</span>
-      </div>
     </div>
   );
 };
