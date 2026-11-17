@@ -18,6 +18,7 @@ import {
   ShowerHead,
   X,
   Orbit,
+  Camera,
 } from 'lucide-react';
 import {
   useApp,
@@ -61,6 +62,7 @@ export const KittenView: React.FC = () => {
     triggerEasterEgg,
     triggerHeartExplosion,
     setActiveTab: setNavTab,
+    captureVirtualPhoto,
   } = useApp();
 
   const prefersReducedMotion = useReducedMotion();
@@ -70,6 +72,7 @@ export const KittenView: React.FC = () => {
   const [petViewMode, setPetViewMode] = useState<'design' | '3d' | '2d'>('design');
   const [danceMove, setDanceMove] = useState<PetDanceMove>('idle');
   const danceTimerRef = useRef<number | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const [wardrobeSlotFilter, setWardrobeSlotFilter] = useState<
     'all' | 'hat' | 'glasses' | 'collar' | 'outfit' | 'accessory'
   >('all');
@@ -1063,14 +1066,32 @@ export const KittenView: React.FC = () => {
           )}
 
           {petViewMode === '3d' ? (
-            <PetCanvas3D
-              petType={currentPetType}
-              kitten={kitten}
-              danceMove={danceMove}
-              hasSoapFoam={soapFoamActive}
-              isShowering={isShowering}
-              onPetTouch={handleBodyClick}
-            />
+            <div ref={stageRef} className="w-full relative">
+              <PetCanvas3D
+                petType={currentPetType}
+                kitten={kitten}
+                danceMove={danceMove}
+                hasSoapFoam={soapFoamActive}
+                isShowering={isShowering}
+                onPetTouch={handleBodyClick}
+              />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  captureVirtualPhoto(
+                    stageRef.current,
+                    `Mascote: ${displayName}`,
+                    `${currentSpecies.name} · Nível ${kitten.level || 1}`
+                  );
+                }}
+                className="absolute bottom-2 right-2 z-30 min-h-[38px] px-3 rounded-full bg-black/70 border border-pink-400/40 text-pink-200 hover:text-white text-[11px] font-bold flex items-center gap-1.5 shadow-lg cursor-pointer"
+                title="Fotografar Mascote 3D para Galeria"
+              >
+                <Camera className="w-3.5 h-3.5 text-pink-400" />
+                <span>Foto Virtual</span>
+              </button>
+            </div>
           ) : (
             <PetCharacter
               kitten={kitten}

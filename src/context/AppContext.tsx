@@ -10,46 +10,69 @@ import { User } from 'firebase/auth';
 import {
   Achievement,
   ActiveTab,
+  AquariumLightMode,
+  AquariumState,
   CalendarEvent,
   ChatMessage,
   CoupleConfig,
   CoupleGoal,
+  CouplePerson,
   DailyMessage,
   DailyWheelState,
+  DreamHouseState,
   EasterEgg,
   ExtendedView,
+  HouseFloorTheme,
+  HouseRoomId,
+  HouseWallTheme,
   KittenState,
+  LegacyResetBackup,
   Letter,
   LoveTreeState,
   MemoryPhoto,
+  MissionsState,
   PetType,
   Phrase,
   QuizQuestion,
+  SeasonalEventId,
+  SeasonalState,
   Song,
   StoreItem,
   TimeCapsuleItem,
 } from '../types';
 import {
+  AQUARIUM_SPECIES_CATALOG,
   COOLDOWN_MS,
+  HOUSE_FURNITURE_CATALOG,
+  HOUSE_WALL_THEMES,
   INITIAL_ACHIEVEMENTS,
+  INITIAL_AQUARIUM_STATE,
   INITIAL_CALENDAR_EVENTS,
   INITIAL_CHAT_MESSAGES,
   INITIAL_COUPLE_CONFIG,
   INITIAL_COUPLE_GOALS,
   INITIAL_DAILY_MESSAGES,
   INITIAL_DAILY_WHEEL,
+  INITIAL_DREAM_HOUSE,
   INITIAL_EASTER_EGGS,
   INITIAL_KITTEN,
   INITIAL_LETTERS,
+  INITIAL_MISSIONS_STATE,
   INITIAL_PHOTOS,
   INITIAL_PHRASES,
+  INITIAL_SEASONAL_STATE,
   INITIAL_SONGS,
   INITIAL_STORE_ITEMS,
   INITIAL_TIME_CAPSULES,
   INITIAL_TREE_STATE,
+  INTEGRATED_MISSIONS_CATALOG,
+  LEGACY_ARCHIVE_GOALS,
+  LEGACY_ARCHIVE_LETTERS,
   PET_SPECIES_CATALOG,
 } from '../data/initialData';
 import { soundEngine } from '../utils/audioSynth';
+import { resolveActiveSeasonalEvent, SeasonalThemeMeta } from '../utils/seasonalEngine';
+import { captureCanvasSnapshotWithFrame } from '../utils/virtualCamera';
 import { realAudio } from '../services/realAudio';
 import { deleteMediaBlob } from '../services/localMediaStore';
 import {
@@ -166,6 +189,14 @@ interface AppContextType {
   coupleGoals: CoupleGoal[];
   calendarEvents: CalendarEvent[];
   dailyWheel: DailyWheelState;
+  dreamHouse: DreamHouseState;
+  aquarium: AquariumState;
+  seasonalState: SeasonalState;
+  missionsState: MissionsState;
+  legacyResetBackup?: LegacyResetBackup;
+  activeSeasonalEvent: SeasonalEventId;
+  activeSeasonalMeta: SeasonalThemeMeta;
+  isSeasonalPreview: boolean;
 
   // Google Drive & Auth
   isGoogleConnected: boolean;
@@ -193,6 +224,16 @@ interface AppContextType {
   toggleFavoriteLetter: (id: string) => void;
   setSelectedLetter: (letter: Letter | null) => void;
   addCustomLetter: (letter: Omit<Letter, 'id' | 'read' | 'isFavorite'>) => void;
+  sendTwoWayLetter: (payload: {
+    sender: CouplePerson;
+    recipient: CouplePerson;
+    title: string;
+    excerpt?: string;
+    content: string;
+    isPrivate?: boolean;
+    tags?: string[];
+  }) => void;
+  deleteLetter: (id: string) => void;
   toggleFavoritePhoto: (id: string) => void;
   setSelectedPhoto: (photo: MemoryPhoto | null) => void;
   updatePhotoUrl: (id: string, url: string, title?: string) => void;
@@ -249,6 +290,27 @@ interface AppContextType {
   updateCalendarEvent: (id: string, updates: Partial<CalendarEvent>) => void;
   removeCalendarEvent: (id: string) => void;
   spinDailyWheel: (prizeLabel: string, coinReward: number) => boolean;
+  // Dream House 3D
+  setHouseRoom: (room: HouseRoomId) => void;
+  setHouseWallTheme: (theme: HouseWallTheme) => void;
+  setHouseFloorTheme: (theme: HouseFloorTheme) => void;
+  toggleHouseLights: () => void;
+  toggleHouseFireplace: () => void;
+  toggleHouseFurniturePlacement: (furnitureId: string) => void;
+  recordHouseVisit: () => void;
+  interactHouseFurniture: (furnitureId: string) => void;
+  // Aquarium 3D
+  feedAquarium: () => boolean;
+  cleanAquarium: () => boolean;
+  toggleAquariumBubbles: () => void;
+  setAquariumLightMode: (mode: AquariumLightMode) => void;
+  toggleAquariumFish: (fishId: string) => void;
+  toggleAquariumDecor: (decorId: string) => void;
+  // Seasonal & Missions & Virtual Camera
+  setSeasonalMode: (mode: 'auto' | 'preview', previewEvent?: SeasonalEventId) => void;
+  claimSeasonalProp: (propId: string, rewardCoins: number, label: string) => boolean;
+  claimIntegratedMission: (missionId: string) => boolean;
+  captureVirtualPhoto: (containerEl: HTMLElement | null, sceneTitle: string, subtitle: string) => boolean;
   triggerHeartExplosion: (x?: number, y?: number) => void;
   heartRainTriggerCount: number;
   resetAllData: () => Promise<void>;
@@ -342,8 +404,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     savedData?.currentDailyIndex ?? 0
   );
 
-  const [letters, setLetters] = useState<Letter[]>(
-    mergeInitialItems(savedData?.letters, INITIAL_LETTERS)
+  // One-time idempotent backup & controlled reset for pre-existing local data
+  const initialLegacyBackup: LegacyResetBackup | undefined = (() => {
+    if (savedData?.legacyResetBackup) {
+      return savedData.legacyResetBackup as LegacyResetBackup;
+    }
+    if (savedData && (Array.isArray(savedData.letters) || Array.isArray(savedData.coupleGoals))) {
+      return {
+        version: 1,
+        backedUpAt: new Date().toISOString(),
+        letters: Array.isArray(savedData.letters) ? savedData.letters : LEGACY_ARCHIVE_LETTERS,
+        coupleGoals: Array.isArray(savedData.coupleGoals) ? savedData.coupleGoals : LEGACY_ARCHIVE_GOALS,
+      };
+    }
+    return undefined;
+  })();
+
+  const shouldRunInitialLocalReset = Boolean(savedData && !savedData.legacyResetBackup);
+
+  const [legacyResetBackup, setLegacyResetBackup] = useState<LegacyResetBackup | undefined>(
+    initialLegacyBackup
+  );
+
+  const [letters, setLetters] = useState<Letter[]>(() =>
+    shouldRunInitialLocalReset ? INITIAL_LETTERS : (savedData?.letters || INITIAL_LETTERS)
   );
   const [selectedLetter, setSelectedLetter] = useState<Letter | null>(null);
 
@@ -393,8 +477,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [timeCapsules, setTimeCapsules] = useState<TimeCapsuleItem[]>(
     mergeInitialItems(savedData?.timeCapsules, INITIAL_TIME_CAPSULES)
   );
-  const [coupleGoals, setCoupleGoals] = useState<CoupleGoal[]>(
-    mergeInitialItems(savedData?.coupleGoals, INITIAL_COUPLE_GOALS)
+  const [coupleGoals, setCoupleGoals] = useState<CoupleGoal[]>(() =>
+    shouldRunInitialLocalReset ? INITIAL_COUPLE_GOALS : (savedData?.coupleGoals || INITIAL_COUPLE_GOALS)
   );
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(
     mergeInitialItems(savedData?.calendarEvents, INITIAL_CALENDAR_EVENTS)
@@ -407,6 +491,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       lastSpinAt: Math.max(base.lastSpinAt || 0, floor),
     };
   });
+  const [dreamHouse, setDreamHouse] = useState<DreamHouseState>(() => ({
+    ...INITIAL_DREAM_HOUSE,
+    ...(savedData?.dreamHouse || {}),
+    placedFurniture: {
+      ...INITIAL_DREAM_HOUSE.placedFurniture,
+      ...(savedData?.dreamHouse?.placedFurniture || {}),
+    },
+  }));
+  const [aquarium, setAquarium] = useState<AquariumState>(() => ({
+    ...INITIAL_AQUARIUM_STATE,
+    ...(savedData?.aquarium || {}),
+  }));
+  const [seasonalState, setSeasonalState] = useState<SeasonalState>(() => ({
+    ...INITIAL_SEASONAL_STATE,
+    ...(savedData?.seasonalState || {}),
+  }));
+  const [missionsState, setMissionsState] = useState<MissionsState>(() => ({
+    ...INITIAL_MISSIONS_STATE,
+    ...(savedData?.missionsState || {}),
+  }));
   const [toastMessage, setToastMessage] = useState<{
     text: string;
     icon?: string;
@@ -495,26 +599,53 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setChatMessages(cloud.chatMessages);
     }
 
-    if (cloud.lettersState) {
-      const readSet = new Set(cloud.lettersState.readIds || []);
-      const favSet = new Set(cloud.lettersState.favoriteIds || []);
-      const unsealedMap = cloud.lettersState.unsealedMap || {};
-      readSet.forEach((id) => claimedLetterIdsRef.current.add(id));
-      const baseLetters = INITIAL_LETTERS.map((l) => {
-        const isRead = readSet.has(l.id);
-        return {
-          ...l,
-          read: isRead,
-          rewardClaimed: isRead || l.rewardClaimed,
-          isFavorite: favSet.has(l.id),
-          unsealedAt: unsealedMap[l.id] || l.unsealedAt,
-        };
-      });
-      const custom = (cloud.lettersState.customLetters || []).map((l) => {
+    // One-time controlled reset & backup of legacy cloud data
+    if (cloud.legacyResetBackup) {
+      setLegacyResetBackup(cloud.legacyResetBackup);
+      const nextLetters = (cloud.lettersState?.customLetters || []).map((l) => {
         if (l.read || l.rewardClaimed) claimedLetterIdsRef.current.add(l.id);
         return l;
       });
-      setLetters([...custom, ...baseLetters]);
+      setLetters(nextLetters);
+
+      if (Array.isArray(cloud.coupleGoals)) {
+        cloud.coupleGoals.forEach((g) => {
+          if (g.completed || g.rewardClaimed) claimedGoalIdsRef.current.add(g.id);
+        });
+        setCoupleGoals(cloud.coupleGoals);
+      }
+    } else {
+      // Cloud doc predates v4 reset: archive pre-existing letters & goals once and start clean
+      const readSet = new Set(cloud.lettersState?.readIds || []);
+      const favSet = new Set(cloud.lettersState?.favoriteIds || []);
+      const unsealedMap = cloud.lettersState?.unsealedMap || {};
+      const archivedClassic = LEGACY_ARCHIVE_LETTERS.map((l) => ({
+        ...l,
+        read: readSet.has(l.id),
+        rewardClaimed: readSet.has(l.id) || l.rewardClaimed,
+        isFavorite: favSet.has(l.id),
+        unsealedAt: unsealedMap[l.id] || l.unsealedAt,
+      }));
+      const archivedLetters = [
+        ...(cloud.lettersState?.customLetters || []),
+        ...archivedClassic,
+      ];
+      const archivedGoals =
+        cloud.coupleGoals && cloud.coupleGoals.length > 0
+          ? cloud.coupleGoals
+          : LEGACY_ARCHIVE_GOALS;
+
+      const migrationBackup: LegacyResetBackup = {
+        version: 1,
+        backedUpAt: new Date().toISOString(),
+        letters: archivedLetters,
+        coupleGoals: archivedGoals,
+      };
+      setLegacyResetBackup(migrationBackup);
+      claimedLetterIdsRef.current.clear();
+      claimedGoalIdsRef.current.clear();
+      setLetters([]);
+      setCoupleGoals([]);
     }
 
     if (cloud.achievementsState) {
@@ -597,13 +728,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setTimeCapsules((prev) => mergeInitialItems(cloud.timeCapsules, prev));
     }
 
-    if (cloud.coupleGoals && cloud.coupleGoals.length > 0) {
-      cloud.coupleGoals.forEach((g) => {
-        if (g.completed || g.rewardClaimed) claimedGoalIdsRef.current.add(g.id);
-      });
-      setCoupleGoals(cloud.coupleGoals);
-    }
-
     if (cloud.calendarEvents && cloud.calendarEvents.length > 0) {
       setCalendarEvents(cloud.calendarEvents);
     }
@@ -619,6 +743,38 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setDailyWheel({
         ...cloud.dailyWheelState,
         lastSpinAt: mergedSpinAt,
+      });
+    }
+
+    if (cloud.dreamHouseState) {
+      setDreamHouse({
+        ...INITIAL_DREAM_HOUSE,
+        ...cloud.dreamHouseState,
+        placedFurniture: {
+          ...INITIAL_DREAM_HOUSE.placedFurniture,
+          ...(cloud.dreamHouseState.placedFurniture || {}),
+        },
+      });
+    }
+
+    if (cloud.aquariumState) {
+      setAquarium({
+        ...INITIAL_AQUARIUM_STATE,
+        ...cloud.aquariumState,
+      });
+    }
+
+    if (cloud.seasonalState) {
+      setSeasonalState({
+        ...INITIAL_SEASONAL_STATE,
+        ...cloud.seasonalState,
+      });
+    }
+
+    if (cloud.missionsState) {
+      setMissionsState({
+        ...INITIAL_MISSIONS_STATE,
+        ...cloud.missionsState,
       });
     }
   };
@@ -779,6 +935,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       coupleGoals,
       calendarEvents,
       dailyWheel,
+      dreamHouse,
+      aquarium,
+      seasonalState,
+      missionsState,
+      legacyResetBackup,
     };
 
     try {
@@ -824,6 +985,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         coupleGoals,
         calendarEvents,
         dailyWheelState: dailyWheel,
+        dreamHouseState: dreamHouse,
+        aquariumState: aquarium,
+        seasonalState,
+        missionsState,
+        legacyResetBackup,
         initialPhotoIds: INITIAL_PHOTO_IDS,
         initialSongIds: INITIAL_SONG_IDS,
       })
@@ -860,6 +1026,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     coupleGoals,
     calendarEvents,
     dailyWheel,
+    dreamHouse,
+    aquarium,
+    seasonalState,
+    missionsState,
+    legacyResetBackup,
   ]);
 
   // Passive gentle energy recharge while pet sleeps in Quarto
@@ -1138,9 +1309,79 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       id: `letter-${Date.now()}`,
       read: true,
       isFavorite: false,
+      sentAt: newLetterData.sentAt || new Date().toISOString(),
     };
     setLetters((prev) => [newLetter, ...prev]);
     showToast('Nova carta adicionada com sucesso! 💌');
+  };
+
+  const sendTwoWayLetter = ({
+    sender,
+    recipient,
+    title,
+    excerpt,
+    content,
+    isPrivate = false,
+    tags = ['Com Amor'],
+  }: {
+    sender: CouplePerson;
+    recipient: CouplePerson;
+    title: string;
+    excerpt?: string;
+    content: string;
+    isPrivate?: boolean;
+    tags?: string[];
+  }) => {
+    const cleanTitle = title.trim();
+    const cleanContent = content.trim();
+    if (!cleanTitle || !cleanContent) return;
+
+    soundEngine.playSparkle();
+    const now = new Date();
+    const formattedDate = now.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const autoExcerpt =
+      excerpt && excerpt.trim()
+        ? excerpt.trim()
+        : cleanContent.slice(0, 110) + (cleanContent.length > 110 ? '...' : '');
+
+    const newLetter: Letter = {
+      id: `letter-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      title: cleanTitle,
+      date: formattedDate,
+      sentAt: now.toISOString(),
+      excerpt: autoExcerpt,
+      content: cleanContent,
+      read: false,
+      isFavorite: false,
+      rewardCoins: 5,
+      tags,
+      authorName: sender,
+      sender,
+      recipient,
+      isPrivate,
+    };
+
+    setLetters((prev) => [newLetter, ...prev]);
+    setMissionsState((prev) => ({
+      ...prev,
+      twoWayLettersSent: (prev.twoWayLettersSent || 0) + 1,
+    }));
+    triggerHeartExplosion(0.5, 0.45);
+    showToast(`Carta de ${sender} enviada para ${recipient}!`, '💌');
+  };
+
+  const deleteLetter = (id: string) => {
+    soundEngine.playHeartPop();
+    setLetters((prev) => prev.filter((l) => l.id !== id));
+    setSelectedLetter((cur) => (cur?.id === id ? null : cur));
+    showToast('Carta removida da caixa de correspondência.');
   };
 
   const toggleFavoritePhoto = (id: string) => {
@@ -1404,6 +1645,66 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           }
           return prev;
         });
+      }
+
+      // Handle Dream House 3D furniture & wall unlocks
+      if (item.slotType === 'house-furniture' && item.targetId) {
+        const furnId = item.targetId;
+        const furnInfo = HOUSE_FURNITURE_CATALOG.find((f) => f.id === furnId);
+        setDreamHouse((prev) => {
+          const unlocked = prev.unlockedFurnitureIds.includes(furnId)
+            ? prev.unlockedFurnitureIds
+            : [...prev.unlockedFurnitureIds, furnId];
+          const room = furnInfo?.room || 'sala';
+          const currentRoomPlaced = prev.placedFurniture[room] || [];
+          const nextRoomPlaced = currentRoomPlaced.includes(furnId)
+            ? currentRoomPlaced
+            : [...currentRoomPlaced, furnId];
+          return {
+            ...prev,
+            unlockedFurnitureIds: unlocked,
+            placedFurniture: {
+              ...prev.placedFurniture,
+              [room]: nextRoomPlaced,
+            },
+            comfortLevel: Math.min(10, prev.comfortLevel + 1),
+          };
+        });
+      }
+
+      if (item.slotType === 'house-wall' && item.targetId) {
+        const wallId = item.targetId as HouseWallTheme;
+        setDreamHouse((prev) => ({
+          ...prev,
+          wallTheme: wallId,
+        }));
+      }
+
+      // Handle Aquarium 3D fish & decor unlocks
+      if (item.slotType === 'aquarium-fish' && item.targetId) {
+        const fishId = item.targetId;
+        setAquarium((prev) => ({
+          ...prev,
+          unlockedFishIds: prev.unlockedFishIds.includes(fishId)
+            ? prev.unlockedFishIds
+            : [...prev.unlockedFishIds, fishId],
+          activeFishIds: prev.activeFishIds.includes(fishId)
+            ? prev.activeFishIds
+            : [...prev.activeFishIds, fishId],
+        }));
+      }
+
+      if (item.slotType === 'aquarium-decor' && item.targetId) {
+        const decorId = item.targetId;
+        setAquarium((prev) => ({
+          ...prev,
+          unlockedDecorIds: prev.unlockedDecorIds.includes(decorId)
+            ? prev.unlockedDecorIds
+            : [...prev.unlockedDecorIds, decorId],
+          activeDecorIds: prev.activeDecorIds.includes(decorId)
+            ? prev.activeDecorIds
+            : [...prev.activeDecorIds, decorId],
+        }));
       }
 
       soundEngine.playSparkle();
@@ -2139,6 +2440,282 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return true;
   };
 
+  // --- DREAM HOUSE 3D ACTIONS ---
+  const setHouseRoom = (room: HouseRoomId) => {
+    soundEngine.playHeartPop();
+    setDreamHouse((prev) => ({ ...prev, activeRoom: room }));
+  };
+
+  const setHouseWallTheme = (theme: HouseWallTheme) => {
+    const wallMeta = HOUSE_WALL_THEMES.find((w) => w.id === theme);
+    const storeItem = storeItems.find((s) => s.slotType === 'house-wall' && s.targetId === theme);
+    if (wallMeta && !wallMeta.unlockedByDefault && storeItem && !storeItem.purchased) {
+      showToast(`Desbloqueie "${wallMeta.label}" na Loja ou Missões!`, '🏠');
+      return;
+    }
+    soundEngine.playSparkle();
+    setDreamHouse((prev) => ({ ...prev, wallTheme: theme }));
+  };
+
+  const setHouseFloorTheme = (theme: HouseFloorTheme) => {
+    soundEngine.playHeartPop();
+    setDreamHouse((prev) => ({ ...prev, floorTheme: theme }));
+  };
+
+  const toggleHouseLights = () => {
+    soundEngine.playHeartPop();
+    setDreamHouse((prev) => ({ ...prev, lightsOn: !prev.lightsOn }));
+  };
+
+  const toggleHouseFireplace = () => {
+    soundEngine.playSparkle();
+    setDreamHouse((prev) => ({ ...prev, fireplaceLit: !prev.fireplaceLit }));
+  };
+
+  const toggleHouseFurniturePlacement = (furnitureId: string) => {
+    const item = HOUSE_FURNITURE_CATALOG.find((f) => f.id === furnitureId);
+    if (!item) return;
+    if (!dreamHouse.unlockedFurnitureIds.includes(furnitureId)) {
+      showToast(`Adquira "${item.name}" na Loja do Amor primeiro!`, '✨');
+      return;
+    }
+    soundEngine.playHeartPop();
+    setDreamHouse((prev) => {
+      const current = prev.placedFurniture[item.room] || [];
+      const exists = current.includes(furnitureId);
+      const next = exists ? current.filter((id) => id !== furnitureId) : [...current, furnitureId];
+      return {
+        ...prev,
+        placedFurniture: {
+          ...prev.placedFurniture,
+          [item.room]: next,
+        },
+        comfortLevel: Math.max(1, Math.min(10, next.length + Object.values(prev.placedFurniture).flat().length)),
+      };
+    });
+  };
+
+  const recordHouseVisit = () => {
+    setMissionsState((prev) => ({
+      ...prev,
+      houseVisits: (prev.houseVisits || 0) + 1,
+    }));
+  };
+
+  const interactHouseFurniture = (furnitureId: string) => {
+    soundEngine.playSparkle();
+    setDreamHouse((prev) => ({
+      ...prev,
+      lastInteractedAt: new Date().toISOString(),
+      ...(furnitureId === 'house-fireplace' ? { fireplaceLit: !prev.fireplaceLit } : {}),
+      ...(furnitureId === 'house-lamp' ? { lightsOn: !prev.lightsOn } : {}),
+      ...(furnitureId === 'house-piano' ? { musicNoteGlow: !prev.musicNoteGlow } : {}),
+    }));
+    const item = HOUSE_FURNITURE_CATALOG.find((f) => f.id === furnitureId);
+    if (item) {
+      showToast(`${item.name}: ${item.description}`, '🏠');
+    }
+  };
+
+  // --- AQUARIUM 3D ACTIONS ---
+  // Auto-sync owned aquatic pets into aquarium species
+  useEffect(() => {
+    const owned = kitten.ownedPets || [];
+    const linked = AQUARIUM_SPECIES_CATALOG.filter(
+      (f) => f.linkedPetType && owned.includes(f.linkedPetType)
+    ).map((f) => f.id);
+    if (linked.length === 0) return;
+
+    setAquarium((prev) => {
+      const missingUnlock = linked.filter((id) => !prev.unlockedFishIds.includes(id));
+      const missingActive = linked.filter((id) => !prev.activeFishIds.includes(id));
+      if (missingUnlock.length === 0 && missingActive.length === 0) return prev;
+      return {
+        ...prev,
+        unlockedFishIds: [...prev.unlockedFishIds, ...missingUnlock],
+        activeFishIds: [...prev.activeFishIds, ...missingActive],
+      };
+    });
+  }, [kitten.ownedPets]);
+
+  const feedAquarium = (): boolean => {
+    soundEngine.playEat();
+    triggerHeartExplosion(0.5, 0.45);
+    setAquarium((prev) => ({
+      ...prev,
+      fishHunger: Math.min(100, (prev.fishHunger || 60) + 25),
+      lastFedAt: new Date().toISOString(),
+      feedCount: (prev.feedCount || 0) + 1,
+    }));
+    setMissionsState((prev) => ({
+      ...prev,
+      aquariumFeeds: (prev.aquariumFeeds || 0) + 1,
+    }));
+    addCoins(2, 'Alimentou os peixinhos do Aquário');
+    return true;
+  };
+
+  const cleanAquarium = (): boolean => {
+    soundEngine.playWaterDrop();
+    setAquarium((prev) => ({
+      ...prev,
+      waterClarity: 100,
+      lastCleanedAt: new Date().toISOString(),
+    }));
+    addCoins(2, 'Água do Aquário cristalina');
+    return true;
+  };
+
+  const toggleAquariumBubbles = () => {
+    soundEngine.playHeartPop();
+    setAquarium((prev) => ({ ...prev, bubblesActive: !prev.bubblesActive }));
+  };
+
+  const setAquariumLightMode = (mode: AquariumLightMode) => {
+    soundEngine.playSparkle();
+    setAquarium((prev) => ({ ...prev, lightMode: mode }));
+  };
+
+  const toggleAquariumFish = (fishId: string) => {
+    if (!aquarium.unlockedFishIds.includes(fishId)) {
+      const sp = AQUARIUM_SPECIES_CATALOG.find((f) => f.id === fishId);
+      showToast(
+        sp?.linkedPetType
+          ? `Adote o ${sp.name} na Loja de Mascotes para vê-lo nadando aqui!`
+          : `Desbloqueie "${sp?.name || 'Espécie'}" na Loja do Amor!`,
+        '🐠'
+      );
+      return;
+    }
+    soundEngine.playHeartPop();
+    setAquarium((prev) => {
+      const active = prev.activeFishIds.includes(fishId);
+      return {
+        ...prev,
+        activeFishIds: active
+          ? prev.activeFishIds.filter((id) => id !== fishId)
+          : [...prev.activeFishIds, fishId],
+      };
+    });
+  };
+
+  const toggleAquariumDecor = (decorId: string) => {
+    if (!aquarium.unlockedDecorIds.includes(decorId)) {
+      showToast('Adquira esta decoração na Loja do Amor!', '🪸');
+      return;
+    }
+    soundEngine.playHeartPop();
+    setAquarium((prev) => {
+      const active = prev.activeDecorIds.includes(decorId);
+      return {
+        ...prev,
+        activeDecorIds: active
+          ? prev.activeDecorIds.filter((id) => id !== decorId)
+          : [...prev.activeDecorIds, decorId],
+      };
+    });
+  };
+
+  // --- SEASONAL EVENTS, MISSIONS & VIRTUAL CAMERA ---
+  const resolvedSeasonal = resolveActiveSeasonalEvent(
+    seasonalState,
+    config.anniversaryDate,
+    calendarEvents
+  );
+
+  const setSeasonalMode = (mode: 'auto' | 'preview', previewEvent: SeasonalEventId = 'normal') => {
+    soundEngine.playHeartPop();
+    setSeasonalState((prev) => ({
+      ...prev,
+      mode,
+      previewEvent,
+      memoriesSeen:
+        mode === 'preview' && !prev.memoriesSeen.includes(previewEvent)
+          ? [...prev.memoriesSeen, previewEvent]
+          : prev.memoriesSeen,
+    }));
+    showToast(
+      mode === 'auto'
+        ? 'Eventos sazonais no modo Automático!'
+        : `Prévia ativada: ${resolveActiveSeasonalEvent({ ...seasonalState, mode, previewEvent }, config.anniversaryDate, calendarEvents).meta.label}`,
+      '✨'
+    );
+  };
+
+  const claimSeasonalProp = (propId: string, rewardCoins: number, label: string): boolean => {
+    if (seasonalState.claimedProps.includes(propId)) {
+      soundEngine.playHeartPop();
+      showToast(`${label} — mimo já coletado nesta temporada!`, '✨');
+      return false;
+    }
+    setSeasonalState((prev) => ({
+      ...prev,
+      claimedProps: prev.claimedProps.includes(propId) ? prev.claimedProps : [...prev.claimedProps, propId],
+    }));
+    triggerHeartExplosion(0.5, 0.3);
+    addCoins(rewardCoins, label);
+    return true;
+  };
+
+  const claimIntegratedMission = (missionId: string): boolean => {
+    if (missionsState.claimedIds.includes(missionId)) return false;
+    const mission = INTEGRATED_MISSIONS_CATALOG.find((m) => m.id === missionId);
+    if (!mission) return false;
+
+    setMissionsState((prev) => ({
+      ...prev,
+      claimedIds: [...prev.claimedIds, missionId],
+    }));
+
+    if (missionId === 'mis-house-decorator') {
+      setDreamHouse((prev) => ({
+        ...prev,
+        unlockedFurnitureIds: prev.unlockedFurnitureIds.includes('house-bookshelf')
+          ? prev.unlockedFurnitureIds
+          : [...prev.unlockedFurnitureIds, 'house-bookshelf'],
+      }));
+    }
+
+    if (missionId === 'mis-aquarium-keeper') {
+      setAquarium((prev) => ({
+        ...prev,
+        waterClarity: 100,
+      }));
+    }
+
+    triggerHeartExplosion(0.5, 0.4);
+    addCoins(mission.rewardCoins, `Missão: ${mission.title}`);
+    return true;
+  };
+
+  const captureVirtualPhoto = (
+    containerEl: HTMLElement | null,
+    sceneTitle: string,
+    subtitle: string
+  ): boolean => {
+    const shot = captureCanvasSnapshotWithFrame(containerEl, sceneTitle, subtitle);
+    if (!shot) {
+      showToast('Aguarde a cena 3D carregar para tirar a foto!', '📸');
+      return false;
+    }
+    addPhoto({
+      title: `${sceneTitle} ♡`,
+      subtitle,
+      date: new Date().toLocaleDateString('pt-BR'),
+      url: shot.dataUrl,
+      sourceType: 'upload',
+      aspect: shot.aspect,
+      inHomeLoop: true,
+      caption: `Registro do nosso universo 3D — ${sceneTitle} ♡`,
+    });
+    setMissionsState((prev) => ({
+      ...prev,
+      virtualSnapshotsTaken: (prev.virtualSnapshotsTaken || 0) + 1,
+    }));
+    triggerHeartExplosion(0.5, 0.4);
+    return true;
+  };
+
   const resetAllData = async () => {
     setJourneyStarted(false);
     localStorage.removeItem(STORAGE_KEY);
@@ -2197,6 +2774,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         coupleGoals,
         calendarEvents,
         dailyWheel,
+        dreamHouse,
+        aquarium,
+        seasonalState,
+        missionsState,
+        legacyResetBackup,
+        activeSeasonalEvent: resolvedSeasonal.activeEvent,
+        activeSeasonalMeta: resolvedSeasonal.meta,
+        isSeasonalPreview: resolvedSeasonal.isPreview,
         isGoogleConnected,
         googleUser,
         isDriveSyncing,
@@ -2220,6 +2805,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         toggleFavoriteLetter,
         setSelectedLetter,
         addCustomLetter,
+        sendTwoWayLetter,
+        deleteLetter,
         toggleFavoritePhoto,
         setSelectedPhoto,
         updatePhotoUrl,
@@ -2276,6 +2863,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         updateCalendarEvent,
         removeCalendarEvent,
         spinDailyWheel,
+        setHouseRoom,
+        setHouseWallTheme,
+        setHouseFloorTheme,
+        toggleHouseLights,
+        toggleHouseFireplace,
+        toggleHouseFurniturePlacement,
+        recordHouseVisit,
+        interactHouseFurniture,
+        feedAquarium,
+        cleanAquarium,
+        toggleAquariumBubbles,
+        setAquariumLightMode,
+        toggleAquariumFish,
+        toggleAquariumDecor,
+        setSeasonalMode,
+        claimSeasonalProp,
+        claimIntegratedMission,
+        captureVirtualPhoto,
         triggerHeartExplosion,
         heartRainTriggerCount,
         resetAllData,

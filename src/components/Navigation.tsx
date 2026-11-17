@@ -25,6 +25,12 @@ import { ActiveTab, ExtendedView } from '../types';
 import { PET_SPECIES_CATALOG } from '../data/initialData';
 import { getCouplePhotoUrl, REAL_PHOTO_SLOTS } from '../data/mediaAssets';
 import { SmartPhoto } from './SmartPhoto';
+import {
+  AquariumCoralIcon,
+  DiamondGemIcon,
+  DreamHouseCrestIcon,
+  MissionCompassIcon,
+} from './icons/CustomIcons';
 
 export const Navigation: React.FC = () => {
   const {
@@ -53,6 +59,9 @@ export const Navigation: React.FC = () => {
 
   const drawerItems: { id: ExtendedView; label: string; icon: React.ElementType; color: string; badge?: string }[] = [
     { id: 'inicio', label: 'Página Inicial', icon: Home, color: 'text-pink-400' },
+    { id: 'casa', label: 'Casa dos Sonhos 3D', icon: DreamHouseCrestIcon, color: 'text-pink-300', badge: '3D' },
+    { id: 'aquario', label: 'Aquário Mágico 3D', icon: AquariumCoralIcon, color: 'text-cyan-300', badge: '3D' },
+    { id: 'missoes', label: 'Missões & Sazonal', icon: MissionCompassIcon, color: 'text-amber-300' },
     { id: 'cartas', label: 'Cartas de Amor', icon: Mail, color: 'text-pink-400' },
     { id: 'fotos', label: 'Galeria de Fotos', icon: ImageIcon, color: 'text-purple-400' },
     { id: 'musica', label: 'Nosso Player de Música', icon: Music, color: 'text-indigo-400' },
@@ -62,7 +71,7 @@ export const Navigation: React.FC = () => {
     { id: 'calendario', label: 'Calendário do Casal', icon: CalendarDays, color: 'text-pink-300' },
     { id: 'jogos', label: '25 Jogos do Casal', icon: Gamepad2, color: 'text-indigo-400' },
     { id: 'gatinho', label: `Mascote (${petDisplayName})`, icon: Cat, color: 'text-pink-300', badge: kitten.hunger < 35 ? 'Fome!' : undefined },
-    { id: 'loja', label: 'Loja do Amor', icon: ShoppingBag, color: 'text-rose-400', badge: `${coins} 💎` },
+    { id: 'loja', label: 'Loja do Amor', icon: ShoppingBag, color: 'text-rose-400', badge: `${coins}` },
     { id: 'conversas', label: 'Conversas & Recados', icon: MessageCircle, color: 'text-purple-300' },
     { id: 'frases', label: '50+ Frases Românticas', icon: BookHeart, color: 'text-pink-300' },
     { id: 'config', label: 'Configurações (Criador)', icon: Settings, color: 'text-slate-300' },
@@ -190,12 +199,12 @@ export const Navigation: React.FC = () => {
               {/* Balance Box */}
               <div className="my-4 p-3.5 rounded-2xl glass border border-white/10 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="text-xl">💎</span>
+                  <DiamondGemIcon className="w-5 h-5 text-pink-300" />
                   <div>
                     <span className="text-[10px] text-white/40 block uppercase tracking-wider">
                       Saldo de Amor
                     </span>
-                    <span className="text-sm font-semibold text-white">{coins} Diamantes</span>
+                    <span className="text-sm font-semibold text-white tabular-nums">{coins} Diamantes</span>
                   </div>
                 </div>
 

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Heart, Clock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { VISUAL_ASSETS } from '../data/visualAssets';
+import { PumpkinCrestIcon, SnowflakeCrestIcon } from './icons/CustomIcons';
 
 interface DetailedTimeDiff {
   years: number;
@@ -86,7 +88,13 @@ function calculateDetailedElapsed(startIso: string): DetailedTimeDiff {
 }
 
 export const RelationshipCounter: React.FC = () => {
-  const { config, triggerEasterEgg, triggerHeartExplosion } = useApp();
+  const {
+    config,
+    triggerEasterEgg,
+    triggerHeartExplosion,
+    activeSeasonalEvent,
+    claimSeasonalProp,
+  } = useApp();
   const startIso = config.anniversaryDate || '2023-06-12T00:00:00';
 
   const [timeDiff, setTimeDiff] = useState<DetailedTimeDiff>(() =>
@@ -132,30 +140,80 @@ export const RelationshipCounter: React.FC = () => {
     { value: pad(timeDiff.seconds), label: 'segundos' },
   ];
 
-  return (
-    <div className="rounded-3xl p-4 sm:p-5 bg-gradient-to-br from-[#160a2c]/90 via-[#0e051c]/90 to-[#070210]/95 border border-purple-500/25 shadow-[0_10px_35px_rgba(0,0,0,0.6)] relative overflow-hidden backdrop-blur-xl flex flex-col justify-between">
-      {/* Top Header */}
-      <div className="flex items-center justify-between mb-2.5 gap-2">
-        <div className="flex items-center gap-2">
-          <Heart className="w-4 h-4 text-pink-400 stroke-[2.2]" />
-          <h3 className="text-sm font-semibold text-white tracking-wide">
-            Quanto tempo estamos juntos
-          </h3>
-        </div>
+  const borderTheme =
+    activeSeasonalEvent === 'natal'
+      ? 'border-amber-400/45 shadow-[0_10px_40px_rgba(251,191,36,0.18)]'
+      : activeSeasonalEvent === 'halloween'
+      ? 'border-orange-500/45 shadow-[0_10px_40px_rgba(249,115,22,0.18)]'
+      : activeSeasonalEvent === 'namorados'
+      ? 'border-rose-400/45 shadow-[0_10px_40px_rgba(251,113,133,0.22)]'
+      : 'border-purple-500/25 shadow-[0_10px_35px_rgba(0,0,0,0.6)]';
 
-        <div className="flex items-center gap-2">
-          <span className="px-2 py-0.5 rounded-full bg-pink-500/15 border border-pink-400/30 text-[10px] font-bold text-pink-200 tabular-nums">
-            {timeDiff.totalDays} dias no total
+  return (
+    <div className="relative pt-2">
+      {/* Papai Noel ilustrado sentado no topo do contador durante a temporada de Natal */}
+      {activeSeasonalEvent === 'natal' && (
+        <button
+          type="button"
+          onClick={() =>
+            claimSeasonalProp(
+              'santa-counter-topper',
+              12,
+              'Presente do Papai Noel no Contador!'
+            )
+          }
+          title="Toque no Papai Noel para receber um mimo de Natal"
+          className="absolute -top-7 right-4 z-20 flex items-end gap-2 group cursor-pointer"
+        >
+          <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#1a0a2e]/95 border border-amber-300/45 text-[10px] font-bold text-amber-200 shadow-lg">
+            <SnowflakeCrestIcon className="w-3 h-3 text-sky-200" />
+            <span>Natal Encantado</span>
           </span>
-          <button
-            onClick={handleHeartClick}
-            className="text-pink-400/70 hover:text-pink-300 transition-colors cursor-pointer"
-            title="Surpresa do coração"
+          <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-amber-300/60 shadow-[0_6px_22px_rgba(251,191,36,0.45)] bg-[#140724] group-hover:scale-105 transition-transform">
+            <img
+              src={VISUAL_ASSETS.santaCounterTopper}
+              alt="Papai Noel no contador"
+              className="w-full h-full object-cover"
+            />
+          </div>
+        </button>
+      )}
+
+      <div
+        className={`rounded-3xl p-4 sm:p-5 bg-gradient-to-br from-[#160a2c]/90 via-[#0e051c]/90 to-[#070210]/95 border ${borderTheme} relative overflow-hidden backdrop-blur-xl flex flex-col justify-between`}
+      >
+        {/* Top Header */}
+        <div className="flex items-center justify-between mb-2.5 gap-2">
+          <div className="flex items-center gap-2">
+            {activeSeasonalEvent === 'halloween' ? (
+              <PumpkinCrestIcon className="w-4 h-4 text-orange-400" />
+            ) : activeSeasonalEvent === 'natal' ? (
+              <SnowflakeCrestIcon className="w-4 h-4 text-sky-300" />
+            ) : (
+              <Heart className="w-4 h-4 text-pink-400 stroke-[2.2]" />
+            )}
+            <h3 className="text-sm font-semibold text-white tracking-wide">
+              Quanto tempo estamos juntos
+            </h3>
+          </div>
+
+          <div
+            className={`flex items-center gap-2 ${
+              activeSeasonalEvent === 'natal' ? 'pr-16 sm:pr-20' : ''
+            }`}
           >
-            <Heart className="w-3.5 h-3.5" />
-          </button>
+            <span className="px-2 py-0.5 rounded-full bg-pink-500/15 border border-pink-400/30 text-[10px] font-bold text-pink-200 tabular-nums">
+              {timeDiff.totalDays} dias no total
+            </span>
+            <button
+              onClick={handleHeartClick}
+              className="text-pink-400/70 hover:text-pink-300 transition-colors cursor-pointer"
+              title="Surpresa do coração"
+            >
+              <Heart className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
-      </div>
 
       {/* Detailed Chronometer: Years / Months / Days + Hours / Minutes / Seconds */}
       <div className="space-y-2 my-1">
@@ -225,6 +283,7 @@ export const RelationshipCounter: React.FC = () => {
         <span className="font-romantic text-base sm:text-lg text-pink-300/90 drop-shadow-[0_0_8px_rgba(244,114,182,0.4)]">
           E que venham muitos mais.... ♡
         </span>
+      </div>
       </div>
     </div>
   );

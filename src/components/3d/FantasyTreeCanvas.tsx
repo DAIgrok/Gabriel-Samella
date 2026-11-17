@@ -157,6 +157,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: true,
+      preserveDrawingBuffer: true,
       powerPreference: 'high-performance',
     });
 

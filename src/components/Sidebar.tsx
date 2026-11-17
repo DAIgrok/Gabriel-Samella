@@ -14,14 +14,22 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ExtendedView } from '../types';
+import {
+  AquariumCoralIcon,
+  DreamHouseCrestIcon,
+  MissionCompassIcon,
+} from './icons/CustomIcons';
 
 export const Sidebar: React.FC = () => {
   const { extendedView, setExtendedView, isDrawerOpen, setIsDrawerOpen } = useApp();
 
   const navItems: { id: ExtendedView; label: string; icon: React.ElementType }[] = [
     { id: 'inicio', label: 'Início', icon: Home },
+    { id: 'casa', label: 'Casa 3D', icon: DreamHouseCrestIcon },
+    { id: 'aquario', label: 'Aquário', icon: AquariumCoralIcon },
     { id: 'gatinho', label: 'Meu Pet', icon: Cat },
     { id: 'arvore', label: 'Nossa Árvore', icon: Trees },
+    { id: 'missoes', label: 'Missões', icon: MissionCompassIcon },
     { id: 'loja', label: 'Loja', icon: ShoppingBag },
     { id: 'cartas', label: 'Cartas', icon: Mail },
     { id: 'jogos', label: '25 Jogos', icon: Gamepad2 },

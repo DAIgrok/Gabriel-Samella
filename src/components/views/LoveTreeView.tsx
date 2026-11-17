@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Trees,
@@ -12,6 +12,7 @@ import {
   X,
   ChevronRight,
   Orbit,
+  Camera,
 } from 'lucide-react';
 import {
   useApp,
@@ -76,8 +77,10 @@ export const LoveTreeView: React.FC = () => {
     showToast,
     triggerHeartExplosion,
     storeItems,
+    captureVirtualPhoto,
   } = useApp();
 
+  const stageRef = useRef<HTMLDivElement>(null);
   const currentLevel = treeState.level || 1;
   const maxXp = treeState.maxXp || 100;
   const currentXp = treeState.xp || 0;
@@ -465,28 +468,45 @@ export const LoveTreeView: React.FC = () => {
         {/* Clean Unobstructed Tree Stage */}
         <div className="relative w-full my-1">
           {treeViewMode === '3d' ? (
-            <FantasyTreeCanvas
-              level={currentLevel}
-              isWatering={isWatering}
-              isSunbathing={isSunbathing}
-              isPruning={isPruning}
-              hasSakuraTheme={hasSakuraTheme}
-              hasGoldenApples={hasGoldenApples}
-              hasFairyLights={hasFairyLights}
-              hasSwing={hasSwing}
-              hasLanterns={hasLanterns}
-              hasCrystals={hasCrystals}
-              hasButterfly={hasButterfly}
-              hasSongbird={hasSongbird}
-              ribbons={allRibbons}
-              harvestedFruits={harvestedFruits}
-              onHarvestFruit={handleHarvestFruit}
-              onTreeInteract={() => {
-                soundEngine.playSparkle();
-                triggerHeartExplosion();
-                showToast('A Árvore do Amor vibra com o carinho de vocês! 🌿💖', '✨');
-              }}
-            />
+            <div ref={stageRef} className="w-full relative">
+              <FantasyTreeCanvas
+                level={currentLevel}
+                isWatering={isWatering}
+                isSunbathing={isSunbathing}
+                isPruning={isPruning}
+                hasSakuraTheme={hasSakuraTheme}
+                hasGoldenApples={hasGoldenApples}
+                hasFairyLights={hasFairyLights}
+                hasSwing={hasSwing}
+                hasLanterns={hasLanterns}
+                hasCrystals={hasCrystals}
+                hasButterfly={hasButterfly}
+                hasSongbird={hasSongbird}
+                ribbons={allRibbons}
+                harvestedFruits={harvestedFruits}
+                onHarvestFruit={handleHarvestFruit}
+                onTreeInteract={() => {
+                  soundEngine.playSparkle();
+                  triggerHeartExplosion();
+                  showToast('A Árvore do Amor vibra com o carinho de vocês! 🌿💖', '✨');
+                }}
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  captureVirtualPhoto(
+                    stageRef.current,
+                    'Árvore do Amor 3D',
+                    `${getStageLabel(currentLevel)} · Nível ${currentLevel}`
+                  )
+                }
+                className="absolute bottom-3 right-3 z-20 min-h-[38px] px-3 rounded-full bg-black/70 border border-teal-400/40 text-teal-100 hover:text-white text-[11px] font-bold flex items-center gap-1.5 shadow-lg cursor-pointer"
+                title="Fotografar Árvore 3D para a Galeria"
+              >
+                <Camera className="w-3.5 h-3.5 text-teal-300" />
+                <span>Foto Virtual</span>
+              </button>
+            </div>
           ) : (
             <LoveTree2D
               level={currentLevel}

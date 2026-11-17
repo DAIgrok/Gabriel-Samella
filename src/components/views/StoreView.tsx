@@ -18,6 +18,7 @@ import { useApp } from '../../context/AppContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { StoreItem } from '../../types';
 import { soundEngine } from '../../utils/audioSynth';
+import { DiamondGemIcon } from '../icons/CustomIcons';
 
 export const StoreView: React.FC = () => {
   const {
@@ -31,6 +32,7 @@ export const StoreView: React.FC = () => {
     renamePet,
     equipKittenItem,
     kitten,
+    setExtendedView,
   } = useApp();
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
   const [activeModalItem, setActiveModalItem] = useState<StoreItem | null>(null);
@@ -39,6 +41,9 @@ export const StoreView: React.FC = () => {
   const categories = [
     { id: 'todos', label: 'Tudo', icon: '✨' },
     { id: 'vales', label: 'Vales do Amor', icon: '💌' },
+    { id: 'casa', label: 'Casa 3D', icon: '🏠' },
+    { id: 'aquario', label: 'Aquário 3D', icon: '🐠' },
+    { id: 'sazonal', label: 'Sazonal', icon: '❄️' },
     { id: 'pets', label: 'Adoção de Pets', icon: '🐾' },
     { id: 'roupas', label: 'Roupas & Acessórios', icon: '🎀' },
     { id: 'arvore', label: 'Árvore do Amor', icon: '🌳' },
@@ -49,6 +54,9 @@ export const StoreView: React.FC = () => {
   const filteredItems = storeItems.filter((item) => {
     if (selectedCategory === 'todos') return true;
     if (selectedCategory === 'vales') return item.category === 'vales' || item.category === 'presentes';
+    if (selectedCategory === 'casa') return item.category === 'casa';
+    if (selectedCategory === 'aquario') return item.category === 'aquario';
+    if (selectedCategory === 'sazonal') return item.category === 'sazonal';
     if (selectedCategory === 'pets') return item.category === 'pets';
     if (selectedCategory === 'roupas') return item.category === 'roupas' || item.category === 'acessorios' || item.category === 'gatinho';
     if (selectedCategory === 'arvore') return item.category === 'arvore';
@@ -105,12 +113,12 @@ export const StoreView: React.FC = () => {
       {/* Balance Card */}
       <div className="glass-card-glow rounded-3xl p-5 border border-pink-400/30 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 via-pink-600 to-rose-500 flex items-center justify-center text-2xl shadow-md">
-            💎
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 via-pink-600 to-rose-500 flex items-center justify-center shadow-md">
+            <DiamondGemIcon className="w-6 h-6 text-white" />
           </div>
           <div>
             <span className="text-xs text-purple-300 block font-medium">Seu Tesouro de Amor</span>
-            <h3 className="text-2xl font-bold text-pink-100 font-display">
+            <h3 className="text-2xl font-bold text-pink-100 font-display tabular-nums">
               {coins} Diamantes
             </h3>
           </div>
@@ -200,8 +208,8 @@ export const StoreView: React.FC = () => {
 
               <div className="pt-3 border-t border-purple-500/20 flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm">💎</span>
-                  <span className="text-sm font-bold text-pink-200 font-mono">
+                  <DiamondGemIcon className="w-4 h-4 text-pink-300" />
+                  <span className="text-sm font-bold text-pink-200 font-mono tabular-nums">
                     {item.price}
                   </span>
                 </div>
@@ -434,6 +442,26 @@ export const StoreView: React.FC = () => {
                     ].includes(activeModalItem.id)
                       ? 'Tirar Look'
                       : 'Equipar no Mascote ✨'}
+                  </button>
+                ) : activeModalItem.category === 'casa' ? (
+                  <button
+                    onClick={() => {
+                      setActiveModalItem(null);
+                      setExtendedView('casa');
+                    }}
+                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold shadow-md cursor-pointer"
+                  >
+                    Ver na Casa 3D →
+                  </button>
+                ) : activeModalItem.category === 'aquario' ? (
+                  <button
+                    onClick={() => {
+                      setActiveModalItem(null);
+                      setExtendedView('aquario');
+                    }}
+                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-purple-600 text-white text-xs font-bold shadow-md cursor-pointer"
+                  >
+                    Ver no Aquário 3D →
                   </button>
                 ) : null}
               </div>

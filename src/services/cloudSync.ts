@@ -21,18 +21,23 @@ import firebaseConfig from '../../firebase-applet-config.json';
 import { auth } from './firebaseAuth';
 import {
   Achievement,
+  AquariumState,
   CalendarEvent,
   ChatMessage,
   CoupleConfig,
   CoupleGoal,
   DailyWheelState,
+  DreamHouseState,
   EasterEgg,
   KittenState,
+  LegacyResetBackup,
   Letter,
   LoveTreeState,
   MemoryPhoto,
+  MissionsState,
   Phrase,
   QuizQuestion,
+  SeasonalState,
   Song,
   StoreItem,
   TimeCapsuleItem,
@@ -139,6 +144,11 @@ export interface CloudWorldPayload {
   coupleGoals?: CoupleGoal[];
   calendarEvents?: CalendarEvent[];
   dailyWheelState?: DailyWheelState;
+  dreamHouseState?: DreamHouseState;
+  aquariumState?: AquariumState;
+  seasonalState?: SeasonalState;
+  missionsState?: MissionsState;
+  legacyResetBackup?: LegacyResetBackup;
   createdAt?: Timestamp | ReturnType<typeof serverTimestamp>;
   updatedAt?: Timestamp | ReturnType<typeof serverTimestamp>;
 }
@@ -324,6 +334,11 @@ export interface SaveCloudInput {
   coupleGoals: CoupleGoal[];
   calendarEvents: CalendarEvent[];
   dailyWheelState: DailyWheelState;
+  dreamHouseState: DreamHouseState;
+  aquariumState: AquariumState;
+  seasonalState: SeasonalState;
+  missionsState: MissionsState;
+  legacyResetBackup?: LegacyResetBackup;
   initialPhotoIds: Set<string>;
   initialSongIds: Set<string>;
 }
@@ -332,7 +347,7 @@ export async function saveCloudWorld(input: SaveCloudInput): Promise<void> {
   const path = `${COUPLE_WORLD_COLLECTION}/${COUPLE_WORLD_ID}`;
   const docRef = doc(db, COUPLE_WORLD_COLLECTION, COUPLE_WORLD_ID);
 
-  // Build compact diff-maps to keep Firestore document very light (< 100KB)
+  // Build compact diff-maps to keep Firestore document light (< 150KB)
   const lettersState = {
     readIds: input.letters.filter((l) => l.read).map((l) => l.id),
     favoriteIds: input.letters.filter((l) => l.isFavorite).map((l) => l.id),
@@ -340,7 +355,7 @@ export async function saveCloudWorld(input: SaveCloudInput): Promise<void> {
       if (l.unsealedAt) acc[l.id] = l.unsealedAt;
       return acc;
     }, {}),
-    customLetters: input.letters.filter((l) => l.id.startsWith('letter-')),
+    customLetters: input.letters.slice(0, 100),
   };
 
   const achievementsState: CloudWorldPayload['achievementsState'] = {};
@@ -422,6 +437,11 @@ export async function saveCloudWorld(input: SaveCloudInput): Promise<void> {
       coupleGoals: input.coupleGoals.slice(0, 90),
       calendarEvents: input.calendarEvents.slice(0, 140),
       dailyWheelState: input.dailyWheelState,
+      dreamHouseState: input.dreamHouseState,
+      aquariumState: input.aquariumState,
+      seasonalState: input.seasonalState,
+      missionsState: input.missionsState,
+      ...(input.legacyResetBackup ? { legacyResetBackup: input.legacyResetBackup } : {}),
     });
 
     const mutableFields = {

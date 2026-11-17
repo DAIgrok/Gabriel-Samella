@@ -20,7 +20,12 @@ import { GoalsView } from './components/views/GoalsView';
 import { CalendarView } from './components/views/CalendarView';
 import { EasterEggModal } from './components/EasterEggModal';
 import { HeartRain } from './components/HeartRain';
+import { AmbientParticlesCanvas } from './components/AmbientParticlesCanvas';
+import { SeasonalDecorOverlay } from './components/SeasonalDecorOverlay';
 import { Sidebar } from './components/Sidebar';
+import { DreamHouseView } from './components/views/DreamHouseView';
+import { AquariumView } from './components/views/AquariumView';
+import { MissionsView } from './components/views/MissionsView';
 import { AdminSettingsModal } from './components/views/AdminSettingsModal';
 import { PhotoVisualizerModal } from './components/PhotoVisualizerModal';
 import { AnimatePresence, motion } from 'motion/react';
@@ -52,6 +57,12 @@ const MainAppContent: React.FC = () => {
     <div className="relative min-h-screen text-slate-100 font-sans selection:bg-pink-500/30 selection:text-pink-200 bg-[#070210] flex overflow-x-hidden">
       {/* Heart Rain Overlay */}
       <HeartRain />
+
+      {/* Seasonal Physics Particle Canvas (Snow, Ember Mist, Petals, Confetti, Fireflies) */}
+      <AmbientParticlesCanvas />
+
+      {/* Interactive Seasonal Decor Overlay (Halloween Pumpkins, Valentine Rose, Anniversary Banner) */}
+      <SeasonalDecorOverlay />
 
       {/* Dynamic Romantic Memory Slideshow Background */}
       <BackgroundSlideshow />
@@ -92,6 +103,9 @@ const MainAppContent: React.FC = () => {
             {extendedView === 'musica' && <MusicView />}
             {extendedView === 'frases' && <PhrasesView />}
             {extendedView === 'arvore' && <LoveTreeView />}
+            {extendedView === 'casa' && <DreamHouseView />}
+            {extendedView === 'aquario' && <AquariumView />}
+            {extendedView === 'missoes' && <MissionsView />}
             {extendedView === 'conquistas' && <AchievementsView />}
             {extendedView === 'metas' && <GoalsView />}
             {extendedView === 'calendario' && <CalendarView />}

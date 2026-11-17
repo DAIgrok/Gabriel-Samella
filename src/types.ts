@@ -8,6 +8,8 @@ export interface CoupleConfig {
   themeGlowColor: string;
 }
 
+export type CouplePerson = 'Gabriel' | 'Samella';
+
 export interface Letter {
   id: string;
   title: string;
@@ -22,6 +24,10 @@ export interface Letter {
   unsealedAt?: string;
   attachedPhotoIndex?: number;
   authorName?: string;
+  sender?: CouplePerson;
+  recipient?: CouplePerson;
+  sentAt?: string;
+  isPrivate?: boolean;
   rewardClaimed?: boolean;
 }
 
@@ -92,6 +98,9 @@ export type StoreCategory =
   | 'roupas'
   | 'acessorios'
   | 'arvore'
+  | 'casa'
+  | 'aquario'
+  | 'sazonal'
   | 'temas'
   | 'molduras'
   | 'efeitos'
@@ -115,7 +124,21 @@ export interface StoreItem {
   redeemedAt?: string;
   actionLabel?: string;
   petTypeTarget?: PetType | 'all';
-  slotType?: 'hat' | 'outfit' | 'collar' | 'glasses' | 'accessory' | 'tree' | 'theme' | 'frame';
+  targetId?: string;
+  slotType?:
+    | 'hat'
+    | 'outfit'
+    | 'collar'
+    | 'glasses'
+    | 'accessory'
+    | 'tree'
+    | 'theme'
+    | 'frame'
+    | 'house-furniture'
+    | 'house-wall'
+    | 'aquarium-fish'
+    | 'aquarium-decor'
+    | 'pet-seasonal';
 }
 
 export type PetType =
@@ -267,6 +290,7 @@ export interface CoupleGoal {
   priority?: GoalPriority;
   notes?: string;
   addedBy?: 'Samella' | 'Gabriel';
+  createdAt?: string;
   rewardClaimed?: boolean;
 }
 
@@ -306,10 +330,111 @@ export interface DailyWheelState {
   totalSpins: number;
 }
 
+export type HouseRoomId = 'sala' | 'quarto' | 'varanda' | 'cozinha';
+export type HouseWallTheme = 'lavender' | 'midnight' | 'rosewood' | 'starlight' | 'christmas' | 'halloween';
+export type HouseFloorTheme = 'wood' | 'marble' | 'velvet' | 'checkered';
+
+export interface HouseFurnitureCatalogItem {
+  id: string;
+  name: string;
+  room: HouseRoomId;
+  description: string;
+  unlockedByDefault?: boolean;
+  price?: number;
+  accentHex: string;
+}
+
+export interface DreamHouseState {
+  activeRoom: HouseRoomId;
+  wallTheme: HouseWallTheme;
+  floorTheme: HouseFloorTheme;
+  lightsOn: boolean;
+  fireplaceLit: boolean;
+  musicNoteGlow: boolean;
+  unlockedFurnitureIds: string[];
+  placedFurniture: Record<HouseRoomId, string[]>;
+  comfortLevel: number;
+  lastInteractedAt?: string;
+}
+
+export type AquariumLightMode = 'bioluminescent' | 'sunlight' | 'moonlight' | 'coral';
+
+export interface AquariumSpeciesInfo {
+  id: string;
+  name: string;
+  rarity: 'comum' | 'raro' | 'lendario' | 'mitico';
+  colorHex: string;
+  accentHex: string;
+  scale: number;
+  linkedPetType?: PetType;
+  unlockedByDefault?: boolean;
+  description: string;
+}
+
+export interface AquariumDecorInfo {
+  id: string;
+  name: string;
+  description: string;
+  unlockedByDefault?: boolean;
+  accentHex: string;
+}
+
+export interface AquariumState {
+  waterClarity: number;
+  fishHunger: number;
+  lightMode: AquariumLightMode;
+  bubblesActive: boolean;
+  unlockedFishIds: string[];
+  activeFishIds: string[];
+  unlockedDecorIds: string[];
+  activeDecorIds: string[];
+  lastFedAt?: string;
+  lastCleanedAt?: string;
+  feedCount: number;
+}
+
+export type SeasonalEventId = 'normal' | 'halloween' | 'natal' | 'namorados' | 'aniversario';
+
+export interface SeasonalState {
+  mode: 'auto' | 'preview';
+  previewEvent: SeasonalEventId;
+  claimedProps: string[];
+  memoriesSeen: SeasonalEventId[];
+}
+
+export interface IntegratedMission {
+  id: string;
+  title: string;
+  description: string;
+  category: 'casa' | 'aquario' | 'casal' | 'sazonal';
+  rewardCoins: number;
+  rewardUnlockLabel?: string;
+  targetCount: number;
+  seasonalOnly?: SeasonalEventId;
+}
+
+export interface MissionsState {
+  claimedIds: string[];
+  virtualSnapshotsTaken: number;
+  houseVisits: number;
+  aquariumFeeds: number;
+  twoWayLettersSent: number;
+}
+
+export interface LegacyResetBackup {
+  version: number;
+  backedUpAt: string;
+  letters: Letter[];
+  coupleGoals: CoupleGoal[];
+}
+
 export type ActiveTab = 'inicio' | 'cartas' | 'fotos' | 'musica' | 'perfil';
 export type ExtendedView =
   | ActiveTab
   | 'arvore'
+  | 'casa'
+  | 'aquario'
+  | 'missoes'
   | 'conquistas'
   | 'jogos'
   | 'gatinho'
@@ -319,5 +444,6 @@ export type ExtendedView =
   | 'metas'
   | 'calendario'
   | 'config';
+
 
 

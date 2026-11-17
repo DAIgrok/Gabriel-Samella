@@ -359,8 +359,9 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
 
     // --- 2. RENDERER & ROOM ENVIRONMENT ---
     const renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: !/SwiftShader|llvmpipe|Software/i.test(navigator.userAgent || ''),
       alpha: true,
+      preserveDrawingBuffer: true,
       powerPreference: 'high-performance',
     });
 
@@ -371,6 +372,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
 
     renderer.setSize(width, height);
     renderer.setPixelRatio(isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 1.75));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -418,26 +420,135 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
     rimLight.position.set(-3.5, 2.5, -3.5);
     scene.add(rimLight);
 
-    // --- 5. PEDESTAL STAGE ---
+    // --- 5. RPG MINIATURE ROOM DIORAMA STAGE ---
     const stageGroup = new THREE.Group();
     scene.add(stageGroup);
 
-    const pedestalGeo = new THREE.CylinderGeometry(1.38, 1.48, 0.22, 36);
+    const pedestalGeo = new THREE.CylinderGeometry(1.48, 1.58, 0.22, 40);
     const pedestalMat = new THREE.MeshStandardMaterial({
       color: 0x1a0933,
-      roughness: 0.45,
-      metalness: 0.15,
+      roughness: 0.48,
+      metalness: 0.14,
     });
     const pedestal = new THREE.Mesh(pedestalGeo, pedestalMat);
     pedestal.position.y = -0.11;
     pedestal.receiveShadow = true;
     stageGroup.add(pedestal);
 
-    const rimGeo = new THREE.TorusGeometry(1.39, 0.022, 12, 64);
-    const rimMat = new THREE.MeshBasicMaterial({ color: 0xf472b6 });
+    const rimGeo = new THREE.TorusGeometry(1.49, 0.024, 12, 64);
+    const rimMat = new THREE.MeshStandardMaterial({
+      color: 0xf472b6,
+      emissive: 0xdb2777,
+      emissiveIntensity: 0.5,
+      roughness: 0.28,
+      metalness: 0.35,
+    });
     const rimMesh = new THREE.Mesh(rimGeo, rimMat);
     rimMesh.rotation.x = Math.PI / 2;
     stageGroup.add(rimMesh);
+
+    // Procedural woven RPG rug texture
+    const rugCanvas = document.createElement('canvas');
+    rugCanvas.width = 256;
+    rugCanvas.height = 256;
+    const rCtx = rugCanvas.getContext('2d');
+    if (rCtx) {
+      const grad = rCtx.createRadialGradient(128, 128, 14, 128, 128, 124);
+      grad.addColorStop(0, '#581c87');
+      grad.addColorStop(0.55, '#7e22ce');
+      grad.addColorStop(0.78, '#db2777');
+      grad.addColorStop(0.92, '#4c1d95');
+      grad.addColorStop(1, '#f9a8d4');
+      rCtx.fillStyle = grad;
+      rCtx.fillRect(0, 0, 256, 256);
+
+      // Stitched concentric rings & tiny diamond motifs
+      rCtx.strokeStyle = 'rgba(253, 230, 138, 0.55)';
+      rCtx.lineWidth = 3;
+      rCtx.setLineDash([6, 6]);
+      rCtx.beginPath();
+      rCtx.arc(128, 128, 92, 0, Math.PI * 2);
+      rCtx.stroke();
+
+      rCtx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+      rCtx.lineWidth = 2;
+      rCtx.setLineDash([3, 5]);
+      rCtx.beginPath();
+      rCtx.arc(128, 128, 60, 0, Math.PI * 2);
+      rCtx.stroke();
+    }
+    const rugTex = new THREE.CanvasTexture(rugCanvas);
+    rugTex.colorSpace = THREE.SRGBColorSpace;
+    rugTex.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+    const rugMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.16, 1.18, 0.022, 40),
+      new THREE.MeshStandardMaterial({
+        map: rugTex,
+        roughness: 0.88,
+        metalness: 0.02,
+      })
+    );
+    rugMesh.position.y = 0.012;
+    rugMesh.receiveShadow = true;
+    stageGroup.add(rugMesh);
+
+    // Low-profile RPG curved back wainscot backdrop + warm miniature sconces
+    const wallArchGeo = new THREE.CylinderGeometry(
+      1.42,
+      1.42,
+      0.86,
+      36,
+      1,
+      true,
+      Math.PI * 0.68,
+      Math.PI * 0.64
+    );
+    const wallArchMat = new THREE.MeshStandardMaterial({
+      color: 0x2a124c,
+      roughness: 0.72,
+      metalness: 0.06,
+      side: THREE.DoubleSide,
+    });
+    const wallArch = new THREE.Mesh(wallArchGeo, wallArchMat);
+    wallArch.position.y = 0.43;
+    wallArch.receiveShadow = true;
+    stageGroup.add(wallArch);
+
+    const wallTrimGeo = new THREE.TorusGeometry(1.42, 0.032, 8, 36, Math.PI * 0.64);
+    const wallTrimMat = new THREE.MeshStandardMaterial({
+      color: 0xfbbf24,
+      roughness: 0.3,
+      metalness: 0.65,
+    });
+    const wallTrim = new THREE.Mesh(wallTrimGeo, wallTrimMat);
+    wallTrim.rotation.x = Math.PI / 2;
+    wallTrim.rotation.z = Math.PI * 0.68 + Math.PI * 0.5;
+    wallTrim.position.y = 0.86;
+    stageGroup.add(wallTrim);
+
+    // Miniature floor cushion prop (left) & yarn ball toy prop (right)
+    const cushion = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.24, 0.28, 0.1, 18),
+      new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.82 })
+    );
+    cushion.position.set(-0.88, 0.065, 0.24);
+    cushion.castShadow = true;
+    cushion.receiveShadow = true;
+    const cushionButton = new THREE.Mesh(
+      new THREE.SphereGeometry(0.045, 10, 10),
+      new THREE.MeshStandardMaterial({ color: 0xfde047, roughness: 0.35 })
+    );
+    cushionButton.position.y = 0.055;
+    cushion.add(cushionButton);
+    stageGroup.add(cushion);
+
+    const yarnBall = new THREE.Mesh(
+      new THREE.SphereGeometry(0.13, 16, 16),
+      new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.75 })
+    );
+    yarnBall.position.set(0.88, 0.145, 0.32);
+    yarnBall.castShadow = true;
+    stageGroup.add(yarnBall);
 
     // Soft contact shadow decal under pet
     const shadowCanvas = document.createElement('canvas');
@@ -458,7 +569,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
       new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, opacity: 0.85, depthWrite: false })
     );
     contactShadow.rotation.x = -Math.PI / 2;
-    contactShadow.position.y = 0.005;
+    contactShadow.position.y = 0.026;
     stageGroup.add(contactShadow);
 
     // --- 6. PET CHARACTER ROOT ---
@@ -1163,6 +1274,53 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
           const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.05), new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0xeab308, emissiveIntensity: 0.7 }));
           star.position.set(0, 0.45, 0.22);
           head.add(brim, cone, star);
+        } else if (hatId === 'item-pet-santa-hat') {
+          const redVelvet = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.48 });
+          const whiteFur = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.85 });
+          const brim = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.068, 12, 28), whiteFur);
+          brim.rotation.x = Math.PI / 2;
+          brim.position.y = 0.3;
+          const cone = new THREE.Mesh(new THREE.ConeGeometry(0.29, 0.48, 22), redVelvet);
+          cone.position.set(-0.04, 0.52, 0);
+          cone.rotation.z = 0.24;
+          const pom = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 12), whiteFur);
+          pom.position.set(-0.15, 0.74, 0);
+          head.add(brim, cone, pom);
+        } else if (hatId === 'item-pet-witch-hat') {
+          const witchMat = new THREE.MeshStandardMaterial({ color: 0x3b0764, roughness: 0.45 });
+          const beltMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.32 });
+          const buckleMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.8, roughness: 0.2 });
+          const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.52, 0.03, 28), witchMat);
+          brim.position.y = 0.31;
+          const cone = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.54, 22), witchMat);
+          cone.position.y = 0.57;
+          cone.rotation.z = -0.14;
+          const band = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.23, 0.055, 20), beltMat);
+          band.position.y = 0.35;
+          const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.07, 0.04), buckleMat);
+          buckle.position.set(0, 0.35, 0.22);
+          head.add(brim, cone, band, buckle);
+        } else if (hatId === 'item-pet-valentine-rose') {
+          const petalMat = new THREE.MeshStandardMaterial({
+            color: 0xe11d48,
+            emissive: 0x9f1239,
+            emissiveIntensity: 0.35,
+            roughness: 0.3,
+          });
+          const leafMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.45 });
+          const roseGroup = new THREE.Group();
+          roseGroup.position.set(0.28, 0.31, 0.16);
+          roseGroup.rotation.z = -0.35;
+          const bud = new THREE.Mesh(new THREE.SphereGeometry(0.085, 14, 14), petalMat);
+          const outerL = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 10), petalMat);
+          outerL.position.set(-0.05, 0.02, 0.02);
+          const outerR = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 10), petalMat);
+          outerR.position.set(0.05, -0.01, 0.02);
+          const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.065, 10, 8), leafMat);
+          leaf.scale.set(1.4, 0.25, 0.7);
+          leaf.position.set(0.06, -0.07, -0.02);
+          roseGroup.add(bud, outerL, outerR, leaf);
+          head.add(roseGroup);
         }
       }
 
@@ -1492,6 +1650,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
       showerGeo.dispose();
       showerMat.dispose();
       shadowTex.dispose();
+      rugTex.dispose();
       envTarget.dispose();
 
       if (renderer.domElement.parentElement) {

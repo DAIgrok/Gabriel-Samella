@@ -47,6 +47,11 @@ service cloud.firestore {
           'coupleGoals',
           'calendarEvents',
           'dailyWheelState',
+          'dreamHouseState',
+          'aquariumState',
+          'seasonalState',
+          'missionsState',
+          'legacyResetBackup',
           'createdAt',
           'updatedAt'
         ])
@@ -60,7 +65,7 @@ service cloud.firestore {
         && (!('kitten' in data) || (data.kitten is map && data.kitten.keys().size() <= 45))
         && (!('lettersState' in data) || (data.lettersState is map && data.lettersState.keys().size() <= 10))
         && (!('achievementsState' in data) || (data.achievementsState is map && data.achievementsState.keys().size() <= 60))
-        && (!('storeItemsState' in data) || (data.storeItemsState is map && data.storeItemsState.keys().size() <= 120))
+        && (!('storeItemsState' in data) || (data.storeItemsState is map && data.storeItemsState.keys().size() <= 160))
         && (!('easterEggsState' in data) || (data.easterEggsState is map && data.easterEggsState.keys().size() <= 30))
         && (!('phrasesState' in data) || (data.phrasesState is map && data.phrasesState.keys().size() <= 150))
         && (!('chatMessages' in data) || (data.chatMessages is list && data.chatMessages.size() <= 200))
@@ -71,7 +76,12 @@ service cloud.firestore {
         && (!('timeCapsules' in data) || (data.timeCapsules is list && data.timeCapsules.size() <= 40))
         && (!('coupleGoals' in data) || (data.coupleGoals is list && data.coupleGoals.size() <= 100))
         && (!('calendarEvents' in data) || (data.calendarEvents is list && data.calendarEvents.size() <= 150))
-        && (!('dailyWheelState' in data) || (data.dailyWheelState is map && data.dailyWheelState.keys().size() <= 10));
+        && (!('dailyWheelState' in data) || (data.dailyWheelState is map && data.dailyWheelState.keys().size() <= 10))
+        && (!('dreamHouseState' in data) || (data.dreamHouseState is map && data.dreamHouseState.keys().size() <= 16))
+        && (!('aquariumState' in data) || (data.aquariumState is map && data.aquariumState.keys().size() <= 16))
+        && (!('seasonalState' in data) || (data.seasonalState is map && data.seasonalState.keys().size() <= 10))
+        && (!('missionsState' in data) || (data.missionsState is map && data.missionsState.keys().size() <= 12))
+        && (!('legacyResetBackup' in data) || (data.legacyResetBackup is map && data.legacyResetBackup.keys().size() <= 8));
     }
 
     function isValidSharedPhoto(data) {
@@ -151,6 +161,11 @@ service cloud.firestore {
           'coupleGoals',
           'calendarEvents',
           'dailyWheelState',
+          'dreamHouseState',
+          'aquariumState',
+          'seasonalState',
+          'missionsState',
+          'legacyResetBackup',
           'updatedAt'
         ]);
 

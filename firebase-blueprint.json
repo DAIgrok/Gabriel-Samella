@@ -95,6 +95,26 @@
           "type": "object",
           "description": "Estado da roleta diária de prêmios e último giro."
         },
+        "dreamHouseState": {
+          "type": "object",
+          "description": "Estado dos cômodos 3D, paredes, pisos, iluminação e móveis da Casa dos Sonhos."
+        },
+        "aquariumState": {
+          "type": "object",
+          "description": "Estado do Aquário Mágico 3D (limpeza, alimentação, iluminação, espécies e decorações)."
+        },
+        "seasonalState": {
+          "type": "object",
+          "description": "Modo automático/prévia de eventos sazonais (Natal, Halloween, Namorados, Aniversários) e itens sazonais."
+        },
+        "missionsState": {
+          "type": "object",
+          "description": "Progresso e recompensas resgatadas das Missões Integradas do universo."
+        },
+        "legacyResetBackup": {
+          "type": "object",
+          "description": "Backup automático único das cartas e desejos anteriores ao reset controlado."
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time",

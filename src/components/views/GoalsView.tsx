@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { Target, Plus, Check, Trash2, Pencil, Calendar, X, Sparkles } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Target, Plus, Check, Trash2, Pencil, Calendar, X, Sparkles, Archive } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { CoupleGoal, GoalPriority } from '../../types';
 import { motion, useReducedMotion } from 'motion/react';
 import { formatDateBR } from '../../utils/calendarHelpers';
+import { LEGACY_ARCHIVE_GOALS } from '../../data/initialData';
 
 const GOAL_ICONS = ['✈️', '🌅', '📸', '🍝', '🏡', '🎶', '💍', '🌌', '🎂', '🌴', '🧺', '☕'];
 const GOAL_CATEGORIES = [
@@ -31,11 +33,18 @@ export const GoalsView: React.FC = () => {
     toggleCoupleGoal,
     removeCoupleGoal,
     config,
+    legacyResetBackup,
   } = useApp();
   const prefersReducedMotion = useReducedMotion();
 
   const [statusFilter, setStatusFilter] = useState<'todos' | 'pendentes' | 'realizados'>('todos');
   const [filterCat, setFilterCat] = useState<string>('Todas');
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+
+  const archivedGoals =
+    legacyResetBackup?.coupleGoals && legacyResetBackup.coupleGoals.length > 0
+      ? legacyResetBackup.coupleGoals
+      : LEGACY_ARCHIVE_GOALS;
 
   const [showForm, setShowForm] = useState(false);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
@@ -153,14 +162,25 @@ export const GoalsView: React.FC = () => {
                 : `${pendingCount} ${pendingCount === 1 ? 'desejo restante' : 'desejos restantes'}`}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => (showForm ? resetForm() : openCreateForm())}
-            className="min-h-[44px] px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md whitespace-nowrap shrink-0 active:scale-[0.98] transition"
-          >
-            {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-            <span>{showForm ? 'Fechar' : 'Novo Desejo'}</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowArchiveModal(true)}
+              className="min-h-[44px] px-3 rounded-2xl bg-purple-950/70 hover:bg-purple-900/70 border border-purple-500/30 text-purple-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+              title="Ver sugestões anteriores"
+            >
+              <Archive className="w-4 h-4 text-pink-300" />
+              <span className="hidden sm:inline">Arquivo</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => (showForm ? resetForm() : openCreateForm())}
+              className="min-h-[44px] px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md whitespace-nowrap active:scale-[0.98] transition"
+            >
+              {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              <span>{showForm ? 'Fechar' : 'Novo Desejo'}</span>
+            </button>
+          </div>
         </div>
 
         <div className="space-y-1.5">
@@ -467,6 +487,72 @@ export const GoalsView: React.FC = () => {
           })}
         </div>
       )}
+
+      {showArchiveModal &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
+            onClick={() => setShowArchiveModal(false)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-3xl p-5 bg-[#120628] border border-purple-500/35 space-y-4 shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-purple-500/20 pb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Archive className="w-4 h-4 text-pink-300" />
+                    <span>Lista Anterior Preservada ({archivedGoals.length})</span>
+                  </h3>
+                  <p className="text-[11px] text-purple-300/75 mt-0.5">
+                    Você pode trazer de volta qualquer item se desejar.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowArchiveModal(false)}
+                  className="min-w-[40px] min-h-[40px] rounded-full bg-white/10 text-purple-200 flex items-center justify-center cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-2.5">
+                {archivedGoals.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-3 rounded-2xl bg-purple-950/55 border border-purple-500/25 flex items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-white truncate">
+                        {item.icon} {item.title}
+                      </p>
+                      <span className="text-[10px] text-purple-300/75">{item.category}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        addCoupleGoal({
+                          title: item.title,
+                          category: item.category,
+                          icon: item.icon || '✨',
+                          priority: item.priority || 'media',
+                          notes: item.notes,
+                          addedBy: item.addedBy || 'Gabriel',
+                        });
+                      }}
+                      className="min-h-[36px] px-3 rounded-xl bg-pink-600/35 hover:bg-pink-600/55 border border-pink-400/40 text-[11px] font-bold text-white shrink-0 cursor-pointer"
+                    >
+                      + Adicionar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </motion.div>
   );
 };

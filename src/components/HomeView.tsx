@@ -32,8 +32,14 @@ import {
   Clock,
   MapPin,
 } from 'lucide-react';
-import { COOLDOWN_MS, PET_SPECIES_CATALOG } from '../data/initialData';
+import { COOLDOWN_MS, INTEGRATED_MISSIONS_CATALOG, PET_SPECIES_CATALOG } from '../data/initialData';
 import { getCouplePhotoUrl, REAL_PHOTO_SLOTS } from '../data/mediaAssets';
+import { VISUAL_ASSETS } from '../data/visualAssets';
+import {
+  AquariumCoralIcon,
+  DreamHouseCrestIcon,
+  MissionCompassIcon,
+} from './icons/CustomIcons';
 import {
   formatCountdownDays,
   formatDateBR,
@@ -55,6 +61,10 @@ export const HomeView: React.FC = () => {
     coupleGoals,
     calendarEvents,
     dailyWheel,
+    dreamHouse,
+    aquarium,
+    missionsState,
+    activeSeasonalMeta,
   } = useApp();
   const prefersReducedMotion = useReducedMotion();
 
@@ -383,19 +393,99 @@ export const HomeView: React.FC = () => {
         </motion.div>
       </section>
 
-      {/* 7. 3 Interactive Status Cards */}
+      {/* 6b. Universo Virtual 3D & Missões Sazonais */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+        <button
+          type="button"
+          onClick={() => setExtendedView('casa')}
+          className="text-left rounded-3xl overflow-hidden bg-gradient-to-br from-[#1d0a38]/95 to-[#0b0319]/95 border border-purple-500/30 hover:border-pink-400/55 shadow-lg group cursor-pointer transition-all flex flex-col justify-between"
+        >
+          <div className="relative h-28 w-full overflow-hidden">
+            <img
+              src={VISUAL_ASSETS.dreamHousePreview}
+              alt="Casa dos Sonhos 3D"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#120526] via-[#120526]/35 to-transparent" />
+            <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/60 border border-pink-400/40 text-[10px] font-bold text-pink-200 backdrop-blur-sm">
+              <DreamHouseCrestIcon className="w-3.5 h-3.5 text-pink-300" />
+              <span>Universo 3D</span>
+            </span>
+          </div>
+          <div className="p-4 pt-2 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h4 className="text-sm font-bold text-white truncate">Casa dos Sonhos</h4>
+              <p className="text-[11px] text-purple-200/75 truncate">
+                Cômodo ativo: {dreamHouse.activeRoom} · Nv.{dreamHouse.comfortLevel}
+              </p>
+            </div>
+            <ArrowRight className="w-4 h-4 text-pink-300 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setExtendedView('aquario')}
+          className="text-left rounded-3xl overflow-hidden bg-gradient-to-br from-[#0e1538]/95 to-[#07081a]/95 border border-cyan-500/30 hover:border-cyan-300/55 shadow-lg group cursor-pointer transition-all flex flex-col justify-between"
+        >
+          <div className="relative h-28 w-full overflow-hidden">
+            <img
+              src={VISUAL_ASSETS.magicAquariumPreview}
+              alt="Aquário Mágico 3D"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0b0d24] via-[#0b0d24]/35 to-transparent" />
+            <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/60 border border-cyan-400/40 text-[10px] font-bold text-cyan-200 backdrop-blur-sm">
+              <AquariumCoralIcon className="w-3.5 h-3.5 text-cyan-300" />
+              <span>Aquário 3D</span>
+            </span>
+          </div>
+          <div className="p-4 pt-2 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h4 className="text-sm font-bold text-white truncate">Aquário Mágico</h4>
+              <p className="text-[11px] text-cyan-200/75 truncate tabular-nums">
+                {aquarium.activeFishIds.length} peixinhos · Água {aquarium.waterClarity}%
+              </p>
+            </div>
+            <ArrowRight className="w-4 h-4 text-cyan-300 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setExtendedView('missoes')}
+          className="text-left rounded-3xl p-4 bg-gradient-to-br from-[#230b3f]/95 via-[#140628]/95 to-[#0a0217]/95 border border-amber-400/30 hover:border-amber-300/55 shadow-lg group cursor-pointer transition-all flex flex-col justify-between gap-3"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-500/30 to-pink-500/30 border border-amber-300/40 flex items-center justify-center text-amber-200">
+              <MissionCompassIcon className="w-6 h-6" />
+            </div>
+            <span className="px-2.5 py-1 rounded-full bg-purple-950/80 border border-purple-400/30 text-[10px] font-bold text-pink-200 tabular-nums">
+              {missionsState.claimedIds.length}/{INTEGRATED_MISSIONS_CATALOG.length} concl.
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-amber-300/90 block">
+              {activeSeasonalMeta.label}
+            </span>
+            <h4 className="text-sm font-bold text-white mt-0.5">Missões & Eventos Sazonais</h4>
+            <p className="text-[11px] text-purple-200/75 mt-0.5 line-clamp-2">
+              {activeSeasonalMeta.subtitle}
+            </p>
+          </div>
+        </button>
+      </section>
+
+      {/* 7. 3 Interactive Status Cards (Artes Dedicadas) */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
         {/* Card 1: Nossa Árvore */}
         <div className="rounded-3xl p-4 bg-gradient-to-br from-[#160a2c]/90 to-[#070210]/95 border border-purple-500/25 shadow-lg flex flex-col justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 border border-purple-500/30 bg-purple-950/60 shadow-md">
-              <SmartPhoto
-                photo={photos[8]}
-                photoIndex={9}
-                src={getCouplePhotoUrl(photos, 8, REAL_PHOTO_SLOTS.homeCardTree)}
-                alt="Nossa Árvore"
-                className="w-full h-full rounded-none"
-                hideDetails
+            <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 border border-purple-400/35 bg-purple-950/60 shadow-[0_0_20px_rgba(192,132,252,0.22)]">
+              <img
+                src={VISUAL_ASSETS.homeTreeCard}
+                alt="Nossa Árvore do Amor"
+                className="w-full h-full object-cover"
               />
             </div>
             <div className="flex-1 min-w-0 space-y-1.5">
@@ -441,21 +531,15 @@ export const HomeView: React.FC = () => {
                   <Cat className="w-3.5 h-3.5 text-pink-400" />
                   <span>Mascote Ativo</span>
                 </div>
-                <span className="text-[11px] text-pink-300 font-mono">Nv. {kitten?.level || 1}</span>
+                <span className="text-[11px] text-pink-300 font-mono tabular-nums">Nv. {kitten?.level || 1}</span>
               </div>
 
-              <div className="w-20 h-20 rounded-2xl overflow-hidden border border-purple-500/30 shadow-md bg-purple-950/60 my-1 relative flex items-center justify-center">
-                <SmartPhoto
-                  photo={photos[9]}
-                  photoIndex={10}
-                  src={getCouplePhotoUrl(photos, 9, REAL_PHOTO_SLOTS.homeCardPet)}
-                  alt="Meu Pet"
-                  className="w-full h-full rounded-none opacity-55 absolute inset-0"
-                  hideDetails
+              <div className="w-20 h-20 rounded-2xl overflow-hidden border border-pink-400/35 shadow-[0_0_20px_rgba(244,114,182,0.22)] bg-purple-950/60 my-1">
+                <img
+                  src={VISUAL_ASSETS.homePetBanner}
+                  alt={petName}
+                  className="w-full h-full object-cover"
                 />
-                <span className="relative z-10 text-3xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
-                  {currentPetSpecies.emoji}
-                </span>
               </div>
 
               <div className="space-y-0.5 my-1.5">
@@ -463,7 +547,7 @@ export const HomeView: React.FC = () => {
                   {kitten?.name?.trim() ? `${petName} (${currentPetSpecies.name})` : currentPetSpecies.name}
                 </h4>
                 <p className="text-[11px] text-purple-200/80 capitalize">
-                  Humor: {kitten?.mood || 'feliz'} 🥰
+                  Humor: {kitten?.mood || 'feliz'}
                 </p>
               </div>
 
@@ -486,17 +570,14 @@ export const HomeView: React.FC = () => {
               <Package className="w-3.5 h-3.5 text-pink-400" />
               <span>Baú de Surpresas</span>
             </div>
-            <Heart className="w-3 h-3 text-pink-400/50" />
+            <Heart className="w-3 h-3 text-pink-400/60" />
           </div>
 
-          <div className="w-20 h-20 rounded-2xl overflow-hidden border border-purple-500/30 shadow-md bg-purple-950/60 my-1">
-            <SmartPhoto
-              photo={photos[10]}
-              photoIndex={11}
-              src={getCouplePhotoUrl(photos, 10, REAL_PHOTO_SLOTS.homeCardChest)}
+          <div className="w-20 h-20 rounded-2xl overflow-hidden border border-amber-400/35 shadow-[0_0_20px_rgba(251,191,36,0.2)] bg-purple-950/60 my-1">
+            <img
+              src={VISUAL_ASSETS.homeChestCard}
               alt="Baú de Surpresas"
-              className="w-full h-full rounded-none"
-              hideDetails
+              className="w-full h-full object-cover"
             />
           </div>
 

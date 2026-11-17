@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Menu, Settings, Gem } from 'lucide-react';
+import { Menu, Settings } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { DiamondGemIcon } from './icons/CustomIcons';
 
 export const Header: React.FC = () => {
   const {
@@ -62,7 +63,7 @@ export const Header: React.FC = () => {
           title="Loja — Seus Diamantes"
           className="flex items-center gap-2 px-3 min-h-[44px] rounded-full bg-[#170a2c]/80 hover:bg-[#230f44] border border-purple-500/40 text-xs font-semibold text-pink-200 shadow-[0_0_15px_rgba(168,85,247,0.25)] transition-all cursor-pointer group"
         >
-          <Gem className="w-3.5 h-3.5 text-pink-400 fill-pink-400/40 group-hover:scale-110 transition-transform" />
+          <DiamondGemIcon className="w-4 h-4 text-pink-300 group-hover:scale-110 transition-transform" />
           <span className="font-mono text-sm tabular-nums">{coins}</span>
           <span className="w-4 h-4 rounded-full bg-purple-800/80 flex items-center justify-center text-[10px] text-pink-300 ml-0.5">
             +

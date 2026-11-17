@@ -1,18 +1,28 @@
 import {
   Achievement,
+  AquariumDecorInfo,
+  AquariumSpeciesInfo,
+  AquariumState,
   CalendarEvent,
   ChatMessage,
   CoupleConfig,
   CoupleGoal,
   DailyMessage,
   DailyWheelState,
+  DreamHouseState,
   EasterEgg,
+  HouseFloorTheme,
+  HouseFurnitureCatalogItem,
+  HouseWallTheme,
+  IntegratedMission,
   KittenState,
   Letter,
   LoveTreeState,
   MemoryPhoto,
+  MissionsState,
   PetSpeciesInfo,
   Phrase,
+  SeasonalState,
   Song,
   StoreItem,
   TimeCapsuleItem,
@@ -96,8 +106,8 @@ export const INITIAL_PHRASES: Phrase[] = [
 // 200+ Curated Romantic Daily Messages for Gabriel & Samella
 export const INITIAL_DAILY_MESSAGES: DailyMessage[] = ROMANTIC_DAILY_MESSAGES;
 
-// 12 Deep & Poetic Romantic Letters
-export const INITIAL_LETTERS: Letter[] = [
+// Classic archived letters preserved for pre-reset backup & optional reading
+export const LEGACY_ARCHIVE_LETTERS: Letter[] = [
   {
     id: 'l1',
     title: 'O dia em que você mudou o meu mundo',
@@ -320,6 +330,9 @@ Você é o meu amor eterno. 💍✨`,
     tags: ['Pacto', 'Lealdade', 'Eternidade'],
   },
 ];
+
+// Controlled Reset: Letters start completely clean so Gabriel & Samella write real two-way letters to each other
+export const INITIAL_LETTERS: Letter[] = [];
 
 // Initial 38 Photo entries with local path /assets/img/{num}.jpg as primary source
 export const INITIAL_PHOTOS: MemoryPhoto[] = Array.from({ length: 38 }, (_, index) => {
@@ -1500,6 +1513,185 @@ export const INITIAL_STORE_ITEMS: StoreItem[] = [
     category: 'efeitos',
     purchased: false,
   },
+
+  // --- Casa dos Sonhos (Miniaturas RPG 3D) ---
+  {
+    id: 'item-house-fireplace',
+    title: 'Lareira Aconchegante de Pedra',
+    description: 'Chamas quentinhas e brilho âmbar que aquecem a Sala da Casa dos Sonhos.',
+    price: 40,
+    icon: '🔥',
+    category: 'casa',
+    purchased: false,
+    slotType: 'house-furniture',
+    targetId: 'house-fireplace',
+  },
+  {
+    id: 'item-house-canopy-bed',
+    title: 'Cama Dossel Real Lilás',
+    description: 'Cama king romântica com cortinas translúcidas de veludo para o Quarto.',
+    price: 45,
+    icon: '🛏️',
+    category: 'casa',
+    purchased: false,
+    slotType: 'house-furniture',
+    targetId: 'house-canopy-bed',
+  },
+  {
+    id: 'item-house-piano',
+    title: 'Piano de Cauda Estrelado',
+    description: 'Piano clássico lilás & dourado que solta notas musicais na Sala.',
+    price: 55,
+    icon: '🎹',
+    category: 'casa',
+    purchased: false,
+    slotType: 'house-furniture',
+    targetId: 'house-piano',
+  },
+  {
+    id: 'item-house-bookshelf',
+    title: 'Estante Encantada do Casal',
+    description: 'Estante de madeira com livros antigos, velas e mini cristais.',
+    price: 28,
+    icon: '📚',
+    category: 'casa',
+    purchased: false,
+    slotType: 'house-furniture',
+    targetId: 'house-bookshelf',
+  },
+  {
+    id: 'item-house-balcony-swing',
+    title: 'Balanço Florido da Varanda',
+    description: 'Balanço suspenso romântico com vista para a Árvore do Amor.',
+    price: 38,
+    icon: '🌺',
+    category: 'casa',
+    purchased: false,
+    slotType: 'house-furniture',
+    targetId: 'house-balcony-swing',
+  },
+  {
+    id: 'item-house-tea-table',
+    title: 'Conjunto de Chá & Bolo Especial',
+    description: 'Mesinha posta para tardes doces na Cozinha dos Sonhos.',
+    price: 30,
+    icon: '🍰',
+    category: 'casa',
+    purchased: false,
+    slotType: 'house-furniture',
+    targetId: 'house-tea-table',
+  },
+  {
+    id: 'item-house-wall-starlight',
+    title: 'Parede Noite Estrelada Real',
+    description: 'Acabamento luxuoso azul-índigo com constelações sutis na Casa 3D.',
+    price: 32,
+    icon: '🌌',
+    category: 'casa',
+    purchased: false,
+    slotType: 'house-wall',
+    targetId: 'starlight',
+  },
+  {
+    id: 'item-house-wall-christmas',
+    title: 'Decoração Paredes de Natal',
+    description: 'Guirlandas, laços vermelhos e clima natalino acolhedor na Casa.',
+    price: 25,
+    icon: '🎄',
+    category: 'casa',
+    purchased: false,
+    slotType: 'house-wall',
+    targetId: 'christmas',
+  },
+
+  // --- Aquário Mágico 3D ---
+  {
+    id: 'item-aqua-seahorse',
+    title: 'Cavalo-Marinho Dourado',
+    description: 'Criatura encantada que dança delicadamente entre os corais.',
+    price: 32,
+    icon: '🐠',
+    category: 'aquario',
+    purchased: false,
+    slotType: 'aquarium-fish',
+    targetId: 'seahorse',
+  },
+  {
+    id: 'item-aqua-jellyfish',
+    title: 'Água-Viva Bioluminescente',
+    description: 'Flutua em ondas rosadas e violetas iluminando o aquário à noite.',
+    price: 42,
+    icon: '🎐',
+    category: 'aquario',
+    purchased: false,
+    slotType: 'aquarium-fish',
+    targetId: 'jellyfish',
+  },
+  {
+    id: 'item-aqua-koi',
+    title: 'Carpa Koi Imperial',
+    description: 'Peixe oriental elegante símbolo de amor e harmonia eterna.',
+    price: 36,
+    icon: '🎏',
+    category: 'aquario',
+    purchased: false,
+    slotType: 'aquarium-fish',
+    targetId: 'koifish',
+  },
+  {
+    id: 'item-aqua-ship',
+    title: 'Navio Miniatura Submerso',
+    description: 'Navio fantástico com velas em miniatura no fundo do aquário.',
+    price: 38,
+    icon: '⛵',
+    category: 'aquario',
+    purchased: false,
+    slotType: 'aquarium-decor',
+    targetId: 'ship',
+  },
+  {
+    id: 'item-aqua-crystal',
+    title: 'Cristal Atlante Luminoso',
+    description: 'Aglomerado de cristais azuis e magenta que brilha sob a água.',
+    price: 30,
+    icon: '🔮',
+    category: 'aquario',
+    purchased: false,
+    slotType: 'aquarium-decor',
+    targetId: 'crystal',
+  },
+
+  // --- Trajes Sazonais Exclusivos para Mascotes ---
+  {
+    id: 'item-pet-santa-hat',
+    title: 'Gorro de Papai Noel do Pet',
+    description: 'Gorrinho vermelho fofo com pompom branco de Natal para seu mascote.',
+    price: 20,
+    icon: '🎅',
+    category: 'sazonal',
+    purchased: false,
+    slotType: 'hat',
+  },
+  {
+    id: 'item-pet-witch-hat',
+    title: 'Chapéu Encantado de Halloween',
+    description: 'Chapéu pontudo roxo com fivela dourada para noites de outubro.',
+    price: 20,
+    icon: '🎃',
+    category: 'sazonal',
+    purchased: false,
+    slotType: 'hat',
+  },
+  {
+    id: 'item-pet-valentine-rose',
+    title: 'Rosa Encantada dos Namorados',
+    description: 'Uma rosa carmesim brilhante que flutua ao lado do mascote.',
+    price: 22,
+    icon: '🌹',
+    category: 'sazonal',
+    purchased: false,
+    slotType: 'accessory',
+  },
 ];
 
 // Initial Virtual Pet State (Zeroed progress; user chooses pet name)
@@ -1666,7 +1858,7 @@ export const INITIAL_TIME_CAPSULES: TimeCapsuleItem[] = [
   },
 ];
 
-export const INITIAL_COUPLE_GOALS: CoupleGoal[] = [
+export const LEGACY_ARCHIVE_GOALS: CoupleGoal[] = [
   { id: 'goal-1', title: 'Fazer uma viagem romântica só nós dois', category: 'Viagens', icon: '✈️', completed: false, priority: 'alta' },
   { id: 'goal-2', title: 'Assistir ao pôr do sol abraçadinhos na praia', category: 'Momentos', icon: '🌅', completed: false, priority: 'alta' },
   { id: 'goal-3', title: 'Montar nosso álbum físico com fotos favoritas', category: 'Memórias', icon: '📸', completed: false, priority: 'media' },
@@ -1676,6 +1868,9 @@ export const INITIAL_COUPLE_GOALS: CoupleGoal[] = [
   { id: 'goal-7', title: 'Ir a um show ou evento para cantar nossa música', category: 'Momentos', icon: '🎶', completed: false, priority: 'media' },
   { id: 'goal-8', title: 'Olhar as estrelas longe das luzes da cidade', category: 'Momentos', icon: '🌌', completed: false, priority: 'suave' },
 ];
+
+// Controlled Reset: Wishlist starts completely clean so Gabriel & Samella add real shared dreams
+export const INITIAL_COUPLE_GOALS: CoupleGoal[] = [];
 
 export const INITIAL_CALENDAR_EVENTS: CalendarEvent[] = [
   {
@@ -1695,4 +1890,380 @@ export const INITIAL_DAILY_WHEEL: DailyWheelState = {
   lastSpinAt: 0,
   totalSpins: 0,
 };
+
+// --- CASA DOS SONHOS 3D CATALOGS ---
+export const HOUSE_FURNITURE_CATALOG: HouseFurnitureCatalogItem[] = [
+  {
+    id: 'house-sofa',
+    name: 'Sofá de Veludo Rosé',
+    room: 'sala',
+    description: 'Sofá macio de 3 lugares com almofadas bordadas.',
+    unlockedByDefault: true,
+    accentHex: '#ec4899',
+  },
+  {
+    id: 'house-rug',
+    name: 'Tapete Circular Encantado',
+    room: 'sala',
+    description: 'Tapete felpudo creme e lilás com brilho suave.',
+    unlockedByDefault: true,
+    accentHex: '#c084fc',
+  },
+  {
+    id: 'house-lamp',
+    name: 'Abajur de Cristal Dourado',
+    room: 'sala',
+    description: 'Iluminação acolhedora para leituras e filmes.',
+    unlockedByDefault: true,
+    accentHex: '#fbbf24',
+  },
+  {
+    id: 'house-fireplace',
+    name: 'Lareira Aconchegante',
+    room: 'sala',
+    description: 'Lareira de pedra com fogo animado e luz quente.',
+    unlockedByDefault: false,
+    price: 40,
+    accentHex: '#f97316',
+  },
+  {
+    id: 'house-piano',
+    name: 'Piano de Cauda Estrelado',
+    room: 'sala',
+    description: 'Toca acordes suaves quando clicado.',
+    unlockedByDefault: false,
+    price: 55,
+    accentHex: '#a855f7',
+  },
+  {
+    id: 'house-bookshelf',
+    name: 'Estante Encantada',
+    room: 'sala',
+    description: 'Livros favoritos, porta-retrato e velas aromáticas.',
+    unlockedByDefault: false,
+    price: 28,
+    accentHex: '#b45309',
+  },
+  {
+    id: 'house-cozy-bed',
+    name: 'Cama Casal Aconchego',
+    room: 'quarto',
+    description: 'Edredom lilás e travesseiros fofinhos em forma de coração.',
+    unlockedByDefault: true,
+    accentHex: '#a855f7',
+  },
+  {
+    id: 'house-canopy-bed',
+    name: 'Cama Dossel Real',
+    room: 'quarto',
+    description: 'Estrutura alta de madeira escura com véu iluminado.',
+    unlockedByDefault: false,
+    price: 45,
+    accentHex: '#f472b6',
+  },
+  {
+    id: 'house-vanity',
+    name: 'Penteadeira com Espelho',
+    room: 'quarto',
+    description: 'Espelho com luzes camarim e frascos de perfume.',
+    unlockedByDefault: true,
+    accentHex: '#fbcfe8',
+  },
+  {
+    id: 'house-balcony-bench',
+    name: 'Banco das Estrelas',
+    room: 'varanda',
+    description: 'Banco confortável de madeira olhando para a Árvore do Amor.',
+    unlockedByDefault: true,
+    accentHex: '#93c5fd',
+  },
+  {
+    id: 'house-balcony-swing',
+    name: 'Balanço Florido',
+    room: 'varanda',
+    description: 'Balanço de jardim suspenso com pétalas envoltas.',
+    unlockedByDefault: false,
+    price: 38,
+    accentHex: '#f43f5e',
+  },
+  {
+    id: 'house-kitchen-island',
+    name: 'Bancada Gourmet',
+    room: 'cozinha',
+    description: 'Bancada de mármore com xícaras de café fumegantes.',
+    unlockedByDefault: true,
+    accentHex: '#e2e8f0',
+  },
+  {
+    id: 'house-tea-table',
+    name: 'Mesa de Chá & Bolo',
+    room: 'cozinha',
+    description: 'Bolo confeitado e bule dourado para o lanche a dois.',
+    unlockedByDefault: false,
+    price: 30,
+    accentHex: '#fb7185',
+  },
+];
+
+export const HOUSE_WALL_THEMES: { id: HouseWallTheme; label: string; colorHex: string; unlockedByDefault?: boolean }[] = [
+  { id: 'lavender', label: 'Lavanda Noturna', colorHex: '#2e1065', unlockedByDefault: true },
+  { id: 'midnight', label: 'Veludo Preto', colorHex: '#130924', unlockedByDefault: true },
+  { id: 'rosewood', label: 'Rosa Antigo', colorHex: '#4c0519', unlockedByDefault: true },
+  { id: 'starlight', label: 'Céu Estrelado', colorHex: '#1e1b4b', unlockedByDefault: false },
+  { id: 'christmas', label: 'Natal Encantado', colorHex: '#14532d', unlockedByDefault: false },
+  { id: 'halloween', label: 'Noite Mística', colorHex: '#2e1035', unlockedByDefault: true },
+];
+
+export const HOUSE_FLOOR_THEMES: { id: HouseFloorTheme; label: string; colorHex: string }[] = [
+  { id: 'wood', label: 'Madeira Quente', colorHex: '#5c3419' },
+  { id: 'marble', label: 'Mármore Lilás', colorHex: '#33224a' },
+  { id: 'velvet', label: 'Carpete Rosé', colorHex: '#4a1936' },
+  { id: 'checkered', label: 'Xadrez Clássico', colorHex: '#27173a' },
+];
+
+export const INITIAL_DREAM_HOUSE: DreamHouseState = {
+  activeRoom: 'sala',
+  wallTheme: 'lavender',
+  floorTheme: 'wood',
+  lightsOn: true,
+  fireplaceLit: true,
+  musicNoteGlow: true,
+  unlockedFurnitureIds: HOUSE_FURNITURE_CATALOG.filter((f) => f.unlockedByDefault).map((f) => f.id),
+  placedFurniture: {
+    sala: ['house-sofa', 'house-rug', 'house-lamp'],
+    quarto: ['house-cozy-bed', 'house-vanity'],
+    varanda: ['house-balcony-bench'],
+    cozinha: ['house-kitchen-island'],
+  },
+  comfortLevel: 1,
+};
+
+// --- AQUÁRIO MÁGICO 3D CATALOGS ---
+export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
+  {
+    id: 'clownfish',
+    name: 'Peixe-Palhaço Laranja',
+    rarity: 'comum',
+    colorHex: '#f97316',
+    accentHex: '#ffffff',
+    scale: 1,
+    unlockedByDefault: true,
+    description: 'Alegre e brincalhão, adora nadar perto dos corais cor-de-rosa.',
+  },
+  {
+    id: 'betta',
+    name: 'Betta Véu Violeta',
+    rarity: 'raro',
+    colorHex: '#a855f7',
+    accentHex: '#f472b6',
+    scale: 1.05,
+    unlockedByDefault: true,
+    description: 'Nadadeiras esvoaçantes dignas da realeza do oceano.',
+  },
+  {
+    id: 'angelfish',
+    name: 'Acará-Bandeira Dourado',
+    rarity: 'comum',
+    colorHex: '#facc15',
+    accentHex: '#0f172a',
+    scale: 1.15,
+    unlockedByDefault: true,
+    description: 'Desliza serenamente exibindo listras elegantes.',
+  },
+  {
+    id: 'koifish',
+    name: 'Carpa Koi Imperial',
+    rarity: 'raro',
+    colorHex: '#fb7185',
+    accentHex: '#fef3c7',
+    scale: 1.25,
+    unlockedByDefault: false,
+    description: 'Símbolo de perseverança e amor duradouro.',
+  },
+  {
+    id: 'seahorse',
+    name: 'Cavalo-Marinho Dourado',
+    rarity: 'raro',
+    colorHex: '#fbbf24',
+    accentHex: '#fde68a',
+    scale: 0.95,
+    unlockedByDefault: false,
+    description: 'Paira suavemente como um pequeno guardião encantado.',
+  },
+  {
+    id: 'jellyfish',
+    name: 'Água-Viva Luminescente',
+    rarity: 'lendario',
+    colorHex: '#e879f9',
+    accentHex: '#38bdf8',
+    scale: 1.15,
+    unlockedByDefault: false,
+    description: 'Pulsa luz neon lilás e turquesa na água profunda.',
+  },
+  {
+    id: 'shark',
+    name: 'Tubarãozinho (Pet Aquático)',
+    rarity: 'lendario',
+    colorHex: '#38bdf8',
+    accentHex: '#f8fafc',
+    scale: 1.55,
+    linkedPetType: 'shark',
+    unlockedByDefault: false,
+    description: 'Aparece automaticamente quando adotado na aba Mascotes!',
+  },
+  {
+    id: 'dolphin',
+    name: 'Golfinho (Pet Aquático)',
+    rarity: 'lendario',
+    colorHex: '#22d3ee',
+    accentHex: '#f0fdfa',
+    scale: 1.65,
+    linkedPetType: 'dolphin',
+    unlockedByDefault: false,
+    description: 'Salta e gira feliz quando adotado na aba Mascotes!',
+  },
+  {
+    id: 'whale',
+    name: 'Baleia Azul (Pet Aquático)',
+    rarity: 'mitico',
+    colorHex: '#60a5fa',
+    accentHex: '#e0f2fe',
+    scale: 2.1,
+    linkedPetType: 'whale',
+    unlockedByDefault: false,
+    description: 'Guardiã majestosa dos mares do Nosso Mundo.',
+  },
+];
+
+export const AQUARIUM_DECOR_CATALOG: AquariumDecorInfo[] = [
+  {
+    id: 'coral',
+    name: 'Recife de Corais Rosé',
+    description: 'Corais coloridos que abrigam peixinhos.',
+    unlockedByDefault: true,
+    accentHex: '#f472b6',
+  },
+  {
+    id: 'castle',
+    name: 'Castelo de Pérolas',
+    description: 'Miniatura de castelo medieval com uma pérola brilhante.',
+    unlockedByDefault: true,
+    accentHex: '#c084fc',
+  },
+  {
+    id: 'ship',
+    name: 'Navio Miniatura Submerso',
+    description: 'Navio antigo de madeira explorado pelos peixes.',
+    unlockedByDefault: false,
+    accentHex: '#b45309',
+  },
+  {
+    id: 'crystal',
+    name: 'Cristal Atlante Luminoso',
+    description: 'Cristais mágicos que irradiam luz turquesa.',
+    unlockedByDefault: false,
+    accentHex: '#22d3ee',
+  },
+];
+
+export const INITIAL_AQUARIUM_STATE: AquariumState = {
+  waterClarity: 92,
+  fishHunger: 78,
+  lightMode: 'bioluminescent',
+  bubblesActive: true,
+  unlockedFishIds: AQUARIUM_SPECIES_CATALOG.filter((f) => f.unlockedByDefault).map((f) => f.id),
+  activeFishIds: AQUARIUM_SPECIES_CATALOG.filter((f) => f.unlockedByDefault).map((f) => f.id),
+  unlockedDecorIds: AQUARIUM_DECOR_CATALOG.filter((d) => d.unlockedByDefault).map((d) => d.id),
+  activeDecorIds: AQUARIUM_DECOR_CATALOG.filter((d) => d.unlockedByDefault).map((d) => d.id),
+  feedCount: 0,
+};
+
+// --- EVENTOS SAZONAIS & MISSÕES INTEGRADAS ---
+export const INITIAL_SEASONAL_STATE: SeasonalState = {
+  mode: 'auto',
+  previewEvent: 'normal',
+  claimedProps: [],
+  memoriesSeen: [],
+};
+
+export const INTEGRATED_MISSIONS_CATALOG: IntegratedMission[] = [
+  {
+    id: 'mis-two-way-letter',
+    title: 'Correspondência do Coração',
+    description: 'Envie 1 carta verdadeira de Gabriel para Samella ou de Samella para Gabriel.',
+    category: 'casal',
+    rewardCoins: 12,
+    targetCount: 1,
+  },
+  {
+    id: 'mis-wishlist-dream',
+    title: 'Construindo Sonhos Reais',
+    description: 'Adicione pelo menos 1 desejo novo na Lista de Desejos do casal.',
+    category: 'casal',
+    rewardCoins: 10,
+    targetCount: 1,
+  },
+  {
+    id: 'mis-house-decorator',
+    title: 'Anfitriões da Casa dos Sonhos',
+    description: 'Explore e decore cômodos da Casa dos Sonhos 3D (visite 2 vezes).',
+    category: 'casa',
+    rewardCoins: 15,
+    rewardUnlockLabel: 'Desbloqueia Estante Encantada se ainda não possuir',
+    targetCount: 2,
+  },
+  {
+    id: 'mis-aquarium-keeper',
+    title: 'Guardiões do Aquário Mágico',
+    description: 'Alimente os peixinhos do Aquário Mágico 3 vezes.',
+    category: 'aquario',
+    rewardCoins: 15,
+    rewardUnlockLabel: '+ Brilho na Água',
+    targetCount: 3,
+  },
+  {
+    id: 'mis-virtual-photo',
+    title: 'Fotógrafos do Nosso Universo',
+    description: 'Tire 1 foto usando a Câmera Virtual na Casa, Aquário, Mascote ou Árvore.',
+    category: 'casal',
+    rewardCoins: 14,
+    targetCount: 1,
+  },
+  {
+    id: 'mis-christmas-spirit',
+    title: 'Magia de Natal no Contador',
+    description: 'Encontre o Papai Noel no topo do contador durante a temporada de Natal.',
+    category: 'sazonal',
+    rewardCoins: 20,
+    targetCount: 1,
+    seasonalOnly: 'natal',
+  },
+  {
+    id: 'mis-halloween-secret',
+    title: 'Caça às Abóboras Místicas',
+    description: 'Toque em uma abóbora iluminada durante o evento de Halloween.',
+    category: 'sazonal',
+    rewardCoins: 18,
+    targetCount: 1,
+    seasonalOnly: 'halloween',
+  },
+  {
+    id: 'mis-valentines-bloom',
+    title: 'Chuva de Pétalas Apaixonadas',
+    description: 'Celebre o Dia dos Namorados resgatando o mimo da rosa encantada.',
+    category: 'sazonal',
+    rewardCoins: 25,
+    targetCount: 1,
+    seasonalOnly: 'namorados',
+  },
+];
+
+export const INITIAL_MISSIONS_STATE: MissionsState = {
+  claimedIds: [],
+  virtualSnapshotsTaken: 0,
+  houseVisits: 0,
+  aquariumFeeds: 0,
+  twoWayLettersSent: 0,
+};
+
 
