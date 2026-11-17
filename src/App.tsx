@@ -17,6 +17,7 @@ import { StoreView } from './components/views/StoreView';
 import { ChatView } from './components/views/ChatView';
 import { ProfileView } from './components/views/ProfileView';
 import { GoalsView } from './components/views/GoalsView';
+import { CalendarView } from './components/views/CalendarView';
 import { EasterEggModal } from './components/EasterEggModal';
 import { HeartRain } from './components/HeartRain';
 import { Sidebar } from './components/Sidebar';
@@ -93,6 +94,7 @@ const MainAppContent: React.FC = () => {
             {extendedView === 'arvore' && <LoveTreeView />}
             {extendedView === 'conquistas' && <AchievementsView />}
             {extendedView === 'metas' && <GoalsView />}
+            {extendedView === 'calendario' && <CalendarView />}
             {extendedView === 'jogos' && <GamesView />}
             {extendedView === 'gatinho' && <KittenView />}
             {extendedView === 'loja' && <StoreView />}

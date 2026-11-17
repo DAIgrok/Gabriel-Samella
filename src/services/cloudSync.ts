@@ -2,11 +2,17 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
   getFirestore,
   doc,
+  collection,
   getDoc,
+  getDocs,
   getDocFromServer,
+  onSnapshot,
   setDoc,
   updateDoc,
   deleteDoc,
+  query,
+  orderBy,
+  limit,
   serverTimestamp,
   Timestamp,
   FieldValue,
@@ -15,6 +21,7 @@ import firebaseConfig from '../../firebase-applet-config.json';
 import { auth } from './firebaseAuth';
 import {
   Achievement,
+  CalendarEvent,
   ChatMessage,
   CoupleConfig,
   CoupleGoal,
@@ -36,6 +43,7 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
 export const COUPLE_WORLD_COLLECTION = 'couple_worlds';
 export const COUPLE_WORLD_ID = 'gabriel-samella-1206';
+export const PHOTOS_SUBCOLLECTION = 'photos';
 
 enum OperationType {
   CREATE = 'create',
@@ -109,9 +117,18 @@ export interface CloudWorldPayload {
     unsealedMap: Record<string, string>;
     customLetters: Letter[];
   };
-  achievementsState: Record<string, { unlocked: boolean; unlockedAt?: string; progress: number }>;
-  storeItemsState: Record<string, { purchased: boolean; redeemed?: boolean; redeemedAt?: string; equipped?: boolean }>;
-  easterEggsState: Record<string, { discovered: boolean; discoveredAt?: string }>;
+  achievementsState: Record<
+    string,
+    { unlocked: boolean; unlockedAt?: string; rewardClaimed?: boolean; progress: number }
+  >;
+  storeItemsState: Record<
+    string,
+    { purchased: boolean; redeemed?: boolean; redeemedAt?: string; equipped?: boolean }
+  >;
+  easterEggsState: Record<
+    string,
+    { discovered: boolean; discoveredAt?: string; rewardClaimed?: boolean }
+  >;
   phrasesState: Record<string, boolean>;
   chatMessages: ChatMessage[];
   gameRecords: GameRecords;
@@ -120,6 +137,7 @@ export interface CloudWorldPayload {
   customQuizQuestions?: QuizQuestion[];
   timeCapsules?: TimeCapsuleItem[];
   coupleGoals?: CoupleGoal[];
+  calendarEvents?: CalendarEvent[];
   dailyWheelState?: DailyWheelState;
   createdAt?: Timestamp | ReturnType<typeof serverTimestamp>;
   updatedAt?: Timestamp | ReturnType<typeof serverTimestamp>;
@@ -152,7 +170,6 @@ function stripUndefined<T>(value: T): T {
  * Validate Firestore connectivity on application boot.
  */
 export async function testFirestoreConnection(): Promise<boolean> {
-  const path = `${COUPLE_WORLD_COLLECTION}/${COUPLE_WORLD_ID}`;
   try {
     await getDocFromServer(doc(db, COUPLE_WORLD_COLLECTION, COUPLE_WORLD_ID));
     return true;
@@ -172,6 +189,116 @@ export async function loadCloudWorld(): Promise<CloudWorldPayload | null> {
     return snap.data() as CloudWorldPayload;
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
+  }
+}
+
+export function subscribeCloudWorld(onUpdate: (data: CloudWorldPayload) => void): () => void {
+  const docRef = doc(db, COUPLE_WORLD_COLLECTION, COUPLE_WORLD_ID);
+  return onSnapshot(
+    docRef,
+    (snap) => {
+      if (snap.metadata.hasPendingWrites || !snap.exists()) return;
+      onUpdate(snap.data() as CloudWorldPayload);
+    },
+    (err) => {
+      console.warn('Firestore live sync notice:', err);
+    }
+  );
+}
+
+export function sanitizePhotoId(id: string): string {
+  const cleaned = id.replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 64);
+  return cleaned || `photo-${Date.now()}`;
+}
+
+export async function loadCloudPhotos(): Promise<MemoryPhoto[]> {
+  const path = `${COUPLE_WORLD_COLLECTION}/${COUPLE_WORLD_ID}/${PHOTOS_SUBCOLLECTION}`;
+  try {
+    const colRef = collection(db, COUPLE_WORLD_COLLECTION, COUPLE_WORLD_ID, PHOTOS_SUBCOLLECTION);
+    const q = query(colRef, orderBy('index', 'asc'), limit(120));
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => {
+      const data = d.data() as MemoryPhoto;
+      return {
+        id: data.id || d.id,
+        index: typeof data.index === 'number' ? data.index : 0,
+        title: data.title || 'Memória ♡',
+        subtitle: data.subtitle || '',
+        date: data.date || '',
+        url: data.url,
+        ...(data.localPath ? { localPath: data.localPath } : {}),
+        ...(data.driveUrl ? { driveUrl: data.driveUrl } : {}),
+        ...(data.driveFileId ? { driveFileId: data.driveFileId } : {}),
+        ...(data.sourceType ? { sourceType: data.sourceType } : {}),
+        ...(data.aspect ? { aspect: data.aspect } : {}),
+        ...(data.isFavorite !== undefined ? { isFavorite: data.isFavorite } : {}),
+        ...(data.inHomeLoop !== undefined ? { inHomeLoop: data.inHomeLoop } : {}),
+        ...(data.caption ? { caption: data.caption } : {}),
+      };
+    });
+  } catch (error) {
+    console.warn('Erro ao carregar subcoleção de fotos compartilhadas:', error);
+    return [];
+  }
+}
+
+export async function saveCloudPhoto(photo: MemoryPhoto): Promise<void> {
+  if (!photo.url || photo.url.startsWith('idb://') || photo.url.length > 740_000) {
+    return;
+  }
+  const safeId = sanitizePhotoId(photo.id);
+  const path = `${COUPLE_WORLD_COLLECTION}/${COUPLE_WORLD_ID}/${PHOTOS_SUBCOLLECTION}/${safeId}`;
+  const docRef = doc(db, COUPLE_WORLD_COLLECTION, COUPLE_WORLD_ID, PHOTOS_SUBCOLLECTION, safeId);
+
+  try {
+    const existingSnap = await getDoc(docRef);
+    const mutableFields = stripUndefined({
+      index: Math.max(0, Math.min(10000, Math.round(Number.isFinite(photo.index) ? photo.index : 0))),
+      title: String(photo.title || 'Memória ♡').slice(0, 158),
+      subtitle: String(photo.subtitle || '').slice(0, 298),
+      date: String(photo.date || '').slice(0, 78),
+      url: photo.url,
+      ...(photo.localPath ? { localPath: photo.localPath.slice(0, 298) } : {}),
+      ...(photo.driveUrl ? { driveUrl: photo.driveUrl.slice(0, 498) } : {}),
+      ...(photo.driveFileId ? { driveFileId: photo.driveFileId.slice(0, 126) } : {}),
+      ...(photo.sourceType ? { sourceType: photo.sourceType.slice(0, 22) } : {}),
+      ...(photo.aspect ? { aspect: photo.aspect.slice(0, 22) } : {}),
+      ...(photo.isFavorite !== undefined ? { isFavorite: Boolean(photo.isFavorite) } : {}),
+      ...(photo.inHomeLoop !== undefined ? { inHomeLoop: Boolean(photo.inHomeLoop) } : {}),
+      ...(photo.caption ? { caption: photo.caption.slice(0, 398) } : {}),
+      updatedAt: serverTimestamp(),
+    });
+
+    if (existingSnap.exists()) {
+      await updateDoc(docRef, mutableFields);
+    } else {
+      await setDoc(docRef, {
+        id: safeId,
+        ...mutableFields,
+        createdAt: serverTimestamp(),
+      });
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function saveCloudPhotosBatch(photos: MemoryPhoto[]): Promise<void> {
+  const validPhotos = photos.filter((p) => p.url && !p.url.startsWith('idb://') && p.url.length <= 740_000);
+  // Save sequentially in small chunks of 4 to avoid overwhelming mobile network / quota
+  for (let i = 0; i < validPhotos.length; i += 4) {
+    const chunk = validPhotos.slice(i, i + 4);
+    await Promise.allSettled(chunk.map((photo) => saveCloudPhoto(photo)));
+  }
+}
+
+export async function deleteCloudPhoto(photoId: string): Promise<void> {
+  const safeId = sanitizePhotoId(photoId);
+  const path = `${COUPLE_WORLD_COLLECTION}/${COUPLE_WORLD_ID}/${PHOTOS_SUBCOLLECTION}/${safeId}`;
+  try {
+    await deleteDoc(doc(db, COUPLE_WORLD_COLLECTION, COUPLE_WORLD_ID, PHOTOS_SUBCOLLECTION, safeId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
   }
 }
 
@@ -195,6 +322,7 @@ export interface SaveCloudInput {
   customQuizQuestions: QuizQuestion[];
   timeCapsules: TimeCapsuleItem[];
   coupleGoals: CoupleGoal[];
+  calendarEvents: CalendarEvent[];
   dailyWheelState: DailyWheelState;
   initialPhotoIds: Set<string>;
   initialSongIds: Set<string>;
@@ -217,11 +345,12 @@ export async function saveCloudWorld(input: SaveCloudInput): Promise<void> {
 
   const achievementsState: CloudWorldPayload['achievementsState'] = {};
   input.achievements.forEach((a) => {
-    if (a.unlocked || a.progress > 0) {
+    if (a.unlocked || a.rewardClaimed || a.progress > 0) {
       achievementsState[a.id] = {
         unlocked: a.unlocked,
         progress: a.progress,
         ...(a.unlockedAt ? { unlockedAt: a.unlockedAt } : {}),
+        ...(a.unlocked || a.rewardClaimed ? { rewardClaimed: true } : {}),
       };
     }
   });
@@ -240,9 +369,10 @@ export async function saveCloudWorld(input: SaveCloudInput): Promise<void> {
 
   const easterEggsState: CloudWorldPayload['easterEggsState'] = {};
   input.easterEggs.forEach((e) => {
-    if (e.discovered) {
+    if (e.discovered || e.rewardClaimed) {
       easterEggsState[e.id] = {
         discovered: true,
+        rewardClaimed: true,
         ...(e.discoveredAt ? { discoveredAt: e.discoveredAt } : {}),
       };
     }
@@ -253,14 +383,19 @@ export async function saveCloudWorld(input: SaveCloudInput): Promise<void> {
     if (p.isFavorite) phrasesState[p.id] = true;
   });
 
-  // Never upload large inline base64 data URLs to Firestore (stay well under 1MB Firestore limit)
+  // Photos with compressed data URLs live in the dedicated photos subcollection; keep only lightweight URL metadata here
   const customPhotos = input.photos
-    .filter((p) => !input.initialPhotoIds.has(p.id) && !p.url.startsWith('idb://') && (!p.url.startsWith('data:') || p.url.length < 40000))
+    .filter((p) => !input.initialPhotoIds.has(p.id) && !p.url.startsWith('idb://') && !p.url.startsWith('data:'))
     .slice(0, 50);
 
   const customSongs = input.songs
-    .filter((s) => !input.initialSongIds.has(s.id) && !s.audioUrl?.startsWith('idb://') && (!s.audioUrl?.startsWith('data:') || s.audioUrl.length < 40000))
-    .slice(0, 30);
+    .filter(
+      (s) =>
+        !input.initialSongIds.has(s.id) &&
+        !s.audioUrl?.startsWith('idb://') &&
+        (!s.audioUrl?.startsWith('data:') || s.audioUrl.length < 40000)
+    )
+    .slice(0, 35);
 
   try {
     const existingSnap = await getDoc(docRef);
@@ -284,7 +419,8 @@ export async function saveCloudWorld(input: SaveCloudInput): Promise<void> {
       customSongs,
       customQuizQuestions: input.customQuizQuestions.slice(0, 80),
       timeCapsules: input.timeCapsules.slice(0, 30),
-      coupleGoals: input.coupleGoals.slice(0, 60),
+      coupleGoals: input.coupleGoals.slice(0, 90),
+      calendarEvents: input.calendarEvents.slice(0, 140),
       dailyWheelState: input.dailyWheelState,
     });
 
@@ -307,13 +443,12 @@ export async function saveCloudWorld(input: SaveCloudInput): Promise<void> {
   }
 }
 
-function existingSnapSafeOp(_error: unknown): OperationType {
-  return OperationType.WRITE;
-}
-
 export async function clearCloudWorld(): Promise<void> {
   const path = `${COUPLE_WORLD_COLLECTION}/${COUPLE_WORLD_ID}`;
   try {
+    const colRef = collection(db, COUPLE_WORLD_COLLECTION, COUPLE_WORLD_ID, PHOTOS_SUBCOLLECTION);
+    const snap = await getDocs(colRef);
+    await Promise.allSettled(snap.docs.map((d) => deleteDoc(d.ref)));
     await deleteDoc(doc(db, COUPLE_WORLD_COLLECTION, COUPLE_WORLD_ID));
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);

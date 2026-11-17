@@ -45,6 +45,7 @@ service cloud.firestore {
           'customQuizQuestions',
           'timeCapsules',
           'coupleGoals',
+          'calendarEvents',
           'dailyWheelState',
           'createdAt',
           'updatedAt'
@@ -68,8 +69,45 @@ service cloud.firestore {
         && (!('customSongs' in data) || (data.customSongs is list && data.customSongs.size() <= 40))
         && (!('customQuizQuestions' in data) || (data.customQuizQuestions is list && data.customQuizQuestions.size() <= 100))
         && (!('timeCapsules' in data) || (data.timeCapsules is list && data.timeCapsules.size() <= 40))
-        && (!('coupleGoals' in data) || (data.coupleGoals is list && data.coupleGoals.size() <= 80))
+        && (!('coupleGoals' in data) || (data.coupleGoals is list && data.coupleGoals.size() <= 100))
+        && (!('calendarEvents' in data) || (data.calendarEvents is list && data.calendarEvents.size() <= 150))
         && (!('dailyWheelState' in data) || (data.dailyWheelState is map && data.dailyWheelState.keys().size() <= 10));
+    }
+
+    function isValidSharedPhoto(data) {
+      return data.keys().hasAll(['id', 'index', 'title', 'subtitle', 'date', 'url', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'id',
+          'index',
+          'title',
+          'subtitle',
+          'date',
+          'url',
+          'localPath',
+          'driveUrl',
+          'driveFileId',
+          'sourceType',
+          'aspect',
+          'isFavorite',
+          'inHomeLoop',
+          'caption',
+          'createdAt',
+          'updatedAt'
+        ])
+        && isValidId(data.id)
+        && data.index is int && data.index >= 0 && data.index <= 10000
+        && data.title is string && data.title.size() <= 160
+        && data.subtitle is string && data.subtitle.size() <= 300
+        && data.date is string && data.date.size() <= 80
+        && data.url is string && data.url.size() > 0 && data.url.size() <= 750000
+        && (!('localPath' in data) || (data.localPath is string && data.localPath.size() <= 300))
+        && (!('driveUrl' in data) || (data.driveUrl is string && data.driveUrl.size() <= 500))
+        && (!('driveFileId' in data) || (data.driveFileId is string && data.driveFileId.size() <= 128))
+        && (!('sourceType' in data) || (data.sourceType is string && data.sourceType.size() <= 24))
+        && (!('aspect' in data) || (data.aspect is string && data.aspect.size() <= 24))
+        && (!('isFavorite' in data) || data.isFavorite is bool)
+        && (!('inHomeLoop' in data) || data.inHomeLoop is bool)
+        && (!('caption' in data) || (data.caption is string && data.caption.size() <= 400));
     }
 
     match /couple_worlds/{worldId} {
@@ -111,11 +149,51 @@ service cloud.firestore {
           'customQuizQuestions',
           'timeCapsules',
           'coupleGoals',
+          'calendarEvents',
           'dailyWheelState',
           'updatedAt'
         ]);
 
       allow delete: if isValidId(worldId) && isCoupleWorldId(worldId);
+
+      match /photos/{photoId} {
+        allow list: if isValidId(worldId) && isCoupleWorldId(worldId);
+        allow get: if isValidId(worldId) && isCoupleWorldId(worldId) && isValidId(photoId);
+
+        allow create: if isValidId(worldId)
+          && isCoupleWorldId(worldId)
+          && isValidId(photoId)
+          && isValidSharedPhoto(incoming())
+          && incoming().id == photoId
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+
+        allow update: if isValidId(worldId)
+          && isCoupleWorldId(worldId)
+          && isValidId(photoId)
+          && isValidSharedPhoto(incoming())
+          && incoming().id == existing().id
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'index',
+            'title',
+            'subtitle',
+            'date',
+            'url',
+            'localPath',
+            'driveUrl',
+            'driveFileId',
+            'sourceType',
+            'aspect',
+            'isFavorite',
+            'inHomeLoop',
+            'caption',
+            'updatedAt'
+          ]);
+
+        allow delete: if isValidId(worldId) && isCoupleWorldId(worldId) && isValidId(photoId);
+      }
     }
   }
 }

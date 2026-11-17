@@ -21,6 +21,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { soundEngine } from '../../utils/audioSynth';
 import { LoveTree2D } from '../tree/LoveTree2D';
+import { LoveTreeDesign } from '../tree/LoveTreeDesign';
 import { FantasyTreeCanvas } from '../3d/FantasyTreeCanvas';
 
 interface PromiseRibbon {
@@ -63,6 +64,7 @@ const DEFAULT_RIBBONS: PromiseRibbon[] = [
 
 export const LoveTreeView: React.FC = () => {
   const {
+    coins,
     config,
     treeState,
     waterLoveTree,
@@ -70,6 +72,7 @@ export const LoveTreeView: React.FC = () => {
     pruneLoveTree,
     addPromiseRibbon,
     harvestTreeFruit,
+    plantLoveSeed,
     showToast,
     triggerHeartExplosion,
     storeItems,
@@ -88,7 +91,7 @@ export const LoveTreeView: React.FC = () => {
   const [harvestedFruits, setHarvestedFruits] = useState<number[]>([]);
   const [isAddingRibbon, setIsAddingRibbon] = useState(false);
   const [newRibbonText, setNewRibbonText] = useState('');
-  const [treeViewMode, setTreeViewMode] = useState<'3d' | '2d'>('3d');
+  const [treeViewMode, setTreeViewMode] = useState<'design' | '3d' | '2d'>('design');
   const [, setTick] = useState(0);
 
   // Live 1s ticker for cooldown countdowns
@@ -305,6 +308,90 @@ export const LoveTreeView: React.FC = () => {
     </AnimatePresence>
   );
 
+  if (treeViewMode === 'design') {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        className="space-y-3 pb-32 sm:pb-24 max-w-xl mx-auto"
+      >
+        <div className="flex justify-end">
+          <div className="flex items-center bg-black/50 border border-teal-400/30 rounded-full p-0.5 text-[10px] font-bold">
+            <button
+              type="button"
+              onClick={() => setTreeViewMode('design')}
+              className="px-2.5 py-1 rounded-full bg-gradient-to-r from-teal-500 to-pink-500 text-white shadow cursor-pointer"
+            >
+              Novo ♡
+            </button>
+            <button
+              type="button"
+              onClick={() => setTreeViewMode('3d')}
+              className="px-2.5 py-1 rounded-full flex items-center gap-1 text-purple-200/75 hover:text-white transition cursor-pointer"
+            >
+              <Orbit className="w-3 h-3" />
+              <span>3D</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setTreeViewMode('2d')}
+              className="px-2.5 py-1 rounded-full text-purple-200/75 hover:text-white transition cursor-pointer"
+            >
+              2D
+            </button>
+          </div>
+        </div>
+
+        <LoveTreeDesign
+          coins={coins}
+          level={currentLevel}
+          xp={currentXp}
+          maxXp={maxXp}
+          stageLabel={getStageLabel(currentLevel)}
+          waterCount={treeState.waterCount || 0}
+          sunCount={treeState.sunCount || 0}
+          fruitsHarvested={treeState.fruitsHarvested || 0}
+          ribbons={allRibbons}
+          hasSakuraTheme={hasSakuraTheme}
+          hasGoldenApples={hasGoldenApples}
+          hasFairyLights={hasFairyLights}
+          hasSwing={hasSwing}
+          hasLanterns={hasLanterns}
+          hasCrystals={hasCrystals}
+          hasButterfly={hasButterfly}
+          hasSongbird={hasSongbird}
+          isWatering={isWatering}
+          isSunbathing={isSunbathing}
+          isPruning={isPruning}
+          cdWater={cdWater}
+          cdSun={cdSun}
+          cdPrune={cdPrune}
+          cdFruit={cdFruit}
+          cdRibbon={cdRibbon}
+          onWater={handleWater}
+          onSun={handleSun}
+          onPrune={handlePrune}
+          onHarvestFruit={() => handleHarvestFruit(harvestedFruits.length % 5)}
+          onPlantSeed={() => plantLoveSeed()}
+          onTreeTap={() => {
+            soundEngine.playSparkle();
+            triggerHeartExplosion();
+            showToast('A Árvore do Amor vibra com o carinho de vocês! 🌿💖', '✨');
+          }}
+          onSelectRibbon={(r) => {
+            soundEngine.playEnvelopeOpen();
+            setSelectedRibbon(r);
+          }}
+          onOpenAddRibbon={() => setIsAddingRibbon(true)}
+        />
+
+        {typeof document !== 'undefined' && createPortal(modalsPortal, document.body)}
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
@@ -342,6 +429,13 @@ export const LoveTreeView: React.FC = () => {
           </div>
 
           <div className="flex items-center bg-black/50 border border-teal-400/30 rounded-full p-0.5 text-[10px] font-bold shrink-0">
+            <button
+              type="button"
+              onClick={() => setTreeViewMode('design')}
+              className="px-2.5 py-1 rounded-full text-purple-200/75 hover:text-white transition cursor-pointer"
+            >
+              Novo ♡
+            </button>
             <button
               type="button"
               onClick={() => setTreeViewMode('3d')}

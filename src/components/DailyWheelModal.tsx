@@ -38,10 +38,16 @@ export const DailyWheelModal: React.FC<{ onClose: () => void }> = ({ onClose }) 
   const [spinning, setSpinning] = useState(false);
   const [wonSlice, setWonSlice] = useState<WheelSlice | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const spinTimerRef = React.useRef<number | null>(null);
 
   useEffect(() => {
     const t = window.setInterval(() => setNowMs(Date.now()), 1000);
-    return () => window.clearInterval(t);
+    return () => {
+      window.clearInterval(t);
+      if (spinTimerRef.current) {
+        window.clearTimeout(spinTimerRef.current);
+      }
+    };
   }, []);
 
   const remainingMs = dailyWheel.lastSpinAt
@@ -70,10 +76,16 @@ export const DailyWheelModal: React.FC<{ onClose: () => void }> = ({ onClose }) 
     setWonSlice(null);
     setRotation(nextAngle);
 
-    window.setTimeout(() => {
+    if (spinTimerRef.current) {
+      window.clearTimeout(spinTimerRef.current);
+    }
+    spinTimerRef.current = window.setTimeout(() => {
+      spinTimerRef.current = null;
       setSpinning(false);
-      setWonSlice(chosen);
-      spinDailyWheel(chosen.label, chosen.coins);
+      const ok = spinDailyWheel(chosen.label, chosen.coins);
+      if (ok) {
+        setWonSlice(chosen);
+      }
     }, 4100);
   };
 

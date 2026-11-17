@@ -1,5 +1,6 @@
 import {
   Achievement,
+  CalendarEvent,
   ChatMessage,
   CoupleConfig,
   CoupleGoal,
@@ -419,134 +420,8 @@ export const INITIAL_PHOTOS: MemoryPhoto[] = Array.from({ length: 38 }, (_, inde
   };
 });
 
-// 5 Planned Songs for Gabriel & Samella
-export const INITIAL_SONGS: Song[] = [
-  {
-    id: 's1',
-    title: 'Tudo o Que Você Quiser',
-    artist: 'Luan Santana',
-    duration: 250,
-    durationFormatted: '4:10',
-    audioUrl: '/assets/audio/tudo-o-que-voce-quiser.mp3',
-    coverUrl: '/assets/img/12.jpg',
-    lyrics: [
-      'Tem coisas que o tempo não apaga',
-      'Tem sentimentos que a gente não esquece...',
-      'Eu fecho os olhos e consigo te sentir',
-      'Teu cheiro ainda tá no meu travesseiro...',
-      '',
-      'E se você me pedir pra ficar, eu fico',
-      'Se me pedir pra voltar, eu volto',
-      'Se me pedir pra te amar, eu te amo a vida inteira!',
-      '',
-      'Tudo o que você quiser eu dou',
-      'Te dou o sol, te dou o mar, te dou meu coração',
-      'O que você quiser de mim eu dou...',
-      'Tudo o que você quiser! ♡'
-    ],
-    isFavorite: false,
-  },
-  {
-    id: 's2',
-    title: 'Leal',
-    artist: 'Djonga',
-    duration: 215,
-    durationFormatted: '3:35',
-    audioUrl: '/assets/audio/leal.mp3',
-    coverUrl: '/assets/img/13.jpg',
-    lyrics: [
-      'Te vi passando e o tempo parou...',
-      'Você me olhou e o mundo se alinhou.',
-      'Não é só sobre paixão passageira,',
-      'É sobre lealdade pra vida inteira.',
-      '',
-      'Seja no caos ou na calmaria,',
-      'Minha certeza é você todo dia.',
-      'Segura a minha mão e não solta mais,',
-      'Juntos a gente encontra a nossa paz.',
-      '',
-      'Leal ao que a gente sente,',
-      'Leal ao nosso amor presente! ♡'
-    ],
-    isFavorite: false,
-  },
-  {
-    id: 's3',
-    title: 'Te Vivo',
-    artist: 'Luan Santana',
-    duration: 212,
-    durationFormatted: '3:32',
-    audioUrl: '/assets/audio/te-vivo.mp3',
-    coverUrl: '/assets/img/14.jpg',
-    lyrics: [
-      'Quando a luz dos olhos meus e a luz dos olhos teus',
-      'Resolvem se encontrar...',
-      'Ai que bom que isso é meu Deus',
-      'Que frio que me dá o encontro desse olhar...',
-      '',
-      'Eu fecho os meus olhos e enxergo a gente...',
-      '',
-      'Em questão de segundos vou pra outro mundo',
-      'Outra constelação...',
-      'Não dá pra explicar, ao ver você chegando',
-      'Qual a sensação!',
-      '',
-      'A gente não precisa tá colado pra tá juntos',
-      'Nossos corpos se conversam por horas e horas',
-      'Sem palavras tão dizendo a todo instante um pro outro',
-      'O quanto se adoram...',
-      '',
-      'Eu não preciso te olhar pra te ter em meu mundo',
-      'Porque aonde quer que eu vá, você está em tudo',
-      'Tudo, tudo que eu preciso... Te vivo! ♡'
-    ],
-    isFavorite: false,
-  },
-  {
-    id: 's4',
-    title: 'Amar Não É Pecado',
-    artist: 'Luan Santana',
-    duration: 216,
-    durationFormatted: '3:36',
-    audioUrl: '/assets/audio/amar-nao-e-pecado.mp3',
-    coverUrl: '/assets/img/15.jpg',
-    lyrics: [
-      'Eu não sei de onde vem essa força que me leva pra você',
-      'Eu só sei que faz bem, me dá asas e me faz voar...',
-      '',
-      'Amar não é pecado e se eu errar, que seja nos seus braços',
-      'Que seja com você!',
-      'Eu quero mergulhar no seu olhar e nunca mais voltar.',
-      '',
-      'Porque amar você é a coisa mais pura que já me aconteceu. ♡'
-    ],
-    isFavorite: false,
-  },
-  {
-    id: 's5',
-    title: 'Cuida Bem Dela',
-    artist: 'Henrique & Juliano',
-    duration: 219,
-    durationFormatted: '3:39',
-    audioUrl: '/assets/audio/cuida-bem-dela.mp3',
-    coverUrl: '/assets/img/16.jpg',
-    lyrics: [
-      'Sabe aquela menina sentada ali',
-      'Com o olhar desconfiado, tão inocente?',
-      'Eu já fui doente naquela mulher...',
-      '',
-      'Cuida bem dela!',
-      'Você não vai conhecer alguém melhor que ela!',
-      'Promete pra mim: o que você jurar pra ela você vai cumprir!',
-      '',
-      'Cuida bem dela!',
-      'Ela gosta que repare no cabelo dela',
-      'Foi por um triz, mas você vai ser o que ela sempre quis...',
-      'Faça ela feliz! ♡'
-    ],
-    isFavorite: false,
-  },
-];
+// Playlist starts empty; Gabriel & Samella add YouTube links or audio files via MusicView or Settings
+export const INITIAL_SONGS: Song[] = [];
 
 // Initial Achievements (100% zeroed until Samella scans/unlocks and interacts)
 export const INITIAL_ACHIEVEMENTS: Achievement[] = [
@@ -1792,14 +1667,28 @@ export const INITIAL_TIME_CAPSULES: TimeCapsuleItem[] = [
 ];
 
 export const INITIAL_COUPLE_GOALS: CoupleGoal[] = [
-  { id: 'goal-1', title: 'Fazer uma viagem romântica só nós dois', category: 'Viagens', icon: '✈️', completed: false },
-  { id: 'goal-2', title: 'Assistir ao pôr do sol abraçadinhos na praia', category: 'Momentos', icon: '🌅', completed: false },
-  { id: 'goal-3', title: 'Montar nosso álbum físico com fotos favoritas', category: 'Memórias', icon: '📸', completed: false },
-  { id: 'goal-4', title: 'Cozinhar um jantar especial à luz de velas juntos', category: 'Casa', icon: '🍝', completed: false },
-  { id: 'goal-5', title: 'Fazer um piquenique no parque em um domingo', category: 'Encontros', icon: '🧺', completed: false },
-  { id: 'goal-6', title: 'Escolher e decorar o nosso cantinho do amor', category: 'Futuro', icon: '🏡', completed: false },
-  { id: 'goal-7', title: 'Ir a um show ou evento para cantar nossa música', category: 'Música', icon: '🎶', completed: false },
-  { id: 'goal-8', title: 'Olhar as estrelas longe das luzes da cidade', category: 'Noites', icon: '🌌', completed: false },
+  { id: 'goal-1', title: 'Fazer uma viagem romântica só nós dois', category: 'Viagens', icon: '✈️', completed: false, priority: 'alta' },
+  { id: 'goal-2', title: 'Assistir ao pôr do sol abraçadinhos na praia', category: 'Momentos', icon: '🌅', completed: false, priority: 'alta' },
+  { id: 'goal-3', title: 'Montar nosso álbum físico com fotos favoritas', category: 'Memórias', icon: '📸', completed: false, priority: 'media' },
+  { id: 'goal-4', title: 'Cozinhar um jantar especial à luz de velas juntos', category: 'Casa', icon: '🍝', completed: false, priority: 'media' },
+  { id: 'goal-5', title: 'Fazer um piquenique no parque em um domingo', category: 'Encontros', icon: '🧺', completed: false, priority: 'suave' },
+  { id: 'goal-6', title: 'Escolher e decorar o nosso cantinho do amor', category: 'Futuro', icon: '🏡', completed: false, priority: 'alta' },
+  { id: 'goal-7', title: 'Ir a um show ou evento para cantar nossa música', category: 'Momentos', icon: '🎶', completed: false, priority: 'media' },
+  { id: 'goal-8', title: 'Olhar as estrelas longe das luzes da cidade', category: 'Momentos', icon: '🌌', completed: false, priority: 'suave' },
+];
+
+export const INITIAL_CALENDAR_EVENTS: CalendarEvent[] = [
+  {
+    id: 'cal-anniversary-1206',
+    title: 'Nosso Aniversário de Namoro ♡',
+    date: '2023-06-12',
+    category: 'aniversario',
+    color: 'pink',
+    notes: 'O dia em que a nossa história começou — para comemorar todos os anos juntos!',
+    isAnnualRecurring: true,
+    createdBy: 'Gabriel',
+    createdAt: '2023-06-12',
+  },
 ];
 
 export const INITIAL_DAILY_WHEEL: DailyWheelState = {

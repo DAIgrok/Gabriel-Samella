@@ -28,9 +28,19 @@ import {
   Lock,
   Unlock,
   X,
+  CalendarDays,
+  Clock,
+  MapPin,
 } from 'lucide-react';
 import { COOLDOWN_MS, PET_SPECIES_CATALOG } from '../data/initialData';
 import { getCouplePhotoUrl, REAL_PHOTO_SLOTS } from '../data/mediaAssets';
+import {
+  formatCountdownDays,
+  formatDateBR,
+  getCalendarCategoryMeta,
+  getCalendarColorStyle,
+  getUpcomingCalendarEvents,
+} from '../utils/calendarHelpers';
 
 export const HomeView: React.FC = () => {
   const {
@@ -43,6 +53,7 @@ export const HomeView: React.FC = () => {
     achievements,
     timeCapsules,
     coupleGoals,
+    calendarEvents,
     dailyWheel,
   } = useApp();
   const prefersReducedMotion = useReducedMotion();
@@ -73,6 +84,11 @@ export const HomeView: React.FC = () => {
     : 0;
 
   const completedGoals = coupleGoals.filter((g) => g.completed).length;
+  const goalsPct =
+    coupleGoals.length > 0 ? Math.round((completedGoals / coupleGoals.length) * 100) : 0;
+
+  const upcomingCalendar = getUpcomingCalendarEvents(calendarEvents, new Date(nowMs));
+  const nextCalendarItem = upcomingCalendar[0] || null;
 
   const formatCountdownTo = (unlockDate: string) => {
     const target = new Date(`${unlockDate}T00:00:00`);
@@ -191,7 +207,7 @@ export const HomeView: React.FC = () => {
             </div>
           </button>
 
-          {/* Metas & Sonhos do Casal */}
+          {/* Lista de Desejos & Sonhos do Casal */}
           <button
             type="button"
             onClick={() => setExtendedView('metas')}
@@ -202,17 +218,100 @@ export const HomeView: React.FC = () => {
                 <Target className="w-5 h-5" />
               </div>
               <span className="text-xs font-mono text-purple-200 tabular-nums">
-                {completedGoals}/{coupleGoals.length} feitos
+                {completedGoals}/{coupleGoals.length} · {goalsPct}%
               </span>
             </div>
-            <div>
-              <h3 className="text-base font-bold text-white">Metas & Sonhos</h3>
-              <p className="text-xs text-purple-200/75 mt-0.5">
-                Lista dos nossos planos e conquistas futuras ♡
+            <div className="space-y-1.5">
+              <h3 className="text-base font-bold text-white">Lista de Desejos</h3>
+              <p className="text-xs text-purple-200/75">
+                Nossos sonhos, planos e conquistas juntos ♡
               </p>
+              <div className="w-full h-1.5 bg-purple-950 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-300"
+                  style={{ width: `${goalsPct}%` }}
+                />
+              </div>
             </div>
           </button>
         </div>
+      </section>
+
+      {/* 4b. Novo Card: Calendário do Casal */}
+      <section>
+        <button
+          type="button"
+          onClick={() => setExtendedView('calendario')}
+          className="w-full text-left rounded-3xl p-4 sm:p-5 bg-gradient-to-r from-[#1c0938]/95 via-[#130527]/95 to-[#0c0219]/95 border border-purple-500/30 hover:border-pink-400/55 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer transition-all group"
+        >
+          <div className="flex items-start sm:items-center gap-3.5 min-w-0 flex-1">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center text-white shadow-[0_0_18px_rgba(236,72,153,0.4)] shrink-0">
+              <CalendarDays className="w-6 h-6" />
+            </div>
+
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <h3 className="text-base font-bold text-white">Calendário do Casal</h3>
+                <span className="text-xs text-pink-300/90 tabular-nums">
+                  {upcomingCalendar.length} {upcomingCalendar.length === 1 ? 'data marcada' : 'datas marcadas'}
+                </span>
+              </div>
+
+              {nextCalendarItem ? (
+                <div className="space-y-0.5">
+                  <p className="text-xs sm:text-sm font-medium text-purple-100 truncate flex items-center gap-1.5">
+                    <span
+                      className={`w-2 h-2 rounded-full shrink-0 ${
+                        getCalendarColorStyle(nextCalendarItem.event.color).dot
+                      }`}
+                    />
+                    <span className="truncate">
+                      {getCalendarCategoryMeta(nextCalendarItem.event.category).emoji}{' '}
+                      {nextCalendarItem.event.title}
+                    </span>
+                  </p>
+                  <p className="text-[11px] text-purple-200/75 flex flex-wrap items-center gap-x-2 gap-y-0.5 tabular-nums">
+                    <span>{formatDateBR(nextCalendarItem.occurrenceDateKey)}</span>
+                    {nextCalendarItem.event.time && (
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {nextCalendarItem.event.time}
+                        </span>
+                      </>
+                    )}
+                    {nextCalendarItem.event.location && (
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <span className="inline-flex items-center gap-1 truncate max-w-[160px]">
+                          <MapPin className="w-3 h-3" />
+                          {nextCalendarItem.event.location}
+                        </span>
+                      </>
+                    )}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-purple-200/75">
+                  Toque para marcar encontros, datas especiais e lembretes nossos ♡
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-purple-500/20">
+            {nextCalendarItem && (
+              <span className="text-xs font-bold text-pink-200 tabular-nums">
+                {formatCountdownDays(nextCalendarItem.daysUntil)}
+              </span>
+            )}
+            <span className="min-h-[40px] px-4 rounded-2xl bg-[#240d46] group-hover:bg-pink-600/30 border border-purple-400/35 text-xs font-semibold text-white inline-flex items-center gap-1.5 whitespace-nowrap transition">
+              <span>Abrir Calendário</span>
+              <ArrowRight className="w-3.5 h-3.5 text-pink-300" />
+            </span>
+          </div>
+        </button>
       </section>
 
       {/* 5. Mensagem do dia & Memórias */}
@@ -440,7 +539,11 @@ export const HomeView: React.FC = () => {
           </span>
         </div>
 
-        <div className="rounded-2xl p-3.5 bg-[#120524]/80 border border-purple-500/20 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setExtendedView('calendario')}
+          className="text-left rounded-2xl p-3.5 bg-[#120524]/80 border border-purple-500/20 hover:border-pink-400/40 flex items-center gap-3 cursor-pointer transition-colors"
+        >
           <div className="w-9 h-9 rounded-xl bg-purple-900/50 flex items-center justify-center text-pink-300 border border-purple-400/25 flex-shrink-0">
             <Calendar className="w-4 h-4 text-pink-400" />
           </div>
@@ -453,7 +556,7 @@ export const HomeView: React.FC = () => {
             </span>
             <span className="text-[11px] text-pink-300 font-medium">12 de junho ♡</span>
           </div>
-        </div>
+        </button>
 
         <button
           type="button"

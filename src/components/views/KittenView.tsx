@@ -27,6 +27,7 @@ import {
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { soundEngine } from '../../utils/audioSynth';
 import { PetCharacter } from '../pets/PetCharacter';
+import { PetWorldDesign } from '../pets/PetWorldDesign';
 import { PetCanvas3D, PetDanceMove } from '../3d/PetCanvas3D';
 import { PET_SPECIES_CATALOG } from '../../data/initialData';
 import { PetType } from '../../types';
@@ -44,6 +45,7 @@ const ROOM_META: Record<PetRoom, { label: string; title: string; icon: string }>
 
 export const KittenView: React.FC = () => {
   const {
+    coins,
     kitten,
     petKitten,
     feedKitten,
@@ -54,6 +56,7 @@ export const KittenView: React.FC = () => {
     switchPet,
     renamePet,
     storeItems,
+    buyStoreItem,
     equipKittenItem,
     triggerEasterEgg,
     triggerHeartExplosion,
@@ -64,7 +67,7 @@ export const KittenView: React.FC = () => {
 
   const [currentRoom, setCurrentRoom] = useState<PetRoom>('sala');
   const [drawerModal, setDrawerModal] = useState<'none' | 'armario' | 'mascotes'>('none');
-  const [petViewMode, setPetViewMode] = useState<'3d' | '2d'>('3d');
+  const [petViewMode, setPetViewMode] = useState<'design' | '3d' | '2d'>('design');
   const [danceMove, setDanceMove] = useState<PetDanceMove>('idle');
   const danceTimerRef = useRef<number | null>(null);
   const [wardrobeSlotFilter, setWardrobeSlotFilter] = useState<
@@ -642,6 +645,102 @@ export const KittenView: React.FC = () => {
     </AnimatePresence>
   );
 
+  if (petViewMode === 'design') {
+    const primaryFood = getFoodMenu()[0];
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        className="space-y-3 pb-32 sm:pb-24 max-w-xl mx-auto"
+      >
+        <div className="flex justify-end">
+          <div className="flex items-center bg-black/50 border border-pink-400/30 rounded-full p-0.5 text-[10px] font-bold">
+            <button
+              type="button"
+              onClick={() => setPetViewMode('design')}
+              className="px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow cursor-pointer"
+            >
+              Novo ♡
+            </button>
+            <button
+              type="button"
+              onClick={() => setPetViewMode('3d')}
+              className="px-2.5 py-1 rounded-full flex items-center gap-1 text-purple-200/75 hover:text-white transition cursor-pointer"
+            >
+              <Orbit className="w-3 h-3" />
+              <span>3D</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPetViewMode('2d')}
+              className="px-2.5 py-1 rounded-full text-purple-200/75 hover:text-white transition cursor-pointer"
+            >
+              2D
+            </button>
+          </div>
+        </div>
+
+        <PetWorldDesign
+          coins={coins}
+          displayName={displayName}
+          needsNaming={needsNaming}
+          currentPetType={currentPetType}
+          currentSpecies={currentSpecies}
+          ownedPets={ownedPets}
+          customNames={kitten.customNames}
+          level={kitten.level || 1}
+          xp={kitten.xp || 0}
+          maxXp={kitten.maxXp || 100}
+          happiness={kitten.happiness ?? funVal}
+          energy={energyVal}
+          hunger={hungerVal}
+          thirst={thirstVal}
+          hygiene={hygieneVal}
+          isSleeping={Boolean(kitten.isSleeping)}
+          equippedHat={kitten.equippedHat}
+          equippedGlasses={kitten.equippedGlasses}
+          equippedCollar={kitten.equippedCollar}
+          equippedOutfit={kitten.equippedOutfit}
+          equippedAccessory={kitten.equippedAccessory}
+          storeItems={storeItems}
+          petReaction={petReaction}
+          cdPet={cdPet}
+          cdFeed={cdFeed}
+          cdBath={cdBath}
+          cdSleep={cdSleep}
+          cdPlay={cdPlay}
+          onFeed={() =>
+            handleFeed(primaryFood.name, primaryFood.emoji, primaryFood.hunger, primaryFood.happy)
+          }
+          onPlay={() => handlePlayToy('Novelo de Lã', '🧶')}
+          onBath={handleShower}
+          onToggleSleep={() => toggleSleepKitten()}
+          onPetTap={() => handleBodyClick('head')}
+          onPlaySound={() => {
+            playSpeciesSound();
+            setPetReaction(`${displayName} mandou um som fofo! 💖`);
+          }}
+          onRenamePet={(newName) => {
+            renamePet(newName);
+            setPetReaction(`Amei meu novo nome: ${newName}! ♡`);
+          }}
+          onSwitchPet={(species) => {
+            const savedCustom = kitten.customNames?.[species.type] || '';
+            setFarewellPetTarget(species);
+            setSwitchPetName(savedCustom);
+          }}
+          onBuyStoreItem={(itemId) => buyStoreItem(itemId)}
+          onEquipItem={(itemId, slot) => equipKittenItem(itemId, slot)}
+          onOpenWardrobeModal={() => setDrawerModal('armario')}
+        />
+
+        {typeof document !== 'undefined' && createPortal(drawersPortal, document.body)}
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -835,6 +934,13 @@ export const KittenView: React.FC = () => {
               onClick={(e) => e.stopPropagation()}
               className="flex items-center bg-black/50 border border-pink-400/30 rounded-full p-0.5 text-[10px] font-bold"
             >
+              <button
+                type="button"
+                onClick={() => setPetViewMode('design')}
+                className="px-2 py-0.5 rounded-full text-purple-200/75 hover:text-white transition cursor-pointer"
+              >
+                Novo ♡
+              </button>
               <button
                 type="button"
                 onClick={() => setPetViewMode('3d')}

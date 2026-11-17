@@ -24,6 +24,8 @@ import {
 import { useApp } from '../../context/AppContext';
 import { motion } from 'motion/react';
 import { saveMediaBlob } from '../../services/localMediaStore';
+import { extractYouTubeId, fetchYouTubeMetadata, getYouTubeThumbnailUrl } from '../../services/realAudio';
+import { compressImageToDataUrl } from '../../services/googleDrive';
 import { REAL_PHOTO_SLOTS } from '../../data/mediaAssets';
 import { SmartPhoto } from '../SmartPhoto';
 
@@ -57,6 +59,9 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
     timeCapsules,
     addTimeCapsule,
     removeTimeCapsule,
+    syncDrivePhotos,
+    isDriveSyncing,
+    driveSyncProgress,
   } = useApp();
 
   const expectedCreatorPin = config.creatorPasscode || '2023';
@@ -185,19 +190,42 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
     }
   };
 
-  const handleAddSongByUrl = (e: React.FormEvent) => {
+  const handleAddSongByUrl = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!songTitle.trim() || !songUrl.trim()) {
-      showToast('Informe o título e o link direto do áudio.', '⚠️');
+    const rawUrl = songUrl.trim();
+    if (!rawUrl) {
+      showToast('Cole o link do YouTube ou link direto de áudio.', '⚠️');
       return;
     }
+
+    const ytId = extractYouTubeId(rawUrl);
+    let resolvedTitle = songTitle.trim();
+    let resolvedArtist = songArtist.trim();
+    let resolvedCover = REAL_PHOTO_SLOTS.musicCovers[0];
+
+    if (ytId) {
+      resolvedCover = getYouTubeThumbnailUrl(ytId);
+      if (!resolvedTitle) {
+        const meta = await fetchYouTubeMetadata(rawUrl);
+        if (meta) {
+          resolvedTitle = meta.title;
+          if (!resolvedArtist || resolvedArtist === `${config.myName} & ${config.partnerName}`) {
+            resolvedArtist = meta.artist;
+          }
+          resolvedCover = meta.coverUrl;
+        }
+      }
+    }
+
     addSong({
-      title: songTitle.trim(),
-      artist: songArtist.trim() || `${config.myName} & ${config.partnerName}`,
+      title: resolvedTitle || (ytId ? 'Música do YouTube' : 'Nossa Canção ♡'),
+      artist: resolvedArtist || `${config.myName} & ${config.partnerName}`,
       duration: 210,
       durationFormatted: '3:30',
-      audioUrl: songUrl.trim(),
-      coverUrl: REAL_PHOTO_SLOTS.musicCovers[0],
+      audioUrl: rawUrl,
+      youtubeId: ytId || undefined,
+      sourceType: ytId ? 'youtube' : 'audio',
+      coverUrl: resolvedCover,
       lyrics: songLyrics.trim()
         ? songLyrics.split('\n').map((l) => l.trim())
         : ['Melodia romântica do casal ♡'],
@@ -207,56 +235,21 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
     setSongLyrics('');
   };
 
-  const compressImageToBlob = (file: File): Promise<Blob> => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onerror = () => resolve(file);
-      reader.onload = () => {
-        const img = new Image();
-        img.onerror = () => resolve(file);
-        img.onload = () => {
-          const maxDim = 1400;
-          let { width, height } = img;
-          if (width > maxDim || height > maxDim) {
-            const ratio = Math.min(maxDim / width, maxDim / height);
-            width = Math.round(width * ratio);
-            height = Math.round(height * ratio);
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            resolve(file);
-            return;
-          }
-          ctx.drawImage(img, 0, 0, width, height);
-          canvas.toBlob(
-            (blob) => resolve(blob || file),
-            'image/jpeg',
-            0.84
-          );
-        };
-        img.src = String(reader.result || '');
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
   const handlePhotoFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files: File[] = e.target.files ? Array.from(e.target.files) : [];
     if (files.length === 0) return;
     setIsUploadingPhoto(true);
     try {
       for (const file of files) {
-        const compressedBlob = await compressImageToBlob(file);
-        const idbKey = await saveMediaBlob(`photo-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, compressedBlob);
+        const { dataUrl, aspect } = await compressImageToDataUrl(file, 1100, 0.78);
         const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ').trim();
         addPhoto({
           title: photoTitle.trim() || (cleanName.length <= 36 ? cleanName : 'Nosso Momento ♡'),
           subtitle: photoCaption.trim() || `${config.myName} & ${config.partnerName}`,
           date: photoDate || new Date().toLocaleDateString('pt-BR'),
-          url: idbKey,
+          url: dataUrl,
+          sourceType: 'upload',
+          aspect,
           inHomeLoop: photoLoop,
           caption: photoCaption.trim(),
         });
@@ -566,7 +559,7 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                     </div>
                     <input
                       type="text"
-                      placeholder="Link direto MP3 (ou use o botão Enviar MP3 acima)"
+                      placeholder="Link do YouTube (youtube.com / youtu.be) ou link direto MP3"
                       value={songUrl}
                       onChange={(e) => setSongUrl(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-purple-950/70 border border-purple-500/30 text-white text-xs font-mono focus:outline-none focus:border-pink-400"
@@ -646,16 +639,14 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                             >
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>
-                            {songs.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => removeSong(song.id)}
-                                className="p-2 rounded-lg glass-panel text-rose-400/80 hover:text-rose-300 cursor-pointer"
-                                title="Remover música"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => removeSong(song.id)}
+                              className="p-2 rounded-lg glass-panel text-rose-400/80 hover:text-rose-300 cursor-pointer"
+                              title="Remover música"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </>
                       )}
@@ -682,15 +673,32 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                     <h4 className="text-xs font-bold text-pink-300 uppercase tracking-wider">
                       Adicionar Fotos na Galeria e Loop Inicial
                     </h4>
-                    <button
-                      type="button"
-                      disabled={isUploadingPhoto}
-                      onClick={() => photoInputRef.current?.click()}
-                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow cursor-pointer disabled:opacity-60"
-                    >
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>{isUploadingPhoto ? 'Enviando...' : 'Escolher da Galeria'}</span>
-                    </button>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        disabled={isDriveSyncing}
+                        onClick={() => syncDrivePhotos()}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-teal-600/80 hover:bg-teal-500 text-white text-xs font-bold shadow cursor-pointer disabled:opacity-60"
+                      >
+                        <Cloud className="w-3.5 h-3.5" />
+                        <span>
+                          {isDriveSyncing
+                            ? driveSyncProgress
+                              ? `${driveSyncProgress.current}/${driveSyncProgress.total}`
+                              : 'Drive...'
+                            : 'Google Drive'}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isUploadingPhoto}
+                        onClick={() => photoInputRef.current?.click()}
+                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow cursor-pointer disabled:opacity-60"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{isUploadingPhoto ? 'Enviando...' : 'Escolher da Galeria'}</span>
+                      </button>
+                    </div>
                   </div>
 
                   <form onSubmit={handleAddPhotoByUrl} className="space-y-2.5">

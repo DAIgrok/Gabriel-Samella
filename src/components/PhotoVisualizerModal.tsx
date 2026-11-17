@@ -15,8 +15,6 @@ import {
   Download,
   Share2,
   Music,
-  Maximize2,
-  Minimize2,
   Info,
   Check,
 } from 'lucide-react';
@@ -43,9 +41,9 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
   const [rotation, setRotation] = useState(0);
   const [isSlideshow, setIsSlideshow] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [copied, setCopied] = useState(false);
   const thumbnailsRef = useRef<HTMLDivElement>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const currentIndex = photo ? photos.findIndex((p) => p.id === photo.id) : -1;
 
@@ -248,8 +246,27 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
 
         {/* --- MAIN STAGE & NAVIGATION ARROWS --- */}
         <main
-          className="relative flex-1 flex items-center justify-center p-2 sm:p-6 overflow-hidden"
+          className="relative flex-1 flex items-center justify-center p-2 sm:p-6 overflow-hidden touch-pan-y"
           onClick={(e) => e.stopPropagation()}
+          onTouchStart={(e) => {
+            if (e.touches.length === 1 && zoom <= 1.05) {
+              touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            } else {
+              touchStartRef.current = null;
+            }
+          }}
+          onTouchEnd={(e) => {
+            if (!touchStartRef.current || e.changedTouches.length === 0) return;
+            const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
+            const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
+            touchStartRef.current = null;
+            if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.25) {
+              if (dx < 0) handleNext();
+              else handlePrev();
+            } else if (dy > 90 && Math.abs(dy) > Math.abs(dx) * 1.5) {
+              onClose();
+            }
+          }}
         >
           {/* Previous Arrow Button */}
           <button
@@ -368,15 +385,17 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
             <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/10 border border-purple-400/30 backdrop-blur-md">
               <Music className="w-3.5 h-3.5 text-pink-400 animate-pulse" />
               <span className="text-xs text-white truncate max-w-[140px] font-medium">
-                {currentSong.title}
+                {currentSong?.title || 'Sem música tocando'}
               </span>
-              <button
-                onClick={togglePlay}
-                className="p-1 rounded-full bg-pink-600 text-white hover:bg-pink-500 transition-transform active:scale-95"
-                title="Tocar Trilha Sonora"
-              >
-                {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 fill-current ml-0.5" />}
-              </button>
+              {currentSong && (
+                <button
+                  onClick={togglePlay}
+                  className="p-1 rounded-full bg-pink-600 text-white hover:bg-pink-500 transition-transform active:scale-95"
+                  title="Tocar Trilha Sonora"
+                >
+                  {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 fill-current ml-0.5" />}
+                </button>
+              )}
             </div>
           </div>
 

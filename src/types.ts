@@ -22,6 +22,7 @@ export interface Letter {
   unsealedAt?: string;
   attachedPhotoIndex?: number;
   authorName?: string;
+  rewardClaimed?: boolean;
 }
 
 export interface Phrase {
@@ -45,9 +46,11 @@ export interface MemoryPhoto {
   title: string;
   subtitle: string;
   date: string;
-  url: string; // Local primary url (e.g. /assets/img/1.jpg), idb:// key, or external url
+  url: string; // Local primary url (e.g. /assets/img/1.jpg), compressed data: URL, idb:// key, or external url
   localPath?: string;
   driveUrl?: string;
+  driveFileId?: string;
+  sourceType?: 'local' | 'drive' | 'upload' | 'url';
   aspect?: 'portrait' | 'landscape' | 'square';
   isFavorite?: boolean;
   inHomeLoop?: boolean;
@@ -61,7 +64,9 @@ export interface Song {
   duration: number; // in seconds
   durationFormatted: string;
   coverUrl: string;
-  audioUrl?: string; // Path like /assets/audio/Te-Vivo.mp3 or idb:// key
+  audioUrl?: string; // YouTube link, direct audio URL, or idb:// key
+  sourceType?: 'youtube' | 'audio' | 'idb';
+  youtubeId?: string;
   lyrics?: string[];
   isFavorite?: boolean;
   isLocalAvailable?: boolean;
@@ -76,6 +81,7 @@ export interface Achievement {
   rewardCoins: number;
   unlocked: boolean;
   unlockedAt?: string;
+  rewardClaimed?: boolean;
   progress: number;
   maxProgress: number;
 }
@@ -226,6 +232,7 @@ export interface EasterEgg {
   rewardCoins: number;
   discovered: boolean;
   discoveredAt?: string;
+  rewardClaimed?: boolean;
 }
 
 export interface QuizQuestion {
@@ -247,6 +254,8 @@ export interface TimeCapsuleItem {
   createdAt: string;
 }
 
+export type GoalPriority = 'alta' | 'media' | 'suave';
+
 export interface CoupleGoal {
   id: string;
   title: string;
@@ -255,6 +264,40 @@ export interface CoupleGoal {
   completed: boolean;
   completedAt?: string;
   targetDate?: string;
+  priority?: GoalPriority;
+  notes?: string;
+  addedBy?: 'Samella' | 'Gabriel';
+  rewardClaimed?: boolean;
+}
+
+export type CalendarEventCategory =
+  | 'encontro'
+  | 'especial'
+  | 'lembrete'
+  | 'viagem'
+  | 'aniversario'
+  | 'outro';
+
+export type CalendarEventColor =
+  | 'pink'
+  | 'purple'
+  | 'amber'
+  | 'emerald'
+  | 'sky'
+  | 'rose';
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  date: string; // YYYY-MM-DD
+  time?: string; // HH:mm
+  category: CalendarEventCategory;
+  color: CalendarEventColor;
+  location?: string;
+  notes?: string;
+  isAnnualRecurring?: boolean;
+  createdBy?: 'Samella' | 'Gabriel';
+  createdAt: string;
 }
 
 export interface DailyWheelState {
@@ -264,6 +307,17 @@ export interface DailyWheelState {
 }
 
 export type ActiveTab = 'inicio' | 'cartas' | 'fotos' | 'musica' | 'perfil';
-export type ExtendedView = ActiveTab | 'arvore' | 'conquistas' | 'jogos' | 'gatinho' | 'loja' | 'conversas' | 'frases' | 'metas' | 'config';
+export type ExtendedView =
+  | ActiveTab
+  | 'arvore'
+  | 'conquistas'
+  | 'jogos'
+  | 'gatinho'
+  | 'loja'
+  | 'conversas'
+  | 'frases'
+  | 'metas'
+  | 'calendario'
+  | 'config';
 
 

@@ -141,7 +141,7 @@ export const ProfileView: React.FC = () => {
             <div className="min-w-0">
               <span className="text-[10px] text-purple-300/70 block uppercase font-medium">Música Favorita</span>
               <span className="text-xs font-semibold text-white truncate block">
-                {currentSong?.title || 'Te Vivo'} ({currentSong?.artist || 'Luan Santana'})
+                {currentSong ? `${currentSong.title} (${currentSong.artist})` : 'Nenhuma música adicionada ainda ♡'}
               </span>
             </div>
           </div>

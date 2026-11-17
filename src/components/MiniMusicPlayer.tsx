@@ -7,6 +7,8 @@ import {
   Shuffle,
   Repeat,
   Heart,
+  Music,
+  Plus,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { realAudio } from '../services/realAudio';
@@ -14,12 +16,25 @@ import { getCouplePhotoUrl, REAL_PHOTO_SLOTS } from '../data/mediaAssets';
 import { useResolvedMediaUrl } from '../services/localMediaStore';
 
 export const MiniMusicPlayer: React.FC = () => {
-  const { currentSong, photos, playbackTime, nextSong, prevSong, isPlaying, togglePlay, toggleFavoriteSong } = useApp();
+  const {
+    currentSong,
+    songs,
+    photos,
+    playbackTime,
+    nextSong,
+    prevSong,
+    isPlaying,
+    isShuffle,
+    isLoop,
+    toggleShuffle,
+    toggleLoop,
+    togglePlay,
+    toggleFavoriteSong,
+    setExtendedView,
+  } = useApp();
   const [audioState, setAudioState] = useState(realAudio.getState());
-  const [isShuffle, setIsShuffle] = useState(false);
-  const [isLoop, setIsLoop] = useState(true);
   const resolvedCoverUrl = useResolvedMediaUrl(
-    currentSong.coverUrl || getCouplePhotoUrl(photos, 11, REAL_PHOTO_SLOTS.musicCovers[0])
+    currentSong?.coverUrl || getCouplePhotoUrl(photos, 11, REAL_PHOTO_SLOTS.musicCovers[0])
   );
 
   useEffect(() => {
@@ -35,7 +50,36 @@ export const MiniMusicPlayer: React.FC = () => {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  const activeDuration = audioState.duration || currentSong.duration || 216;
+  if (!currentSong || songs.length === 0) {
+    return (
+      <div
+        onClick={() => setExtendedView('musica')}
+        role="button"
+        tabIndex={0}
+        className="rounded-3xl p-4 sm:p-5 bg-gradient-to-br from-[#160a2c]/90 via-[#0e051c]/90 to-[#070210]/95 border border-purple-500/25 shadow-[0_10px_35px_rgba(0,0,0,0.6)] relative overflow-hidden backdrop-blur-xl cursor-pointer group hover:border-pink-400/45 transition-all"
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-purple-900/70 to-pink-700/40 border border-pink-400/30 flex items-center justify-center flex-shrink-0 shadow-inner">
+            <Music className="w-7 h-7 text-pink-300" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
+              Nossa Trilha Sonora ♡
+            </h3>
+            <p className="text-xs text-purple-200/75 mt-0.5 line-clamp-2">
+              Adicione músicas pelo link do YouTube ou MP3 para tocar aqui e em todo o app.
+            </p>
+            <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow-md group-hover:scale-105 transition-transform">
+              <Plus className="w-3.5 h-3.5" />
+              <span>Adicionar Música</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const activeDuration = audioState.duration || currentSong.duration || 210;
   const activeCurrentTime = audioState.currentTime || playbackTime || 0;
   const progressPercent = activeDuration > 0 ? Math.min(100, (activeCurrentTime / activeDuration) * 100) : 0;
 
@@ -60,11 +104,15 @@ export const MiniMusicPlayer: React.FC = () => {
       )}
 
       <div className="flex items-start gap-4">
-        {/* Album Artwork Cover matching screenshot */}
-        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 relative border border-purple-500/30 shadow-md bg-purple-950/60">
+        {/* Album Artwork Cover */}
+        <div
+          onClick={() => setExtendedView('musica')}
+          className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 relative border border-purple-500/30 shadow-md bg-purple-950/60 cursor-pointer"
+        >
           <img
             src={resolvedCoverUrl || '/assets/img/12.jpg'}
             alt={currentSong.title}
+            referrerPolicy="no-referrer"
             className={`w-full h-full object-cover transition-transform duration-500 ${
               audioState.isPlaying || isPlaying ? 'scale-105' : ''
             }`}
@@ -74,22 +122,24 @@ export const MiniMusicPlayer: React.FC = () => {
           />
         </div>
 
-        {/* Right Info: Title, Artist, Heart, Scrubber, Controls */}
+        {/* Right Info: Title, Artist, Heart, Scrubber */}
         <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
-          {/* Title & Favorite Heart */}
           <div className="flex items-start justify-between gap-2 mb-2">
-            <div>
+            <div
+              onClick={() => setExtendedView('musica')}
+              className="min-w-0 flex-1 cursor-pointer"
+            >
               <h3 className="text-sm sm:text-base font-bold text-white tracking-tight truncate">
-                {currentSong.title || 'Te Vivo'}
+                {currentSong.title}
               </h3>
               <p className="text-xs text-purple-200/75 truncate mt-0.5">
-                {currentSong.artist || 'Luan Santana'}
+                {currentSong.artist}
               </p>
             </div>
 
             <button
               onClick={() => toggleFavoriteSong(currentSong.id)}
-              className="p-1 text-pink-400 hover:scale-110 active:scale-95 transition-transform"
+              className="p-1 text-pink-400 hover:scale-110 active:scale-95 transition-transform cursor-pointer"
               title="Favoritar"
             >
               <Heart
@@ -100,14 +150,13 @@ export const MiniMusicPlayer: React.FC = () => {
             </button>
           </div>
 
-          {/* Progress Bar / Scrubber matching reference screenshot */}
+          {/* Progress Bar / Scrubber */}
           <div className="w-full my-1 cursor-pointer" onClick={handleSeek}>
             <div className="w-full h-1.5 bg-purple-950/80 rounded-full overflow-hidden relative">
               <div
                 className="h-full bg-gradient-to-r from-purple-400 via-pink-400 to-pink-500 rounded-full transition-all duration-150 relative"
                 style={{ width: `${progressPercent}%` }}
               >
-                {/* Glowing knob indicator at tip */}
                 <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white shadow-[0_0_6px_rgba(244,114,182,1)]" />
               </div>
             </div>
@@ -120,10 +169,10 @@ export const MiniMusicPlayer: React.FC = () => {
         </div>
       </div>
 
-      {/* Control Buttons Row matching screenshot */}
+      {/* Control Buttons Row */}
       <div className="flex items-center justify-between pt-3 mt-1 px-3 border-t border-purple-500/15">
         <button
-          onClick={() => setIsShuffle(!isShuffle)}
+          onClick={toggleShuffle}
           className={`p-1.5 transition-colors cursor-pointer ${
             isShuffle ? 'text-pink-400' : 'text-purple-300/70 hover:text-white'
           }`}
@@ -140,11 +189,10 @@ export const MiniMusicPlayer: React.FC = () => {
           <SkipBack className="w-4 h-4 fill-current" />
         </button>
 
-        {/* Circular Glowing Play/Pause button */}
         <button
           onClick={handlePlayToggle}
           className="w-11 h-11 rounded-full bg-gradient-to-tr from-[#3b0764] to-[#6b21a8] border-2 border-pink-500/80 text-white flex items-center justify-center shadow-[0_0_18px_rgba(236,72,153,0.65)] hover:scale-105 active:scale-95 transition-all cursor-pointer"
-          title={(audioState.isPlaying || isPlaying) ? 'Pausar' : 'Tocar'}
+          title={audioState.isPlaying || isPlaying ? 'Pausar' : 'Tocar'}
         >
           {audioState.isPlaying || isPlaying ? (
             <Pause className="w-5 h-5 fill-current" />
@@ -162,7 +210,7 @@ export const MiniMusicPlayer: React.FC = () => {
         </button>
 
         <button
-          onClick={() => setIsLoop(!isLoop)}
+          onClick={toggleLoop}
           className={`p-1.5 transition-colors cursor-pointer ${
             isLoop ? 'text-pink-400' : 'text-purple-300/70 hover:text-white'
           }`}

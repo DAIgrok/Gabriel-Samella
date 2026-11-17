@@ -10,6 +10,7 @@ import {
   Trophy,
   MessageCircle,
   Target,
+  CalendarDays,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ExtendedView } from '../types';
@@ -24,7 +25,8 @@ export const Sidebar: React.FC = () => {
     { id: 'loja', label: 'Loja', icon: ShoppingBag },
     { id: 'cartas', label: 'Cartas', icon: Mail },
     { id: 'jogos', label: '25 Jogos', icon: Gamepad2 },
-    { id: 'metas', label: 'Metas', icon: Target },
+    { id: 'metas', label: 'Desejos', icon: Target },
+    { id: 'calendario', label: 'Calendário', icon: CalendarDays },
     { id: 'conquistas', label: 'Conquistas', icon: Trophy },
     { id: 'conversas', label: 'Conversas', icon: MessageCircle },
   ];

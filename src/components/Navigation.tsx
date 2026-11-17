@@ -17,6 +17,7 @@ import {
   Heart,
   ChevronRight,
   Target,
+  CalendarDays,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { motion, AnimatePresence } from 'motion/react';
@@ -57,7 +58,8 @@ export const Navigation: React.FC = () => {
     { id: 'musica', label: 'Nosso Player de Música', icon: Music, color: 'text-indigo-400' },
     { id: 'arvore', label: 'Árvore do Amor', icon: Trees, color: 'text-teal-300' },
     { id: 'conquistas', label: 'Conquistas & Selos', icon: Trophy, color: 'text-amber-300' },
-    { id: 'metas', label: 'Metas & Sonhos', icon: Target, color: 'text-pink-300' },
+    { id: 'metas', label: 'Sonhos & Lista de Desejos', icon: Target, color: 'text-pink-300' },
+    { id: 'calendario', label: 'Calendário do Casal', icon: CalendarDays, color: 'text-pink-300' },
     { id: 'jogos', label: '25 Jogos do Casal', icon: Gamepad2, color: 'text-indigo-400' },
     { id: 'gatinho', label: `Mascote (${petDisplayName})`, icon: Cat, color: 'text-pink-300', badge: kitten.hunger < 35 ? 'Fome!' : undefined },
     { id: 'loja', label: 'Loja do Amor', icon: ShoppingBag, color: 'text-rose-400', badge: `${coins} 💎` },

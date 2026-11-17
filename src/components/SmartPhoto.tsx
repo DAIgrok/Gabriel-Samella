@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, Sparkles } from 'lucide-react';
 import { MemoryPhoto } from '../types';
-import { useResolvedMediaUrl } from '../services/localMediaStore';
+import { resolveMediaUrl, isIdbMediaUrl } from '../services/localMediaStore';
 
 interface SmartPhotoProps {
   photo?: MemoryPhoto;
@@ -38,9 +38,10 @@ export const SmartPhoto: React.FC<SmartPhotoProps> = ({
     const list: string[] = [];
     if (src) list.push(src);
     if (photo?.url && photo.url !== src) list.push(photo.url);
+    if (photo?.driveUrl && !list.includes(photo.driveUrl)) list.push(photo.driveUrl);
     if (photo?.localPath && !list.includes(photo.localPath)) list.push(photo.localPath);
 
-    // Try local couple photos under /assets/img/ and /assets/photos/
+    // Fallback to local couple photos under /assets/img/ and /assets/photos/
     const extensions = ['jpg', 'jpeg', 'png', 'webp'];
     for (const ext of extensions) {
       list.push(`/assets/img/${index}.${ext}`);
@@ -48,20 +49,54 @@ export const SmartPhoto: React.FC<SmartPhotoProps> = ({
     }
 
     return Array.from(new Set(list));
-  }, [src, photo?.url, photo?.localPath, index]);
+  }, [src, photo?.url, photo?.driveUrl, photo?.localPath, index]);
 
   const [candidateIdx, setCandidateIdx] = useState<number>(0);
   const [hasFailedAll, setHasFailedAll] = useState<boolean>(false);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
+  const [resolvedSrc, setResolvedSrc] = useState<string>('');
 
-  const rawCurrentSrc = candidateUrls[candidateIdx] || `/assets/photos/${index}.jpg`;
-  const resolvedSrc = useResolvedMediaUrl(rawCurrentSrc);
+  const rawCurrentSrc = candidateUrls[candidateIdx] || '';
 
   useEffect(() => {
     setCandidateIdx(0);
     setHasFailedAll(false);
     setIsLoaded(false);
   }, [index, src, photo?.url]);
+
+  // Resolve current candidate URL cleanly; advance immediately if an idb:// key is missing on this device
+  useEffect(() => {
+    let active = true;
+    if (!rawCurrentSrc) {
+      setHasFailedAll(true);
+      setResolvedSrc('');
+      return;
+    }
+
+    if (!isIdbMediaUrl(rawCurrentSrc)) {
+      setResolvedSrc(rawCurrentSrc);
+      return;
+    }
+
+    setResolvedSrc('');
+    resolveMediaUrl(rawCurrentSrc).then((res) => {
+      if (!active) return;
+      if (res) {
+        setResolvedSrc(res);
+      } else {
+        // Missing local IndexedDB entry on this device -> immediately advance to next candidate
+        if (candidateIdx + 1 < candidateUrls.length) {
+          setCandidateIdx((prev) => prev + 1);
+        } else {
+          setHasFailedAll(true);
+        }
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [rawCurrentSrc, candidateIdx, candidateUrls.length]);
 
   const handleError = () => {
     if (candidateIdx + 1 < candidateUrls.length) {
@@ -117,7 +152,7 @@ export const SmartPhoto: React.FC<SmartPhotoProps> = ({
           )}
         </>
       ) : (
-        /* Graceful, gorgeous romantic placeholder card when local file hasn't been added yet */
+        /* Graceful romantic placeholder card when photo is unavailable */
         <div className="absolute inset-0 bg-gradient-to-br from-purple-950/90 via-pink-950/60 to-slate-950/95 border border-pink-500/30 p-4 flex flex-col items-center justify-center text-center backdrop-blur-md group-hover:border-pink-400/50 transition-colors">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-500/20 to-purple-600/30 border border-pink-400/30 flex items-center justify-center text-pink-300 mb-2 shadow-inner group-hover:scale-110 transition-transform">
             <Heart className="w-6 h-6 fill-pink-400/30 text-pink-300 animate-pulse" />

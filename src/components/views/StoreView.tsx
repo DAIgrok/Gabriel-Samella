@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ShoppingBag,
   Gem,
@@ -77,10 +78,10 @@ export const StoreView: React.FC = () => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16, filter: 'blur(4px)' }}
-      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-      exit={{ opacity: 0, y: -12, filter: 'blur(4px)' }}
-      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -12 }}
+      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       className="space-y-6 pb-32 sm:pb-24 max-w-3xl mx-auto"
     >
       {/* Header */}
@@ -270,13 +271,15 @@ export const StoreView: React.FC = () => {
         })}
       </div>
 
-      {/* Item Detail & Voucher Redemption Modal */}
-      <AnimatePresence>
-        {activeModalItem && (
-          <div
-            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
-            onClick={() => setActiveModalItem(null)}
-          >
+      {/* Item Detail & Voucher Redemption Modal (Portaled to document.body) */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {activeModalItem && (
+              <div
+                className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+                onClick={() => setActiveModalItem(null)}
+              >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -436,8 +439,10 @@ export const StoreView: React.FC = () => {
               </div>
             </motion.div>
           </div>
+            )}
+          </AnimatePresence>,
+          document.body
         )}
-      </AnimatePresence>
     </motion.div>
   );
 };

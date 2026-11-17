@@ -73,7 +73,7 @@
         },
         "customSongs": {
           "type": "array",
-          "description": "Metadados de músicas adicionadas à playlist."
+          "description": "Metadados de músicas (YouTube ou áudio direto) adicionadas à playlist."
         },
         "customQuizQuestions": {
           "type": "array",
@@ -85,7 +85,11 @@
         },
         "coupleGoals": {
           "type": "array",
-          "description": "Metas e sonhos do casal com status de conclusão."
+          "description": "Lista de desejos, metas e sonhos do casal com prioridade, notas e status de conclusão."
+        },
+        "calendarEvents": {
+          "type": "array",
+          "description": "Eventos, encontros, lembretes e datas especiais marcados no Calendário do Casal."
         },
         "dailyWheelState": {
           "type": "object",
@@ -103,6 +107,76 @@
         }
       },
       "required": ["worldId", "journeyStarted", "coins", "createdAt", "updatedAt"]
+    },
+    "SharedPhoto": {
+      "title": "SharedPhoto",
+      "description": "Foto do casal sincronizada do Google Drive ou enviada pelo celular, armazenada individualmente na subcoleção para acesso imediato em qualquer dispositivo.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "index": {
+          "type": "integer"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "date": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 750000
+        },
+        "localPath": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "driveUrl": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "driveFileId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "sourceType": {
+          "type": "string",
+          "maxLength": 24
+        },
+        "aspect": {
+          "type": "string",
+          "maxLength": 24
+        },
+        "isFavorite": {
+          "type": "boolean"
+        },
+        "inHomeLoop": {
+          "type": "boolean"
+        },
+        "caption": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "index", "title", "subtitle", "date", "url", "createdAt", "updatedAt"]
     }
   },
   "firestore": {
@@ -111,6 +185,12 @@
         "$ref": "#/entities/CoupleWorld"
       },
       "description": "Documento único que armazena o progresso compartilhado de Gabriel & Samella sem necessidade de login."
+    },
+    "/couple_worlds/{worldId}/photos/{photoId}": {
+      "schema": {
+        "$ref": "#/entities/SharedPhoto"
+      },
+      "description": "Subcoleção de fotos sincronizadas (Google Drive comprimidas ou uploads do casal) para persistência multi-dispositivo."
     }
   }
 }
