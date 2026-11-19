@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Heart } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { motion } from 'motion/react';
+import { DiamondGemIcon } from './icons/CustomIcons';
 
 export const EasterEggModal: React.FC = () => {
   const { recentEasterEgg, closeEasterEggModal } = useApp();
@@ -36,7 +37,7 @@ export const EasterEggModal: React.FC = () => {
           <span className="text-xs font-bold text-pink-300 uppercase tracking-widest block">
             {recentEasterEgg.justDiscovered === false
               ? 'Segredo Já Descoberto ♡'
-              : 'Segredo Especial Descoberto! ✨'}
+              : 'Segredo Especial Descoberto! ♡'}
           </span>
           <h3 className="text-xl font-bold text-white font-display">
             {recentEasterEgg.title}
@@ -54,10 +55,10 @@ export const EasterEggModal: React.FC = () => {
               : 'bg-purple-950/70 border-pink-400/30 text-pink-300'
           }`}
         >
-          <span>💎</span>
+          <DiamondGemIcon className="w-4 h-4 text-pink-300 shrink-0" />
           <span>
             {recentEasterEgg.justDiscovered === false
-              ? `Recompensa única (+${recentEasterEgg.rewardCoins} 💎) já resgatada anteriormente.`
+              ? `Recompensa única (+${recentEasterEgg.rewardCoins} diamantes) já resgatada anteriormente.`
               : `+${recentEasterEgg.rewardCoins} Diamantes adicionados ao seu saldo!`}
           </span>
         </div>

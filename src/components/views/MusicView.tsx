@@ -19,6 +19,7 @@ import {
   Youtube,
   Shuffle,
   Repeat,
+  Check,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { motion, AnimatePresence } from 'motion/react';
@@ -155,14 +156,14 @@ export const MusicView: React.FC = () => {
     soundEngine.playSparkle();
     triggerHeartExplosion(0.5, 0.4);
     triggerEasterEgg('egg-vinyl-spin');
-    showToast('✨ O amor de Gabriel & Samella gira infinito!');
+    showToast('O amor de Gabriel & Samella gira infinito!');
   };
 
   const handleCreateSong = (e: React.FormEvent) => {
     e.preventDefault();
     const rawUrl = songUrlInput.trim();
     if (!rawUrl) {
-      showToast('Cole o link do YouTube ou link direto de áudio!', '⚠️');
+      showToast('Cole o link do YouTube ou link direto de áudio!');
       return;
     }
 
@@ -235,7 +236,7 @@ export const MusicView: React.FC = () => {
           Músicas Que Falam de Nós ♡
         </h2>
         <p className="text-xs md:text-sm text-purple-200/70">
-          Adicione links do YouTube e ouça juntos em qualquer tela 🎶
+          Adicione links do YouTube e ouça juntos em qualquer tela ♡
         </p>
       </div>
 
@@ -301,7 +302,7 @@ export const MusicView: React.FC = () => {
                       className="absolute text-pink-400/40 text-2xl z-0 pointer-events-none"
                       style={{ left: '50%' }}
                     >
-                      ♪
+                      <Music className="w-5 h-5" />
                     </motion.div>
                   ))}
                 </>
@@ -685,8 +686,9 @@ export const MusicView: React.FC = () => {
                               Buscando nome da música...
                             </span>
                           ) : (
-                            <span className="text-emerald-300 font-semibold">
-                              ✓ Link do YouTube reconhecido!
+                            <span className="text-emerald-300 font-semibold inline-flex items-center gap-1">
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Link do YouTube reconhecido!</span>
                             </span>
                           )}
                         </div>

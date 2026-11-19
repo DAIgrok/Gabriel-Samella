@@ -181,12 +181,39 @@
     0 25px 65px rgba(0, 0, 0, 0.85);
 }
 
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-float-gentle {
+  animation: floatGentle 4.2s ease-in-out infinite;
+}
+
+.smooth-card-hover {
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.24s ease, box-shadow 0.24s ease;
+}
+
+.smooth-card-hover:hover {
+  transform: translateY(-2px);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse-glow,
+  .animate-float-gentle,
   .eq-bar-1,
   .eq-bar-2,
   .eq-bar-3 {
     animation: none !important;
+  }
+  .smooth-card-hover,
+  .smooth-card-hover:hover {
+    transform: none !important;
+    transition: none !important;
   }
 }
 

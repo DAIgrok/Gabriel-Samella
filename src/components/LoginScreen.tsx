@@ -1,19 +1,18 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Heart, Lock, KeyRound, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Heart, Lock, Sparkles, ArrowRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { soundEngine } from '../utils/audioSynth';
 import { getCouplePhotoUrl, REAL_PHOTO_SLOTS } from '../data/mediaAssets';
 
 export const LoginScreen: React.FC = () => {
-  const { setIsLoggedIn, config, photos, triggerHeartExplosion } = useApp();
+  const { unlockWithPasscode, config, photos, triggerHeartExplosion } = useApp();
   const [passcode, setPasscode] = useState('');
   const [error, setError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleUnlock = (overridePass?: string) => {
     const input = (overridePass !== undefined ? overridePass : passcode).trim();
-    const expectedPasscode = (config.passcode || '1206').trim();
     if (!input) {
       soundEngine.playHeartPop();
       setError(true);
@@ -24,31 +23,37 @@ export const LoginScreen: React.FC = () => {
     setError(false);
 
     setTimeout(() => {
-      if (input === expectedPasscode) {
+      const res = unlockWithPasscode(input);
+      if (res.ok) {
         soundEngine.playSparkle();
-        triggerHeartExplosion(0.5, 0.5);
-        setIsLoggedIn(true);
+        if (res.role !== 'gabriel_spectator') {
+          triggerHeartExplosion(0.5, 0.5);
+        }
       } else {
         soundEngine.playHeartPop();
         setError(true);
         setIsSubmitting(false);
+        setPasscode('');
       }
-    }, 300);
+    }, 240);
   };
 
   const handleKeyPress = (num: string) => {
+    if (isSubmitting) return;
     soundEngine.playHeartPop();
     if (error) setError(false);
-    if (passcode.length < 4) {
+    if (passcode.length < 6) {
       const next = passcode + num;
       setPasscode(next);
-      if (next.length === 4) {
+      // Hidden creator spectator code triggers silently at 4 digits; regular PIN triggers at 6 digits
+      if (next === '2010' || next.length === 6) {
         handleUnlock(next);
       }
     }
   };
 
   const handleDelete = () => {
+    if (isSubmitting) return;
     soundEngine.playHeartPop();
     setPasscode((prev) => prev.slice(0, -1));
     setError(false);
@@ -73,7 +78,7 @@ export const LoginScreen: React.FC = () => {
         <div className="relative mx-auto w-20 h-20 mb-4">
           <div className="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-purple-600 via-pink-500 to-rose-400 shadow-[0_0_25px_rgba(244,114,182,0.45)] overflow-hidden">
             <img
-              src={getCouplePhotoUrl(photos, 1, REAL_PHOTO_SLOTS.loginPortrait)}
+              src={getCouplePhotoUrl(photos, 0, REAL_PHOTO_SLOTS.loginPortrait)}
               alt="Gabriel e Samella"
               className="w-full h-full object-cover rounded-full"
               onError={(e) => {
@@ -94,9 +99,9 @@ export const LoginScreen: React.FC = () => {
           Bem-vinda, minha princesa <strong className="text-pink-300">{config.partnerName}</strong>
         </p>
 
-        {/* Passcode Circles */}
-        <div className="flex justify-center items-center gap-3 mb-6">
-          {[0, 1, 2, 3].map((idx) => {
+        {/* 6 Passcode Circles */}
+        <div className="flex justify-center items-center gap-2.5 mb-6">
+          {[0, 1, 2, 3, 4, 5].map((idx) => {
             const isFilled = passcode.length > idx;
             return (
               <motion.div
@@ -107,7 +112,7 @@ export const LoginScreen: React.FC = () => {
                     : { scale: isFilled ? [1, 1.25, 1] : 1 }
                 }
                 transition={{ duration: 0.3 }}
-                className={`w-4 h-4 rounded-full border transition-all duration-200 ${
+                className={`w-3.5 h-3.5 rounded-full border transition-all duration-200 ${
                   isFilled
                     ? 'bg-pink-400 border-pink-300 shadow-[0_0_12px_rgba(244,114,182,0.9)]'
                     : 'bg-purple-950/60 border-purple-400/30'
@@ -186,7 +191,7 @@ export const LoginScreen: React.FC = () => {
 
         <p className="text-[11px] text-purple-300/50 mt-4 flex items-center justify-center gap-1">
           <Lock className="w-3 h-3 text-pink-400/70" />
-          Acesso seguro e exclusivo para Samella & Gabriel
+          Acesso privado e exclusivo para Samella & Gabriel
         </p>
       </motion.div>
     </div>

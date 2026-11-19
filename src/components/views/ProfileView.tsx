@@ -16,6 +16,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { motion } from 'motion/react';
 import { getCouplePhotoUrl, REAL_PHOTO_SLOTS } from '../../data/mediaAssets';
+import { DiamondGemIcon } from '../icons/CustomIcons';
 
 export const ProfileView: React.FC = () => {
   const {
@@ -30,11 +31,12 @@ export const ProfileView: React.FC = () => {
     currentSong,
     treeState,
     loveTree,
+    isSpectator,
   } = useApp();
 
   const activeTree = treeState || loveTree;
   const treeLevel = activeTree?.level ?? 1;
-  const treeStageName = activeTree?.stageName || 'Semente do Amor 🌱';
+  const treeStageName = activeTree?.stageName || 'Semente do Amor';
 
   const readLettersCount = letters.filter((l) => l.read).length;
   const favPhotosCount = photos.filter((p) => p.isFavorite).length;
@@ -59,6 +61,12 @@ export const ProfileView: React.FC = () => {
         <div className="absolute -top-16 -right-16 w-48 h-48 bg-pink-600/15 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
 
+        {isSpectator && (
+          <div className="mb-2 px-3 py-1 rounded-full bg-purple-900/60 border border-pink-400/40 text-[11px] font-semibold text-pink-200">
+            Modo Espectador — Gabriel (Visualização, Chat, Cartas, Fotos & Músicas)
+          </div>
+        )}
+
         {/* Real Couple Photo Avatar */}
         <div className="relative my-2">
           <div className="w-28 h-28 rounded-full p-1 bg-gradient-to-tr from-purple-600 via-pink-500 to-rose-400 shadow-[0_0_30px_rgba(244,114,182,0.45)]">
@@ -71,8 +79,8 @@ export const ProfileView: React.FC = () => {
               }}
             />
           </div>
-          <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-pink-500 border-2 border-[#0e051c] flex items-center justify-center text-sm shadow-md">
-            💖
+          <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-pink-500 border-2 border-[#0e051c] flex items-center justify-center shadow-md">
+            <Heart className="w-4 h-4 text-white fill-white" />
           </div>
         </div>
 
@@ -97,7 +105,7 @@ export const ProfileView: React.FC = () => {
           </div>
 
           <div className="px-3.5 py-1.5 rounded-full bg-pink-500/20 border border-pink-400/30 text-xs font-semibold text-pink-200 flex items-center gap-1.5">
-            <span>💎</span>
+            <DiamondGemIcon className="w-4 h-4 text-pink-300" />
             <span>{coins} Diamantes</span>
           </div>
         </div>

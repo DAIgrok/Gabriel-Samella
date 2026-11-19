@@ -1,8 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { PetType, KittenState } from '../../types';
+import {
+  addCozyThreePointLights,
+  detectSoftwareWebGL,
+  disposeObject3D,
+  loadCachedGlbInstance,
+  setupCozyStudioRenderer,
+} from '../../utils/threeCozyHelpers';
 
 export type PetDanceMove = 'idle' | 'dance' | 'spin' | 'jump' | 'wave' | 'kiss';
 
@@ -12,6 +18,7 @@ interface PetCanvas3DProps {
   danceMove?: PetDanceMove;
   hasSoapFoam?: boolean;
   isShowering?: boolean;
+  customModelUrl?: string;
   onPetTouch?: (part: 'head' | 'belly' | 'paw') => void;
 }
 
@@ -287,21 +294,7 @@ const SPECIES_SPECS: Record<PetType, SpeciesVisualSpec> = {
   },
 };
 
-function disposeObject3D(root: THREE.Object3D) {
-  root.traverse((obj) => {
-    const mesh = obj as THREE.Mesh;
-    if (mesh.geometry) {
-      mesh.geometry.dispose();
-    }
-    if (mesh.material) {
-      if (Array.isArray(mesh.material)) {
-        mesh.material.forEach((m) => m.dispose());
-      } else {
-        mesh.material.dispose();
-      }
-    }
-  });
-}
+// Helpers imported from ../../utils/threeCozyHelpers
 
 function createHeartGeometry(scale = 0.08): THREE.ExtrudeGeometry {
   const s = new THREE.Shape();
@@ -319,6 +312,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
   danceMove = 'idle',
   hasSoapFoam = false,
   isShowering = false,
+  customModelUrl,
   onPetTouch,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -329,6 +323,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
     danceMove,
     hasSoapFoam,
     isShowering,
+    customModelUrl,
     onPetTouch,
   });
   propsRef.current = {
@@ -337,6 +332,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
     danceMove,
     hasSoapFoam,
     isShowering,
+    customModelUrl,
     onPetTouch,
   };
 
@@ -355,37 +351,22 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
     const width = container.clientWidth || 320;
     const height = container.clientHeight || 310;
     const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 60);
-    camera.position.set(0, 1.45, 3.85);
+    camera.position.set(0, 1.5, 3.85);
 
-    // --- 2. RENDERER & ROOM ENVIRONMENT ---
+    // --- 2. COZY RENDERER & ROOM ENVIRONMENT ---
+    const isSoftwareGl = detectSoftwareWebGL();
     const renderer = new THREE.WebGLRenderer({
-      antialias: !/SwiftShader|llvmpipe|Software/i.test(navigator.userAgent || ''),
+      antialias: !isSoftwareGl,
       alpha: true,
       preserveDrawingBuffer: true,
       powerPreference: 'high-performance',
     });
 
-    const gl = renderer.getContext();
-    const dbg = gl.getExtension('WEBGL_debug_renderer_info');
-    const rendererStr = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
-    const isSoftwareGl = /SwiftShader|llvmpipe|Software Rasterizer/i.test(rendererStr);
-
     renderer.setSize(width, height);
     renderer.setPixelRatio(isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 1.75));
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.12;
+    const disposeEnv = setupCozyStudioRenderer(renderer, scene, isSoftwareGl);
+    scene.environmentIntensity = 0.78;
     container.appendChild(renderer.domElement);
-
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    const roomEnv = new RoomEnvironment();
-    const envTarget = pmrem.fromScene(roomEnv, 0.04);
-    scene.environment = envTarget.texture;
-    scene.environmentIntensity = 0.65;
-    roomEnv.dispose();
-    pmrem.dispose();
 
     // --- 3. ORBIT CONTROLS ---
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -396,95 +377,90 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
     controls.maxDistance = 6.5;
     controls.maxPolarAngle = Math.PI / 2 + 0.08;
     controls.minPolarAngle = Math.PI / 8;
-    controls.target.set(0, 0.72, 0);
+    controls.target.set(0, 0.74, 0);
 
-    // --- 4. STUDIO CLAY LIGHTING ---
-    const hemiLight = new THREE.HemisphereLight(0xfff1f2, 0x240b44, 0.8);
-    scene.add(hemiLight);
+    // --- 4. COZY 3-POINT PASTEL STUDIO LIGHTING ---
+    addCozyThreePointLights(scene, {
+      skyColor: 0xdbeafe, // Sky-blue / lavender pastel fill
+      groundColor: 0xffedd5, // Warm cozy ground bounce
+      hemiIntensity: 1.15,
+      keyColor: 0xfff8ed,
+      keyIntensity: 2.05,
+      keyPosition: [3.6, 5.8, 4.4],
+      rimColor: 0xf472b6, // Vibrant pink rim highlight
+      rimIntensity: 1.45,
+      rimPosition: [-3.5, 3.2, -4.0],
+      fillColor: 0xe9d5ff,
+      fillIntensity: 0.72,
+      shadowMapSize: isSoftwareGl ? 512 : 1024,
+      shadowExtent: 2.5,
+      isSoftwareGl,
+    });
 
-    const keyLight = new THREE.DirectionalLight(0xfff7ed, 2.25);
-    keyLight.position.set(3.5, 5.5, 4.2);
-    keyLight.castShadow = true;
-    keyLight.shadow.mapSize.width = isSoftwareGl ? 512 : 1024;
-    keyLight.shadow.mapSize.height = isSoftwareGl ? 512 : 1024;
-    keyLight.shadow.bias = -0.0008;
-    keyLight.shadow.camera.near = 0.5;
-    keyLight.shadow.camera.far = 14;
-    keyLight.shadow.camera.left = -2.2;
-    keyLight.shadow.camera.right = 2.2;
-    keyLight.shadow.camera.top = 2.8;
-    keyLight.shadow.camera.bottom = -1;
-    scene.add(keyLight);
-
-    const rimLight = new THREE.DirectionalLight(0xf472b6, 1.15);
-    rimLight.position.set(-3.5, 2.5, -3.5);
-    scene.add(rimLight);
-
-    // --- 5. RPG MINIATURE ROOM DIORAMA STAGE ---
+    // --- 5. COZY PASTEL PK XD DIORAMA STAGE ---
     const stageGroup = new THREE.Group();
     scene.add(stageGroup);
 
-    const pedestalGeo = new THREE.CylinderGeometry(1.48, 1.58, 0.22, 40);
+    const pedestalGeo = new THREE.CylinderGeometry(1.5, 1.62, 0.22, 48);
     const pedestalMat = new THREE.MeshStandardMaterial({
-      color: 0x1a0933,
-      roughness: 0.48,
-      metalness: 0.14,
+      color: 0x3b1b63,
+      roughness: 0.62,
+      metalness: 0.06,
     });
     const pedestal = new THREE.Mesh(pedestalGeo, pedestalMat);
     pedestal.position.y = -0.11;
     pedestal.receiveShadow = true;
     stageGroup.add(pedestal);
 
-    const rimGeo = new THREE.TorusGeometry(1.49, 0.024, 12, 64);
+    const rimGeo = new THREE.TorusGeometry(1.5, 0.028, 14, 64);
     const rimMat = new THREE.MeshStandardMaterial({
-      color: 0xf472b6,
-      emissive: 0xdb2777,
-      emissiveIntensity: 0.5,
-      roughness: 0.28,
-      metalness: 0.35,
+      color: 0xf9a8d4,
+      emissive: 0xec4899,
+      emissiveIntensity: 0.45,
+      roughness: 0.35,
+      metalness: 0.2,
     });
     const rimMesh = new THREE.Mesh(rimGeo, rimMat);
     rimMesh.rotation.x = Math.PI / 2;
     stageGroup.add(rimMesh);
 
-    // Procedural woven RPG rug texture
+    // Procedural cozy pastel woven rug texture
     const rugCanvas = document.createElement('canvas');
     rugCanvas.width = 256;
     rugCanvas.height = 256;
     const rCtx = rugCanvas.getContext('2d');
     if (rCtx) {
-      const grad = rCtx.createRadialGradient(128, 128, 14, 128, 128, 124);
-      grad.addColorStop(0, '#581c87');
-      grad.addColorStop(0.55, '#7e22ce');
-      grad.addColorStop(0.78, '#db2777');
-      grad.addColorStop(0.92, '#4c1d95');
-      grad.addColorStop(1, '#f9a8d4');
+      const grad = rCtx.createRadialGradient(128, 128, 16, 128, 128, 124);
+      grad.addColorStop(0, '#fdf2f8');
+      grad.addColorStop(0.45, '#fbcfe8');
+      grad.addColorStop(0.75, '#ddd6fe');
+      grad.addColorStop(0.92, '#c084fc');
+      grad.addColorStop(1, '#f472b6');
       rCtx.fillStyle = grad;
       rCtx.fillRect(0, 0, 256, 256);
 
-      // Stitched concentric rings & tiny diamond motifs
-      rCtx.strokeStyle = 'rgba(253, 230, 138, 0.55)';
+      rCtx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
       rCtx.lineWidth = 3;
-      rCtx.setLineDash([6, 6]);
+      rCtx.setLineDash([7, 5]);
       rCtx.beginPath();
       rCtx.arc(128, 128, 92, 0, Math.PI * 2);
       rCtx.stroke();
 
-      rCtx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-      rCtx.lineWidth = 2;
-      rCtx.setLineDash([3, 5]);
+      rCtx.strokeStyle = 'rgba(236, 72, 153, 0.42)';
+      rCtx.lineWidth = 2.5;
+      rCtx.setLineDash([4, 5]);
       rCtx.beginPath();
-      rCtx.arc(128, 128, 60, 0, Math.PI * 2);
+      rCtx.arc(128, 128, 56, 0, Math.PI * 2);
       rCtx.stroke();
     }
     const rugTex = new THREE.CanvasTexture(rugCanvas);
     rugTex.colorSpace = THREE.SRGBColorSpace;
     rugTex.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
     const rugMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.16, 1.18, 0.022, 40),
+      new THREE.CylinderGeometry(1.18, 1.2, 0.024, 48),
       new THREE.MeshStandardMaterial({
         map: rugTex,
-        roughness: 0.88,
+        roughness: 0.74,
         metalness: 0.02,
       })
     );
@@ -492,21 +468,21 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
     rugMesh.receiveShadow = true;
     stageGroup.add(rugMesh);
 
-    // Low-profile RPG curved back wainscot backdrop + warm miniature sconces
+    // Cozy pastel wainscot arch backdrop
     const wallArchGeo = new THREE.CylinderGeometry(
-      1.42,
-      1.42,
+      1.44,
+      1.44,
       0.86,
-      36,
+      40,
       1,
       true,
       Math.PI * 0.68,
       Math.PI * 0.64
     );
     const wallArchMat = new THREE.MeshStandardMaterial({
-      color: 0x2a124c,
-      roughness: 0.72,
-      metalness: 0.06,
+      color: 0x4c2473,
+      roughness: 0.68,
+      metalness: 0.04,
       side: THREE.DoubleSide,
     });
     const wallArch = new THREE.Mesh(wallArchGeo, wallArchMat);
@@ -514,11 +490,11 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
     wallArch.receiveShadow = true;
     stageGroup.add(wallArch);
 
-    const wallTrimGeo = new THREE.TorusGeometry(1.42, 0.032, 8, 36, Math.PI * 0.64);
+    const wallTrimGeo = new THREE.TorusGeometry(1.44, 0.032, 10, 40, Math.PI * 0.64);
     const wallTrimMat = new THREE.MeshStandardMaterial({
-      color: 0xfbbf24,
-      roughness: 0.3,
-      metalness: 0.65,
+      color: 0xfde047,
+      roughness: 0.4,
+      metalness: 0.35,
     });
     const wallTrim = new THREE.Mesh(wallTrimGeo, wallTrimMat);
     wallTrim.rotation.x = Math.PI / 2;
@@ -526,27 +502,27 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
     wallTrim.position.y = 0.86;
     stageGroup.add(wallTrim);
 
-    // Miniature floor cushion prop (left) & yarn ball toy prop (right)
+    // Cozy pastel floor cushion & plush yarn ball props
     const cushion = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.24, 0.28, 0.1, 18),
-      new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.82 })
+      new THREE.CylinderGeometry(0.24, 0.28, 0.1, 24),
+      new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.72 })
     );
-    cushion.position.set(-0.88, 0.065, 0.24);
+    cushion.position.set(-0.9, 0.065, 0.24);
     cushion.castShadow = true;
     cushion.receiveShadow = true;
     const cushionButton = new THREE.Mesh(
-      new THREE.SphereGeometry(0.045, 10, 10),
-      new THREE.MeshStandardMaterial({ color: 0xfde047, roughness: 0.35 })
+      new THREE.SphereGeometry(0.046, 12, 12),
+      new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.55 })
     );
     cushionButton.position.y = 0.055;
     cushion.add(cushionButton);
     stageGroup.add(cushion);
 
     const yarnBall = new THREE.Mesh(
-      new THREE.SphereGeometry(0.13, 16, 16),
-      new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.75 })
+      new THREE.SphereGeometry(0.13, 20, 20),
+      new THREE.MeshStandardMaterial({ color: 0x7dd3fc, roughness: 0.68 })
     );
-    yarnBall.position.set(0.88, 0.145, 0.32);
+    yarnBall.position.set(0.9, 0.145, 0.32);
     yarnBall.castShadow = true;
     stageGroup.add(yarnBall);
 
@@ -557,15 +533,15 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
     const sCtx = shadowCanvas.getContext('2d');
     if (sCtx) {
       const grad = sCtx.createRadialGradient(64, 64, 4, 64, 64, 62);
-      grad.addColorStop(0, 'rgba(0,0,0,0.62)');
-      grad.addColorStop(0.6, 'rgba(0,0,0,0.22)');
-      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      grad.addColorStop(0, 'rgba(30, 10, 55, 0.42)');
+      grad.addColorStop(0.6, 'rgba(30, 10, 55, 0.16)');
+      grad.addColorStop(1, 'rgba(30, 10, 55, 0)');
       sCtx.fillStyle = grad;
       sCtx.fillRect(0, 0, 128, 128);
     }
     const shadowTex = new THREE.CanvasTexture(shadowCanvas);
     const contactShadow = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.35, 1.35),
+      new THREE.PlaneGeometry(1.38, 1.38),
       new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, opacity: 0.85, depthWrite: false })
     );
     contactShadow.rotation.x = -Math.PI / 2;
@@ -585,11 +561,20 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
     let rightArmObj: THREE.Object3D | null = null;
     let angelWingsObj: THREE.Group | null = null;
     let capeObj: THREE.Object3D | null = null;
+    let glbMixer: THREE.AnimationMixer | null = null;
+    const blinkLids: THREE.Mesh[] = [];
     const snakeSegs: THREE.Object3D[] = [];
+    let buildToken = 0;
 
     const rebuildPet = () => {
-      const { petType: type, kitten: st, hasSoapFoam: foam } = propsRef.current;
+      const myToken = ++buildToken;
+      const { petType: type, kitten: st, hasSoapFoam: foam, customModelUrl: glbUrl } = propsRef.current;
       const spec = SPECIES_SPECS[type] || SPECIES_SPECS.cat;
+
+      if (glbMixer) {
+        glbMixer.stopAllAction();
+        glbMixer = null;
+      }
 
       while (petRoot.children.length > 0) {
         const ch = petRoot.children[0];
@@ -606,44 +591,83 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
       rightArmObj = null;
       angelWingsObj = null;
       capeObj = null;
+      blinkLids.length = 0;
       snakeSegs.length = 0;
 
-      // Clay PBR Materials
+      // Progressive external .glb loader (falls back seamlessly to enhanced procedural pet)
+      if (glbUrl && glbUrl.trim()) {
+        const placeholderGroup = new THREE.Group();
+        petRoot.add(placeholderGroup);
+        loadCachedGlbInstance(glbUrl.trim(), 1.42, true)
+          .then(({ group, animations }) => {
+            if (myToken !== buildToken) {
+              disposeObject3D(group);
+              return;
+            }
+            while (petRoot.children.length > 0) {
+              const ch = petRoot.children[0];
+              petRoot.remove(ch);
+              disposeObject3D(ch);
+            }
+            petRoot.add(group);
+            bodyGroup = group;
+            if (animations.length > 0) {
+              glbMixer = new THREE.AnimationMixer(group);
+              const action = glbMixer.clipAction(animations[0]);
+              action.play();
+            }
+          })
+          .catch(() => {
+            // Silent fallback to procedural model if external GLB fails to load
+          });
+      }
+
+      // Cozy Stylized Vinyl / Soft Plush PBR Materials (roughness 0.55–0.75, zero flatShading)
+      const customFurHex = st.petColors?.[type];
+      const baseFurColor = customFurHex ? new THREE.Color(customFurHex) : new THREE.Color(spec.main);
+      const earShadeColor = customFurHex
+        ? baseFurColor.clone().multiplyScalar(0.76)
+        : new THREE.Color(spec.earOuter);
+
       const mainMat = new THREE.MeshStandardMaterial({
-        color: spec.main,
-        roughness: 0.44,
-        metalness: 0.04,
+        color: baseFurColor,
+        roughness: 0.62,
+        metalness: 0.02,
       });
       const secMat = new THREE.MeshStandardMaterial({
         color: spec.secondary,
-        roughness: 0.46,
-        metalness: 0.03,
+        roughness: 0.66,
+        metalness: 0.02,
       });
       const earOuterMat = new THREE.MeshStandardMaterial({
-        color: spec.earOuter,
-        roughness: 0.48,
-        metalness: 0.03,
+        color: earShadeColor,
+        roughness: 0.64,
+        metalness: 0.02,
       });
       const earInnerMat = new THREE.MeshStandardMaterial({
         color: spec.earInner,
-        roughness: 0.45,
+        roughness: 0.6,
       });
       const noseMat = new THREE.MeshStandardMaterial({
         color: spec.nose,
-        roughness: 0.2,
-        metalness: 0.1,
+        roughness: 0.18,
+        metalness: 0.08,
       });
       const eyeMat = new THREE.MeshStandardMaterial({
         color: 0x0b0714,
         roughness: 0.08,
-        metalness: 0.15,
+        metalness: 0.12,
       });
       const whiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
       const blushMat = new THREE.MeshStandardMaterial({
         color: 0xfb7185,
-        roughness: 0.5,
+        roughness: 0.65,
         transparent: true,
-        opacity: 0.58,
+        opacity: 0.62,
+      });
+      const pawPadMat = new THREE.MeshStandardMaterial({
+        color: 0xf9a8d4,
+        roughness: 0.58,
       });
 
       const hatId = st.equippedHat || '';
@@ -750,12 +774,17 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         torsoGroup.add(rArm);
         rightArmObj = rArm;
 
-        const pawGeo = new THREE.SphereGeometry(0.115, 16, 14);
+        const pawGeo = new THREE.SphereGeometry(0.115, 18, 16);
         pawGeo.scale(0.95, 0.72, 1.32);
+        const padGeo = new THREE.SphereGeometry(0.055, 12, 10);
+        padGeo.scale(1.1, 0.35, 0.9);
         [-0.2, 0.2].forEach((px) => {
           const paw = new THREE.Mesh(pawGeo, secMat);
           paw.position.set(px, 0.085, 0.22);
           paw.castShadow = true;
+          const pad = new THREE.Mesh(padGeo, pawPadMat);
+          pad.position.set(0, -0.02, 0.11);
+          paw.add(pad);
           torsoGroup.add(paw);
         });
 
@@ -764,10 +793,10 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
           const wMat = new THREE.MeshStandardMaterial({
             color: 0xe0f2fe,
             transparent: true,
-            opacity: 0.7,
-            roughness: 0.1,
+            opacity: 0.72,
+            roughness: 0.15,
           });
-          const wGeo = new THREE.SphereGeometry(0.22, 14, 12);
+          const wGeo = new THREE.SphereGeometry(0.22, 16, 14);
           wGeo.scale(1.3, 0.12, 0.75);
           const lW = new THREE.Mesh(wGeo, wMat);
           lW.position.set(-0.32, 0.62, -0.22);
@@ -779,44 +808,51 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         }
       }
 
-      // --- BUILD HEAD (Smooth Clay Rounded Sculpt) ---
+      // --- BUILD HEAD (Chibi Stylized Vinyl Sculpt) ---
       const head = new THREE.Group();
-      head.position.set(0, spec.bodyLayout === 'aquatic' ? 0.66 : spec.bodyLayout === 'serpent' ? 0.56 : 0.96, spec.bodyLayout === 'aquatic' ? 0.35 : 0.06);
+      head.position.set(0, spec.bodyLayout === 'aquatic' ? 0.66 : spec.bodyLayout === 'serpent' ? 0.56 : 0.95, spec.bodyLayout === 'aquatic' ? 0.35 : 0.06);
       petRoot.add(head);
       headGroup = head;
 
-      const headBall = new THREE.Mesh(new THREE.SphereGeometry(0.41, 28, 22), mainMat);
-      headBall.scale.set(1.06, 0.96, 1.0);
+      const headBall = new THREE.Mesh(new THREE.SphereGeometry(0.445, 32, 26), mainMat);
+      headBall.scale.set(1.07, 0.96, 1.02);
       headBall.castShadow = true;
       headBall.receiveShadow = true;
       head.add(headBall);
 
-      // Soft blaze stripe (dog/fox)
+      // Soft blaze stripe & cute brow dots (dog/fox)
       if (spec.hasBlaze) {
-        const blaze = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.24, 6, 12), secMat);
-        blaze.position.set(0, 0.16, 0.37);
+        const blaze = new THREE.Mesh(new THREE.CapsuleGeometry(0.048, 0.25, 8, 14), secMat);
+        blaze.position.set(0, 0.16, 0.39);
         blaze.rotation.x = -0.38;
         blaze.scale.set(1.0, 1.0, 0.35);
         head.add(blaze);
+
+        [-0.145, 0.145].forEach((bx) => {
+          const brow = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), secMat);
+          brow.scale.set(1.15, 0.65, 0.45);
+          brow.position.set(bx, 0.175, 0.375);
+          head.add(brow);
+        });
       }
 
       // Lion mane / Hedgehog spines
       if (spec.hasMane) {
-        const maneMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.55 });
+        const maneMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.65 });
         for (let i = 0; i < 12; i++) {
           const ang = (i / 12) * Math.PI * 2;
-          const puff = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 12), maneMat);
-          puff.position.set(Math.cos(ang) * 0.39, Math.sin(ang) * 0.37, -0.06);
+          const puff = new THREE.Mesh(new THREE.SphereGeometry(0.165, 16, 14), maneMat);
+          puff.position.set(Math.cos(ang) * 0.42, Math.sin(ang) * 0.4, -0.06);
           puff.castShadow = true;
           head.add(puff);
         }
       }
       if (spec.hasSpines) {
-        const spineMat = new THREE.MeshStandardMaterial({ color: 0x57534e, roughness: 0.65 });
+        const spineMat = new THREE.MeshStandardMaterial({ color: 0x57534e, roughness: 0.68 });
         for (let i = 0; i < 9; i++) {
           const ang = -1.1 + (i / 8) * 2.2;
-          const sp = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.22, 8), spineMat);
-          sp.position.set(Math.sin(ang) * 0.36, 0.18 + Math.cos(ang) * 0.2, -0.22);
+          const sp = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.22, 12), spineMat);
+          sp.position.set(Math.sin(ang) * 0.38, 0.18 + Math.cos(ang) * 0.2, -0.22);
           sp.rotation.z = -ang;
           sp.rotation.x = -0.5;
           head.add(sp);
@@ -825,46 +861,54 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
 
       // Panda eye patches
       if (spec.hasPandaMask) {
-        const patchMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5 });
-        [-0.15, 0.15].forEach((px) => {
-          const patch = new THREE.Mesh(new THREE.SphereGeometry(0.115, 16, 14), patchMat);
-          patch.scale.set(1.1, 1.2, 0.35);
-          patch.position.set(px, 0.04, 0.36);
+        const patchMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6 });
+        [-0.16, 0.16].forEach((px) => {
+          const patch = new THREE.Mesh(new THREE.SphereGeometry(0.12, 18, 14), patchMat);
+          patch.scale.set(1.1, 1.22, 0.35);
+          patch.position.set(px, 0.045, 0.39);
           patch.rotation.y = px > 0 ? 0.25 : -0.25;
           head.add(patch);
         });
       }
 
-      // --- EYES (Glossy clay eyes + catchlights or sleeping lids) ---
+      // --- EYES (Glossy catchlight eyes + animated natural blink eyelids or sleeping lids) ---
       if (st.isSleeping) {
-        const lidMat = new THREE.MeshStandardMaterial({ color: 0x1e1b4b, roughness: 0.4 });
-        [-0.155, 0.155].forEach((ex) => {
-          const lid = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.015, 8, 16, Math.PI), lidMat);
-          lid.position.set(ex, 0.04, 0.38);
+        const lidMat = new THREE.MeshStandardMaterial({ color: 0x1e1b4b, roughness: 0.55 });
+        [-0.16, 0.16].forEach((ex) => {
+          const lid = new THREE.Mesh(new THREE.TorusGeometry(0.058, 0.015, 8, 18, Math.PI), lidMat);
+          lid.position.set(ex, 0.04, 0.415);
           lid.rotation.z = Math.PI;
           head.add(lid);
         });
       } else {
-        const eyeGeo = new THREE.SphereGeometry(0.072, 18, 16);
-        const rimRingGeo = new THREE.SphereGeometry(0.084, 18, 16);
-        const hlBigGeo = new THREE.SphereGeometry(0.025, 10, 10);
-        const hlSmallGeo = new THREE.SphereGeometry(0.012, 8, 8);
+        const eyeGeo = new THREE.SphereGeometry(0.078, 22, 18);
+        const rimRingGeo = new THREE.SphereGeometry(0.09, 20, 18);
+        const hlBigGeo = new THREE.SphereGeometry(0.027, 12, 12);
+        const hlSmallGeo = new THREE.SphereGeometry(0.013, 10, 10);
+        const lidGeo = new THREE.SphereGeometry(0.084, 16, 12);
 
-        [-0.155, 0.155].forEach((ex) => {
+        [-0.16, 0.16].forEach((ex) => {
           const eye = new THREE.Mesh(eyeGeo, eyeMat);
-          eye.position.set(ex, 0.045, 0.36);
-          eye.scale.set(1.0, 1.08, 0.65);
+          eye.position.set(ex, 0.045, 0.39);
+          eye.scale.set(1.0, 1.1, 0.68);
 
           const outerRim = new THREE.Mesh(rimRingGeo, secMat);
           outerRim.position.set(0, 0, -0.012);
-          outerRim.scale.set(1.0, 1.05, 0.5);
+          outerRim.scale.set(1.0, 1.06, 0.5);
           eye.add(outerRim);
 
           const hl1 = new THREE.Mesh(hlBigGeo, whiteMat);
-          hl1.position.set(0.022, 0.025, 0.056);
+          hl1.position.set(0.024, 0.028, 0.06);
           const hl2 = new THREE.Mesh(hlSmallGeo, whiteMat);
-          hl2.position.set(-0.02, -0.02, 0.058);
+          hl2.position.set(-0.022, -0.02, 0.062);
           eye.add(hl1, hl2);
+
+          // Upper eyelid mesh for natural blinking
+          const eyelid = new THREE.Mesh(lidGeo, mainMat);
+          eyelid.position.set(0, 0.03, 0.022);
+          eyelid.scale.set(1.12, 0.06, 0.9);
+          eye.add(eyelid);
+          blinkLids.push(eyelid);
 
           head.add(eye);
         });
@@ -924,19 +968,30 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
 
       // --- EARS ---
       if (spec.earStyle === 'floppy') {
-        const earGeo = new THREE.CapsuleGeometry(0.1, 0.25, 10, 14);
-        earGeo.scale(0.85, 1.0, 0.38);
-        const lEar = new THREE.Mesh(earGeo, earOuterMat);
-        lEar.position.set(-0.4, -0.03, 0.02);
-        lEar.rotation.set(0.08, 0.15, -0.26);
-        lEar.castShadow = true;
+        // Organic sculpted droopy puppy ears that hug cheeks softly
+        const earGroupGeo = new THREE.SphereGeometry(0.145, 22, 18);
+        earGroupGeo.scale(0.68, 1.65, 0.42);
+        const earInPadGeo = new THREE.SphereGeometry(0.095, 16, 12);
+        earInPadGeo.scale(0.6, 1.4, 0.22);
+
+        const buildFloppyEar = (side: -1 | 1) => {
+          const earPivot = new THREE.Group();
+          earPivot.position.set(side * 0.38, 0.16, 0.04);
+          earPivot.rotation.set(0.12, side * 0.2, side * 0.24);
+          const outer = new THREE.Mesh(earGroupGeo, earOuterMat);
+          outer.position.set(side * 0.05, -0.18, 0.02);
+          outer.castShadow = true;
+          const inner = new THREE.Mesh(earInPadGeo, earInnerMat);
+          inner.position.set(side * 0.03, -0.18, 0.045);
+          earPivot.add(outer, inner);
+          return earPivot;
+        };
+
+        const lEar = buildFloppyEar(-1);
         head.add(lEar);
         leftEarObj = lEar;
 
-        const rEar = new THREE.Mesh(earGeo, earOuterMat);
-        rEar.position.set(0.4, -0.03, 0.02);
-        rEar.rotation.set(0.08, -0.15, 0.26);
-        rEar.castShadow = true;
+        const rEar = buildFloppyEar(1);
         head.add(rEar);
         rightEarObj = rEar;
       } else if (spec.earStyle === 'cat') {
@@ -1065,12 +1120,12 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
       }
 
       // ============================================================
-      // 👕 CLOTHING, HATS, GLASSES, COLLARS, TIES & ACCESSORIES
+      // CLOTHING, HATS, GLASSES, COLLARS, TIES & ACCESSORIES
       // ============================================================
 
       // 1. OUTFITS (Torso garments)
       if (outfitId && spec.bodyLayout !== 'serpent') {
-        let outfitColor = 0x9333ea;
+        let outfitColor: string | number = 0x9333ea;
         let accentColor = 0xf472b6;
         if (outfitId === 'item-pet-dress') {
           outfitColor = 0xec4899;
@@ -1090,6 +1145,10 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         } else if (outfitId === 'item-pet-tshirt') {
           outfitColor = 0xf9a8d4;
           accentColor = 0xffffff;
+        }
+        const customOutfitHex = st.accessoryColors?.[outfitId];
+        if (customOutfitHex) {
+          outfitColor = customOutfitHex;
         }
 
         const outMat = new THREE.MeshStandardMaterial({ color: outfitColor, roughness: 0.55 });
@@ -1124,12 +1183,13 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         }
       }
 
-      // 2. COLLARS & TIES (Default cute collar if dog and nothing selected? Keep clean: only show what is equipped OR soft collar if item-pet-heart-collar)
+      // 2. COLLARS & TIES
       if (collarId) {
+        const customCollarHex = st.accessoryColors?.[collarId];
         if (collarId === 'item-pet-heart-collar') {
           const redCollar = new THREE.Mesh(
             new THREE.TorusGeometry(0.28, 0.042, 12, 28),
-            new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.35 })
+            new THREE.MeshStandardMaterial({ color: customCollarHex || 0xef4444, roughness: 0.35 })
           );
           redCollar.rotation.x = Math.PI / 2;
           redCollar.position.set(0, 0.64, 0.03);
@@ -1142,7 +1202,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
           goldHeart.position.set(0, 0.57, 0.31);
           torsoGroup.add(goldHeart);
         } else if (collarId === 'item-cat-bowtie') {
-          const btMat = new THREE.MeshStandardMaterial({ color: 0xa855f7, roughness: 0.35 });
+          const btMat = new THREE.MeshStandardMaterial({ color: customCollarHex || 0xa855f7, roughness: 0.35 });
           const bt = new THREE.Group();
           bt.position.set(0, 0.62, 0.3);
           const lW = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.13, 8), btMat);
@@ -1157,7 +1217,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         } else if (collarId === 'item-pet-necktie') {
           const tieGroup = new THREE.Group();
           tieGroup.position.set(0, 0.62, 0.3);
-          const tieMat = new THREE.MeshStandardMaterial({ color: 0xbe123c, roughness: 0.35 });
+          const tieMat = new THREE.MeshStandardMaterial({ color: customCollarHex || 0xbe123c, roughness: 0.35 });
           const knot = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 10), tieMat);
           const blade = new THREE.Mesh(new THREE.ConeGeometry(0.065, 0.24, 4), tieMat);
           blade.scale.set(1.0, 1.0, 0.28);
@@ -1166,7 +1226,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
           tieGroup.add(knot, blade);
           torsoGroup.add(tieGroup);
         } else if (collarId === 'item-pet-scarf') {
-          const scMat = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.65 });
+          const scMat = new THREE.MeshStandardMaterial({ color: customCollarHex || 0xf472b6, roughness: 0.65 });
           const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.29, 0.065, 12, 28), scMat);
           wrap.rotation.x = Math.PI / 2;
           wrap.position.set(0, 0.64, 0.03);
@@ -1175,7 +1235,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
           tail.rotation.z = 0.25;
           torsoGroup.add(wrap, tail);
         } else if (collarId === 'item-pet-pearls') {
-          const pearlMat = new THREE.MeshStandardMaterial({ color: 0xfffbeb, roughness: 0.18, metalness: 0.25 });
+          const pearlMat = new THREE.MeshStandardMaterial({ color: customCollarHex || 0xfffbeb, roughness: 0.18, metalness: 0.25 });
           const pGeo = new THREE.SphereGeometry(0.036, 10, 10);
           for (let i = 0; i < 14; i++) {
             const a = (i / 14) * Math.PI * 2;
@@ -1188,8 +1248,9 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
 
       // 3. HATS (Mounted cleanly on top of headGroup)
       if (hatId) {
+        const customHatHex = st.accessoryColors?.[hatId];
         if (hatId === 'item-cat-crown') {
-          const crownMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.78, roughness: 0.2 });
+          const crownMat = new THREE.MeshStandardMaterial({ color: customHatHex || 0xfbbf24, metalness: 0.78, roughness: 0.2 });
           const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.13, 0.15, 8), crownMat);
           crown.position.set(0, 0.44, 0.02);
           const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.042), new THREE.MeshStandardMaterial({ color: 0xf43f5e, emissive: 0xe11d48, emissiveIntensity: 0.6 }));
@@ -1197,7 +1258,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
           crown.add(gem);
           head.add(crown);
         } else if (hatId === 'item-cat-ribbon') {
-          const bowMat = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.3 });
+          const bowMat = new THREE.MeshStandardMaterial({ color: customHatHex || 0xf472b6, roughness: 0.3 });
           const bow = new THREE.Group();
           bow.position.set(0.24, 0.34, 0.14);
           bow.rotation.set(0.2, 0.3, -0.4);
@@ -1218,12 +1279,12 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
           const flowerCols = [0xf472b6, 0xfde047, 0xfb7185, 0xc084fc, 0xfff1f2, 0xf472b6];
           for (let i = 0; i < 6; i++) {
             const a = (i / 6) * Math.PI * 2;
-            const fl = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 10), new THREE.MeshStandardMaterial({ color: flowerCols[i], roughness: 0.35 }));
+            const fl = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 10), new THREE.MeshStandardMaterial({ color: customHatHex || flowerCols[i], roughness: 0.35 }));
             fl.position.set(Math.cos(a) * 0.32, 0.29, Math.sin(a) * 0.32);
             head.add(fl);
           }
         } else if (hatId === 'item-pet-cap') {
-          const capMat = new THREE.MeshStandardMaterial({ color: 0xa855f7, roughness: 0.45 });
+          const capMat = new THREE.MeshStandardMaterial({ color: customHatHex || 0xa855f7, roughness: 0.45 });
           const brimMat = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.4 });
           const dome = new THREE.Mesh(new THREE.SphereGeometry(0.37, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.52), capMat);
           dome.position.y = 0.14;
@@ -1232,7 +1293,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
           visor.rotation.x = 0.2;
           head.add(dome, visor);
         } else if (hatId === 'item-pet-beret') {
-          const beretMat = new THREE.MeshStandardMaterial({ color: 0xe11d48, roughness: 0.6 });
+          const beretMat = new THREE.MeshStandardMaterial({ color: customHatHex || 0xe11d48, roughness: 0.6 });
           const disc = new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 14), beretMat);
           disc.scale.set(1.1, 0.38, 1.1);
           disc.position.set(0.06, 0.38, 0.02);
@@ -1242,14 +1303,14 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
           disc.add(stem);
           head.add(disc);
         } else if (hatId === 'item-pet-party-hat') {
-          const cone = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.38, 18), new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.35 }));
+          const cone = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.38, 18), new THREE.MeshStandardMaterial({ color: customHatHex || 0xec4899, roughness: 0.35 }));
           cone.position.set(0, 0.54, 0.02);
           const pom = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 12), new THREE.MeshStandardMaterial({ color: 0xfde047 }));
           pom.position.y = 0.2;
           cone.add(pom);
           head.add(cone);
         } else if (hatId === 'item-pet-cowboy-hat') {
-          const hatMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.65 });
+          const hatMat = new THREE.MeshStandardMaterial({ color: customHatHex || 0x78350f, roughness: 0.65 });
           const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.03, 24), hatMat);
           brim.position.y = 0.33;
           const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, 0.22, 16), hatMat);
@@ -1258,14 +1319,14 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
           band.position.y = 0.36;
           head.add(brim, crown, band);
         } else if (hatId === 'item-pet-beanie') {
-          const knitMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.7 });
+          const knitMat = new THREE.MeshStandardMaterial({ color: customHatHex || 0xf43f5e, roughness: 0.7 });
           const dome = new THREE.Mesh(new THREE.SphereGeometry(0.36, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.55), knitMat);
           dome.position.y = 0.16;
           const pom = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 12), secMat);
           pom.position.y = 0.54;
           head.add(dome, pom);
         } else if (hatId === 'item-pet-wizard-hat') {
-          const wizMat = new THREE.MeshStandardMaterial({ color: 0x4c1d95, roughness: 0.45 });
+          const wizMat = new THREE.MeshStandardMaterial({ color: customHatHex || 0x4c1d95, roughness: 0.45 });
           const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.48, 0.03, 24), wizMat);
           brim.position.y = 0.32;
           const cone = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.52, 20), wizMat);
@@ -1328,7 +1389,9 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
       if (glassesId && !st.isSleeping) {
         const gGroup = new THREE.Group();
         gGroup.position.set(0, 0.045, 0.415);
-        const frameColor = glassesId === 'item-pet-heart-glasses' ? 0xf472b6 : glassesId === 'item-pet-round-glasses' ? 0xfbbf24 : 0xf59e0b;
+        const frameColor =
+          st.accessoryColors?.[glassesId] ||
+          (glassesId === 'item-pet-heart-glasses' ? 0xf472b6 : glassesId === 'item-pet-round-glasses' ? 0xfbbf24 : 0xf59e0b);
         const lensColor = glassesId === 'item-pet-round-glasses' ? 0xbae6fd : 0x0f172a;
         const frameMat = new THREE.MeshStandardMaterial({ color: frameColor, metalness: 0.65, roughness: 0.2 });
         const lensMat = new THREE.MeshStandardMaterial({
@@ -1353,9 +1416,10 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
       }
 
       // 5. BACK & HEAD ACCESSORIES (Wings, Cape, Heart Backpack, Headphones)
+      const customAccHex = accId ? st.accessoryColors?.[accId] : undefined;
       if (accId === 'item-cat-angel-wings') {
         const wingMat = new THREE.MeshStandardMaterial({
-          color: 0xffffff,
+          color: customAccHex || 0xffffff,
           emissive: 0xe0e7ff,
           emissiveIntensity: 0.35,
           roughness: 0.28,
@@ -1375,7 +1439,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         angelWingsObj = aGroup;
       } else if (accId === 'item-pet-cape') {
         const capeMat = new THREE.MeshStandardMaterial({
-          color: 0xe11d48,
+          color: customAccHex || 0xe11d48,
           roughness: 0.5,
           side: THREE.DoubleSide,
         });
@@ -1385,13 +1449,13 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         torsoGroup.add(cape);
         capeObj = cape;
       } else if (accId === 'item-pet-heart-backpack') {
-        const packMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.38 });
+        const packMat = new THREE.MeshStandardMaterial({ color: customAccHex || 0xf43f5e, roughness: 0.38 });
         const pack = new THREE.Mesh(createHeartGeometry(0.26), packMat);
         pack.position.set(0, 0.46, -0.38);
         torsoGroup.add(pack);
       } else if (accId === 'item-pet-headphones') {
-        const bandMat = new THREE.MeshStandardMaterial({ color: 0xa855f7, roughness: 0.3, metalness: 0.3 });
-        const cupMat = new THREE.MeshStandardMaterial({ color: 0xec4899, emissive: 0xdb2777, emissiveIntensity: 0.45, roughness: 0.2 });
+        const bandMat = new THREE.MeshStandardMaterial({ color: customAccHex || 0xa855f7, roughness: 0.3, metalness: 0.3 });
+        const cupMat = new THREE.MeshStandardMaterial({ color: customAccHex || 0xec4899, emissive: 0xdb2777, emissiveIntensity: 0.45, roughness: 0.2 });
         const band = new THREE.Mesh(new THREE.TorusGeometry(0.43, 0.032, 10, 28, Math.PI), bandMat);
         band.position.y = 0.06;
         head.add(band);
@@ -1494,14 +1558,19 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
     renderer.domElement.addEventListener('pointerdown', handlePointerDown);
     renderer.domElement.addEventListener('pointerup', handlePointerUp);
 
-    // --- 9. ANIMATION LOOP (Idle, Sleeping, Eating, Playing, Dances!) ---
+    // --- 9. ANIMATION LOOP (Idle, Blinking, Sleeping, Eating, Playing, GLB Mixer & Dances!) ---
     let animId = 0;
     const clock = new THREE.Clock();
 
     const animate = () => {
       animId = requestAnimationFrame(animate);
+      const delta = Math.min(clock.getDelta(), 0.05);
       const t = clock.getElapsedTime();
       const { kitten: st, danceMove: move, isShowering: shower } = propsRef.current;
+
+      if (glbMixer) {
+        glbMixer.update(delta);
+      }
 
       // Reset default root transform cleanly before applying active kinematics
       petRoot.position.set(0, 0, 0);
@@ -1509,7 +1578,6 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
       petRoot.scale.set(1, 1, 1);
 
       if (st.isSleeping) {
-        // Gentle breathing curl
         const b = Math.sin(t * 1.6) * 0.025;
         petRoot.scale.set(1.04, 0.92 + b, 1.04);
         if (headGroup) {
@@ -1517,14 +1585,24 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
           headGroup.rotation.z = Math.sin(t * 1.2) * 0.04;
         }
       } else if (!prefersReducedMotion) {
+        // Natural blink cycle every ~3.4 seconds
+        const blinkCycle = t % 3.4;
+        const blinkAmount =
+          blinkCycle > 3.24 ? Math.sin(((blinkCycle - 3.24) / 0.16) * Math.PI) : 0;
+        for (let i = 0; i < blinkLids.length; i++) {
+          blinkLids[i].scale.y = 0.05 + blinkAmount * 1.1;
+          blinkLids[i].position.y = 0.034 - blinkAmount * 0.034;
+        }
+
         if (move === 'dance') {
           const beat = t * 7.2;
-          petRoot.position.y = Math.abs(Math.sin(beat)) * 0.14;
+          petRoot.position.y = Math.abs(Math.sin(beat)) * 0.15;
           petRoot.rotation.z = Math.sin(beat * 0.5) * 0.14;
           petRoot.rotation.y = Math.sin(beat * 0.5) * 0.28;
           if (headGroup) headGroup.rotation.z = -Math.sin(beat * 0.5) * 0.18;
           if (leftArmObj) leftArmObj.rotation.z = 0.5 + Math.sin(beat) * 0.55;
           if (rightArmObj) rightArmObj.rotation.z = -0.5 + Math.sin(beat) * 0.55;
+          if (tailObj) tailObj.rotation.z = Math.sin(beat * 1.6) * 0.42;
         } else if (move === 'spin') {
           petRoot.rotation.y = t * 7.5;
           petRoot.position.y = Math.abs(Math.sin(t * 4.5)) * 0.24;
@@ -1534,8 +1612,8 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
           const stretch = 1 + hop * 0.12;
           const squash = 1 / Math.sqrt(stretch);
           petRoot.scale.set(squash, stretch, squash);
-          if (leftEarObj) leftEarObj.rotation.z = -0.25 + hop * 0.35;
-          if (rightEarObj) rightEarObj.rotation.z = 0.25 - hop * 0.35;
+          if (leftEarObj) leftEarObj.rotation.z = -0.22 + hop * 0.32;
+          if (rightEarObj) rightEarObj.rotation.z = 0.22 - hop * 0.32;
         } else if (move === 'wave') {
           if (headGroup) {
             headGroup.rotation.z = 0.18;
@@ -1550,21 +1628,24 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         } else if (st.isPlayMode) {
           petRoot.position.y = Math.abs(Math.sin(t * 5.8)) * 0.18;
           petRoot.rotation.z = Math.sin(t * 3) * 0.07;
+          if (tailObj) tailObj.rotation.z = Math.sin(t * 9) * 0.42;
         } else {
-          // Calm natural breathing & cheerful sway
-          const breath = Math.sin(t * 2.4) * 0.02;
-          petRoot.scale.set(1, 1 + breath, 1);
+          // Smooth breathing, head curiosity tilt, ear bounce & joyful tail wag
+          const breath = Math.sin(t * 2.3) * 0.022;
+          petRoot.scale.set(1 - breath * 0.35, 1 + breath, 1 - breath * 0.35);
           if (headGroup) {
-            headGroup.rotation.z = Math.sin(t * 1.4) * 0.045;
-            headGroup.rotation.y = Math.sin(t * 0.9) * 0.08;
+            headGroup.rotation.z = Math.sin(t * 1.3) * 0.055;
+            headGroup.rotation.y = Math.sin(t * 0.85) * 0.095;
+            headGroup.position.y =
+              (specPositionY(propsRef.current.petType)) + Math.sin(t * 2.3) * 0.012;
           }
           if (tailObj) {
-            tailObj.rotation.z = Math.sin(t * 6.5) * 0.28;
+            tailObj.rotation.z = Math.sin(t * 6.8) * 0.32;
           }
           if (leftEarObj && rightEarObj) {
-            const earSway = Math.sin(t * 2.6) * 0.05;
-            leftEarObj.rotation.x = 0.08 + earSway;
-            rightEarObj.rotation.x = 0.08 - earSway;
+            const earBounce = Math.sin(t * 2.3 - 0.5) * 0.065;
+            leftEarObj.rotation.x = 0.1 + earBounce;
+            rightEarObj.rotation.x = 0.1 - earBounce * 0.75;
           }
         }
 
@@ -1620,6 +1701,10 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
       controls.update();
       renderer.render(scene, camera);
     };
+    const specPositionY = (tType: PetType) => {
+      const sp = SPECIES_SPECS[tType] || SPECIES_SPECS.cat;
+      return sp.bodyLayout === 'aquatic' ? 0.66 : sp.bodyLayout === 'serpent' ? 0.56 : 0.95;
+    };
     animate();
 
     // --- 10. RESIZE HANDLER ---
@@ -1637,12 +1722,14 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
     resizeObs?.observe(container);
 
     return () => {
+      buildToken++;
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', handleResize);
       resizeObs?.disconnect();
       renderer.domElement.removeEventListener('pointerdown', handlePointerDown);
       renderer.domElement.removeEventListener('pointerup', handlePointerUp);
       controls.dispose();
+      glbMixer?.stopAllAction();
 
       disposeObject3D(stageGroup);
       disposeObject3D(petRoot);
@@ -1651,7 +1738,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
       showerMat.dispose();
       shadowTex.dispose();
       rugTex.dispose();
-      envTarget.dispose();
+      disposeEnv();
 
       if (renderer.domElement.parentElement) {
         renderer.domElement.parentElement.removeChild(renderer.domElement);
@@ -1661,6 +1748,8 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
   }, []);
 
   // Rebuild pet mesh/wardrobe cleanly when appearance state changes (without destroying WebGLRenderer!)
+  const petColorsKey = JSON.stringify(kitten.petColors || {});
+  const accColorsKey = JSON.stringify(kitten.accessoryColors || {});
   useEffect(() => {
     rebuildFnRef.current?.();
   }, [
@@ -1672,7 +1761,10 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
     kitten.equippedCollar,
     kitten.equippedGlasses,
     kitten.equippedAccessory,
+    petColorsKey,
+    accColorsKey,
     hasSoapFoam,
+    customModelUrl,
   ]);
 
   return (

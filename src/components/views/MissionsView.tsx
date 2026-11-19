@@ -1,30 +1,21 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import {
+  Calendar,
   CheckCircle2,
-  Eye,
   Heart,
-  RotateCcw,
+  Lock,
   Sparkles,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { INTEGRATED_MISSIONS_CATALOG } from '../../data/initialData';
 import { SEASONAL_THEMES } from '../../utils/seasonalEngine';
-import { SeasonalEventId } from '../../types';
 import {
   DiamondGemIcon,
   MissionCompassIcon,
   PumpkinCrestIcon,
   SnowflakeCrestIcon,
 } from '../icons/CustomIcons';
-
-const SEASONAL_OPTIONS: { id: SeasonalEventId; label: string; desc: string }[] = [
-  { id: 'natal', label: 'Natal Encantado', desc: 'Neve realista + Papai Noel no contador' },
-  { id: 'halloween', label: 'Halloween Místico', desc: 'Névoa violeta + abóboras iluminadas' },
-  { id: 'namorados', label: 'Dia dos Namorados', desc: 'Pétalas de rosa flutuantes' },
-  { id: 'aniversario', label: 'Aniversário 12/06', desc: 'Faíscas douradas celebrando nossa data' },
-  { id: 'normal', label: 'Céu de Veludo', desc: 'Vagalumes violeta e rosa-magenta' },
-];
 
 export const MissionsView: React.FC = () => {
   const {
@@ -34,10 +25,9 @@ export const MissionsView: React.FC = () => {
     seasonalState,
     activeSeasonalEvent,
     activeSeasonalMeta,
-    isSeasonalPreview,
-    setSeasonalMode,
     claimIntegratedMission,
     setExtendedView,
+    isSpectator,
   } = useApp();
 
   const getProgressForMission = (missionId: string): number => {
@@ -53,11 +43,14 @@ export const MissionsView: React.FC = () => {
       case 'mis-virtual-photo':
         return missionsState.virtualSnapshotsTaken;
       case 'mis-christmas-spirit':
-        return seasonalState.claimedProps.includes('santa-counter-gift') ? 1 : 0;
+        return seasonalState.claimedProps.includes('santa-counter-topper') ||
+          seasonalState.claimedProps.includes('santa-counter-gift')
+          ? 1
+          : 0;
       case 'mis-halloween-secret':
         return seasonalState.claimedProps.some((p) => p.startsWith('halloween-pumpkin')) ? 1 : 0;
       case 'mis-valentines-bloom':
-        return seasonalState.claimedProps.includes('valentines-rose-gift') ? 1 : 0;
+        return seasonalState.claimedProps.some((p) => p.startsWith('valentines-rose')) ? 1 : 0;
       default:
         return 0;
     }
@@ -104,82 +97,41 @@ export const MissionsView: React.FC = () => {
               Missões & Eventos Sazonais
             </h2>
             <p className="text-xs text-purple-200/75 truncate">
-              Missões conectadas entre Casa 3D, Aquário, Cartas, Desejos e Sazonal
+              Temporadas ativadas automaticamente pelo calendário real
             </p>
           </div>
         </div>
       </div>
 
-      {/* Seasonal Engine Status + Preview Switcher */}
-      <div className={`glass-card-glow rounded-3xl p-4 sm:p-5 border ${activeSeasonalMeta.borderClass} space-y-4`}>
+      {/* Automatic Seasonal Calendar Status (No manual override) */}
+      <div className={`glass-card-glow rounded-3xl p-4 sm:p-5 border ${activeSeasonalMeta.borderClass} space-y-2.5`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-purple-950/80 border border-white/15 flex items-center justify-center shrink-0">
+            <div className="w-11 h-11 rounded-2xl bg-purple-950/80 border border-white/15 flex items-center justify-center shrink-0">
               {activeSeasonalEvent === 'natal' ? (
-                <SnowflakeCrestIcon className="w-6 h-6" />
+                <SnowflakeCrestIcon className="w-6 h-6 text-sky-300" />
               ) : activeSeasonalEvent === 'halloween' ? (
-                <PumpkinCrestIcon className="w-6 h-6" />
+                <PumpkinCrestIcon className="w-6 h-6 text-orange-400" />
               ) : (
                 <Heart className="w-5 h-5 text-pink-400 fill-pink-400/30" />
               )}
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm font-bold text-white">{activeSeasonalMeta.label}</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-pink-200">
-                  {isSeasonalPreview ? 'Modo Prévia' : 'Automático (Data Real)'}
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 border border-emerald-400/35 text-emerald-200 inline-flex items-center gap-1">
+                  <Calendar className="w-2.5 h-2.5" />
+                  <span>Automático (Calendário Real)</span>
                 </span>
               </div>
               <p className="text-xs text-purple-200/80 mt-0.5">{activeSeasonalMeta.subtitle}</p>
             </div>
           </div>
-
-          {isSeasonalPreview && (
-            <button
-              type="button"
-              onClick={() => setSeasonalMode('auto')}
-              className="min-h-[40px] px-3.5 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Voltar ao Automático</span>
-            </button>
-          )}
         </div>
 
-        <div className="space-y-2">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-purple-300/75 flex items-center gap-1.5">
-            <Eye className="w-3.5 h-3.5 text-pink-400" />
-            Testar / Visualizar Temporadas e Arquivo Sazonal
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {SEASONAL_OPTIONS.map((opt) => {
-              const selected = isSeasonalPreview && seasonalState.previewEvent === opt.id;
-              const isCurrentAuto = !isSeasonalPreview && activeSeasonalEvent === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setSeasonalMode('preview', opt.id)}
-                  className={`min-h-[54px] p-3 rounded-2xl border text-left transition cursor-pointer ${
-                    selected || isCurrentAuto
-                      ? 'bg-pink-500/20 border-pink-400 text-white shadow-md'
-                      : 'bg-purple-950/50 border-purple-500/20 text-purple-200 hover:border-pink-400/40'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-bold">{opt.label}</span>
-                    {isCurrentAuto && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/25 text-emerald-200">
-                        Hoje
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-purple-200/70 mt-0.5 line-clamp-1">{opt.desc}</p>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <p className="text-[11px] text-purple-300/75 leading-relaxed">
+          Quando chegam Outubro (Halloween), Dezembro (Natal), Dia dos Namorados (12/06 &amp; 14/02) ou Aniversário de Namoro, os efeitos e personagens especiais aparecem sozinhos na tela inicial!
+        </p>
       </div>
 
       {/* Integrated Missions List */}
@@ -254,20 +206,19 @@ export const MissionsView: React.FC = () => {
                     ) : ready ? (
                       <button
                         type="button"
+                        disabled={isSpectator}
                         onClick={() => claimIntegratedMission(m.id)}
-                        className="min-h-[42px] px-4 rounded-2xl bg-gradient-to-r from-amber-500 to-pink-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg cursor-pointer hover:brightness-110"
+                        className="min-h-[42px] px-4 rounded-2xl bg-gradient-to-r from-amber-500 to-pink-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg cursor-pointer hover:brightness-110 disabled:opacity-50"
                       >
-                        <span>Resgatar +{m.rewardCoins}</span>
+                        {isSpectator && <Lock className="w-3.5 h-3.5" />}
+                        <span>{isSpectator ? 'Somente Samella' : `Resgatar +${m.rewardCoins}`}</span>
                         <DiamondGemIcon className="w-3.5 h-3.5" />
                       </button>
                     ) : seasonalLocked ? (
-                      <button
-                        type="button"
-                        onClick={() => setSeasonalMode('preview', m.seasonalOnly)}
-                        className="min-h-[42px] px-4 rounded-2xl bg-purple-950/70 border border-amber-400/35 text-amber-200 text-xs font-bold cursor-pointer"
-                      >
-                        Ativar Prévia
-                      </button>
+                      <span className="min-h-[42px] px-4 rounded-2xl bg-purple-950/70 border border-amber-400/25 text-amber-200/80 text-[11px] font-semibold inline-flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>Abre na temporada</span>
+                      </span>
                     ) : (
                       <button
                         type="button"

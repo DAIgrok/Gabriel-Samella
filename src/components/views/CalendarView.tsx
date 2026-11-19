@@ -11,6 +11,7 @@ import {
   Repeat,
   Trash2,
   X,
+  Lock,
 } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useApp } from '../../context/AppContext';
@@ -28,6 +29,7 @@ import {
   parseLocalDate,
   toDateKey,
 } from '../../utils/calendarHelpers';
+import { VectorGlyphIcon } from '../icons/CustomIcons';
 
 const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
@@ -53,6 +55,7 @@ export const CalendarView: React.FC = () => {
     updateCalendarEvent,
     removeCalendarEvent,
     config,
+    isSpectator,
   } = useApp();
   const prefersReducedMotion = useReducedMotion();
 
@@ -212,14 +215,21 @@ export const CalendarView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => openCreateModal(selectedDateKey)}
-          className="min-h-[44px] px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-lg whitespace-nowrap shrink-0 active:scale-[0.98] transition"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Marcar Evento</span>
-        </button>
+        {!isSpectator ? (
+          <button
+            type="button"
+            onClick={() => openCreateModal(selectedDateKey)}
+            className="min-h-[44px] px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-lg whitespace-nowrap shrink-0 active:scale-[0.98] transition"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Marcar Evento</span>
+          </button>
+        ) : (
+          <div className="min-h-[40px] px-3 rounded-2xl bg-purple-950/70 border border-purple-500/30 text-[11px] font-semibold text-purple-200 flex items-center gap-1.5 shrink-0">
+            <Lock className="w-3.5 h-3.5 text-pink-300" />
+            <span>Somente leitura</span>
+          </div>
+        )}
       </div>
 
       {/* Monthly Calendar Card */}
@@ -326,14 +336,16 @@ export const CalendarView: React.FC = () => {
             </h3>
           </div>
 
-          <button
-            type="button"
-            onClick={() => openCreateModal(selectedDateKey)}
-            className="min-h-[44px] px-3.5 rounded-2xl bg-purple-900/60 hover:bg-purple-800/70 border border-pink-400/35 text-xs font-semibold text-pink-200 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Marcar neste dia</span>
-          </button>
+          {!isSpectator && (
+            <button
+              type="button"
+              onClick={() => openCreateModal(selectedDateKey)}
+              className="min-h-[44px] px-3.5 rounded-2xl bg-purple-900/60 hover:bg-purple-800/70 border border-pink-400/35 text-xs font-semibold text-pink-200 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Marcar neste dia</span>
+            </button>
+          )}
         </div>
 
         {selectedDayEvents.length === 0 ? (
@@ -361,8 +373,9 @@ export const CalendarView: React.FC = () => {
                         className={`w-3 h-3 rounded-full mt-1.5 shrink-0 ${colorStyle.dot}`}
                       />
                       <div className="min-w-0 flex-1 space-y-1">
-                        <h4 className="text-sm font-bold text-white leading-snug">
-                          {catMeta.emoji} {ev.title}
+                        <h4 className="text-sm font-bold text-white leading-snug flex items-center gap-1.5">
+                          <VectorGlyphIcon name={catMeta.emoji} className="w-4 h-4 text-pink-300 shrink-0" />
+                          <span>{ev.title}</span>
                         </h4>
 
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-purple-100/80">
@@ -410,24 +423,26 @@ export const CalendarView: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(ev)}
-                        aria-label="Editar evento"
-                        className="min-w-[44px] min-h-[44px] rounded-xl text-purple-200/70 hover:text-white hover:bg-white/10 flex items-center justify-center cursor-pointer"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeCalendarEvent(ev.id)}
-                        aria-label="Excluir evento"
-                        className="min-w-[44px] min-h-[44px] rounded-xl text-purple-200/60 hover:text-rose-300 hover:bg-rose-500/15 flex items-center justify-center cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    {!isSpectator && (
+                      <div className="flex items-center shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(ev)}
+                          aria-label="Editar evento"
+                          className="min-w-[44px] min-h-[44px] rounded-xl text-purple-200/70 hover:text-white hover:bg-white/10 flex items-center justify-center cursor-pointer"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeCalendarEvent(ev.id)}
+                          aria-label="Excluir evento"
+                          className="min-w-[44px] min-h-[44px] rounded-xl text-purple-200/60 hover:text-rose-300 hover:bg-rose-500/15 flex items-center justify-center cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -467,8 +482,9 @@ export const CalendarView: React.FC = () => {
                   <div className="flex items-center gap-3 min-w-0">
                     <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${colorStyle.dot}`} />
                     <div className="min-w-0">
-                      <p className="text-xs sm:text-sm font-semibold text-white truncate">
-                        {catMeta.emoji} {event.title}
+                      <p className="text-xs sm:text-sm font-semibold text-white truncate flex items-center gap-1.5">
+                        <VectorGlyphIcon name={catMeta.emoji} className="w-3.5 h-3.5 text-pink-300 shrink-0" />
+                        <span className="truncate">{event.title}</span>
                       </p>
                       <p className="text-[11px] text-purple-200/75 truncate tabular-nums">
                         {formatDateBR(occurrenceDateKey)}
@@ -567,7 +583,7 @@ export const CalendarView: React.FC = () => {
                           : 'bg-purple-950/60 border-purple-500/25 text-purple-200/75'
                       }`}
                     >
-                      <span>{cat.emoji}</span>
+                      <VectorGlyphIcon name={cat.emoji} className="w-3.5 h-3.5" />
                       <span>{cat.label}</span>
                     </button>
                   ))}

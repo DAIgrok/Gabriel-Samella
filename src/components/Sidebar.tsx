@@ -21,10 +21,11 @@ import {
 } from './icons/CustomIcons';
 
 export const Sidebar: React.FC = () => {
-  const { extendedView, setExtendedView, isDrawerOpen, setIsDrawerOpen } = useApp();
+  const { extendedView, setExtendedView, isDrawerOpen, setIsDrawerOpen, unreadChatCount } = useApp();
 
   const navItems: { id: ExtendedView; label: string; icon: React.ElementType }[] = [
     { id: 'inicio', label: 'Início', icon: Home },
+    { id: 'conversas', label: 'Chat', icon: MessageCircle },
     { id: 'casa', label: 'Casa 3D', icon: DreamHouseCrestIcon },
     { id: 'aquario', label: 'Aquário', icon: AquariumCoralIcon },
     { id: 'gatinho', label: 'Meu Pet', icon: Cat },
@@ -36,7 +37,6 @@ export const Sidebar: React.FC = () => {
     { id: 'metas', label: 'Desejos', icon: Target },
     { id: 'calendario', label: 'Calendário', icon: CalendarDays },
     { id: 'conquistas', label: 'Conquistas', icon: Trophy },
-    { id: 'conversas', label: 'Conversas', icon: MessageCircle },
   ];
 
   return (
@@ -56,7 +56,7 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Center: Nav Items List */}
-      <nav className="flex flex-col items-center gap-2.5 w-full px-2 my-auto">
+      <nav className="flex flex-col items-center gap-2 w-full px-2 my-auto overflow-y-auto no-scrollbar">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive =
@@ -67,7 +67,7 @@ export const Sidebar: React.FC = () => {
             <button
               key={item.id}
               onClick={() => setExtendedView(item.id)}
-              className={`w-full py-2 px-1 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all duration-200 cursor-pointer ${
+              className={`relative w-full py-2 px-1 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all duration-200 cursor-pointer ${
                 isActive
                   ? 'bg-gradient-to-b from-[#6b21a8] to-[#9333ea] border border-pink-400/40 shadow-[0_0_15px_rgba(236,72,153,0.35)] text-white'
                   : 'text-purple-300/60 hover:text-white hover:bg-purple-900/30'
@@ -80,6 +80,11 @@ export const Sidebar: React.FC = () => {
                     : 'text-purple-300/70'
                 }`}
               />
+              {item.id === 'conversas' && unreadChatCount > 0 && (
+                <span className="absolute top-1.5 right-2.5 min-w-[16px] h-4 px-1 rounded-full bg-pink-500 text-white text-[9px] font-bold flex items-center justify-center shadow">
+                  {unreadChatCount > 9 ? '9+' : unreadChatCount}
+                </span>
+              )}
               <span className="text-[10px] font-medium leading-tight text-center">
                 {item.label}
               </span>

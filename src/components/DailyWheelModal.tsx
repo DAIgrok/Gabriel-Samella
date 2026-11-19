@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Gift, Clock } from 'lucide-react';
+import { X, Gift, Clock, Heart, Lock, Sparkles } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { COOLDOWN_MS } from '../data/initialData';
 import { soundEngine } from '../utils/audioSynth';
@@ -13,14 +13,14 @@ interface WheelSlice {
 }
 
 const WHEEL_SLICES: WheelSlice[] = [
-  { label: '+3 Diamantes', shortLabel: '+3 💎', coins: 3, color: '#6b21a8' },
-  { label: '+8 Diamantes', shortLabel: '+8 💎', coins: 8, color: '#be185d' },
-  { label: '+5 Diamantes', shortLabel: '+5 💎', coins: 5, color: '#4c1d95' },
-  { label: '+15 Diamantes', shortLabel: '+15 💎', coins: 15, color: '#db2777' },
-  { label: '+4 Diamantes', shortLabel: '+4 💎', coins: 4, color: '#581c87' },
-  { label: '+10 Diamantes', shortLabel: '+10 💎', coins: 10, color: '#9d174d' },
-  { label: 'Vale Beijo & +6 💎', shortLabel: 'Beijo 💖', coins: 6, color: '#7e22ce' },
-  { label: '+20 Diamantes!', shortLabel: '+20 💎', coins: 20, color: '#ec4899' },
+  { label: '+2 Diamantes', shortLabel: '+2', coins: 2, color: '#6b21a8' },
+  { label: '+4 Diamantes', shortLabel: '+4', coins: 4, color: '#be185d' },
+  { label: '+3 Diamantes', shortLabel: '+3', coins: 3, color: '#4c1d95' },
+  { label: '+6 Diamantes', shortLabel: '+6', coins: 6, color: '#db2777' },
+  { label: '+2 Diamantes', shortLabel: '+2', coins: 2, color: '#581c87' },
+  { label: '+5 Diamantes', shortLabel: '+5', coins: 5, color: '#9d174d' },
+  { label: 'Vale Beijo & +4 Diamantes', shortLabel: 'Beijo ♡', coins: 4, color: '#7e22ce' },
+  { label: '+8 Diamantes!', shortLabel: '+8', coins: 8, color: '#ec4899' },
 ];
 
 export function formatWheelRemaining(ms: number): string {
@@ -33,7 +33,7 @@ export function formatWheelRemaining(ms: number): string {
 }
 
 export const DailyWheelModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const { dailyWheel, spinDailyWheel } = useApp();
+  const { dailyWheel, spinDailyWheel, isSpectator } = useApp();
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [wonSlice, setWonSlice] = useState<WheelSlice | null>(null);
@@ -53,7 +53,7 @@ export const DailyWheelModal: React.FC<{ onClose: () => void }> = ({ onClose }) 
   const remainingMs = dailyWheel.lastSpinAt
     ? Math.max(0, dailyWheel.lastSpinAt + COOLDOWN_MS.wheel_spin - nowMs)
     : 0;
-  const canSpin = remainingMs === 0 && !spinning;
+  const canSpin = !isSpectator && remainingMs === 0 && !spinning;
 
   const sliceAngle = 360 / WHEEL_SLICES.length;
   const conicStops = WHEEL_SLICES.map(
@@ -136,7 +136,7 @@ export const DailyWheelModal: React.FC<{ onClose: () => void }> = ({ onClose }) 
                   style={{ transform: `rotate(${midDeg}deg)` }}
                   className="absolute inset-0 flex items-start justify-center pt-4 pointer-events-none"
                 >
-                  <span className="text-[11px] font-bold text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+                  <span className="text-[11px] font-bold text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] tabular-nums">
                     {s.shortLabel}
                   </span>
                 </div>
@@ -144,18 +144,26 @@ export const DailyWheelModal: React.FC<{ onClose: () => void }> = ({ onClose }) 
             })}
           </div>
 
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-[#120426] border-2 border-pink-300 flex items-center justify-center text-xl shadow-lg z-10">
-            💖
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-[#120426] border-2 border-pink-300 flex items-center justify-center shadow-lg z-10">
+            <Heart className="w-5 h-5 text-pink-400 fill-pink-400" />
           </div>
         </div>
 
-        {wonSlice && (
-          <div className="p-3 rounded-2xl bg-emerald-950/50 border border-emerald-400/40 text-sm font-bold text-emerald-200">
-            Parabéns! Você ganhou: {wonSlice.label}! 🎉
+        {isSpectator && (
+          <div className="p-3 rounded-2xl bg-purple-950/60 border border-purple-500/30 text-xs text-purple-200 flex items-center justify-center gap-2">
+            <Lock className="w-4 h-4 text-pink-300 shrink-0" />
+            <span>Modo Espectador ativo: apenas a Samella pode girar e resgatar diamantes.</span>
           </div>
         )}
 
-        {remainingMs > 0 && !wonSlice && (
+        {wonSlice && (
+          <div className="p-3 rounded-2xl bg-emerald-950/50 border border-emerald-400/40 text-sm font-bold text-emerald-200 flex items-center justify-center gap-2">
+            <Sparkles className="w-4 h-4 text-emerald-300 shrink-0" />
+            <span>Parabéns! Você ganhou: {wonSlice.label}!</span>
+          </div>
+        )}
+
+        {!isSpectator && remainingMs > 0 && !wonSlice && (
           <div className="p-3 rounded-2xl bg-purple-950/60 border border-purple-500/30 text-xs text-purple-200 flex items-center justify-center gap-2">
             <Clock className="w-4 h-4 text-pink-300" />
             <span>
@@ -170,7 +178,13 @@ export const DailyWheelModal: React.FC<{ onClose: () => void }> = ({ onClose }) 
           onClick={handleSpin}
           className="w-full min-h-[48px] rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-bold shadow-lg disabled:opacity-45 cursor-pointer active:scale-95 transition"
         >
-          {spinning ? 'Girando a Roleta...' : canSpin ? 'Girar Roleta Agora!' : 'Já girada hoje'}
+          {isSpectator
+            ? 'Bloqueado no Modo Espectador'
+            : spinning
+            ? 'Girando a Roleta...'
+            : canSpin
+            ? 'Girar Roleta Agora!'
+            : 'Já girada hoje'}
         </button>
       </div>
     </div>,

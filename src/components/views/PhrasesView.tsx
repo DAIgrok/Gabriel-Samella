@@ -12,13 +12,13 @@ export const PhrasesView: React.FC = () => {
 
   const categories = [
     { id: 'todas', label: 'Todas (50+)' },
-    { id: 'romantica', label: 'Românticas 💖' },
-    { id: 'carinho', label: 'Carinho & Dengo 🌸' },
-    { id: 'bom-dia', label: 'Bom Dia ☀️' },
-    { id: 'boa-noite', label: 'Boa Noite 🌙' },
-    { id: 'companheirismo', label: 'Parceria 🤝' },
-    { id: 'biblica', label: 'Bíblicas 📖' },
-    { id: 'favoritas', label: 'Favoritas ⭐' },
+    { id: 'romantica', label: 'Românticas' },
+    { id: 'carinho', label: 'Carinho & Dengo' },
+    { id: 'bom-dia', label: 'Bom Dia' },
+    { id: 'boa-noite', label: 'Boa Noite' },
+    { id: 'companheirismo', label: 'Parceria' },
+    { id: 'biblica', label: 'Bíblicas' },
+    { id: 'favoritas', label: 'Favoritas' },
   ];
 
   const filteredPhrases = phrases.filter((phrase) => {
@@ -36,7 +36,7 @@ export const PhrasesView: React.FC = () => {
   const handleCopy = (phrase: Phrase) => {
     navigator.clipboard.writeText(phrase.text);
     setCopiedId(phrase.id);
-    showToast('Frase copiada com sucesso! 💖');
+    showToast('Frase copiada com sucesso! ♡', 'heart');
     triggerHeartExplosion();
     setTimeout(() => setCopiedId(null), 2000);
   };

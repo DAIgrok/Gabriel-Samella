@@ -148,6 +148,7 @@ export interface CloudWorldPayload {
   aquariumState?: AquariumState;
   seasonalState?: SeasonalState;
   missionsState?: MissionsState;
+  lastMysteryChestAt?: number;
   legacyResetBackup?: LegacyResetBackup;
   createdAt?: Timestamp | ReturnType<typeof serverTimestamp>;
   updatedAt?: Timestamp | ReturnType<typeof serverTimestamp>;
@@ -338,6 +339,7 @@ export interface SaveCloudInput {
   aquariumState: AquariumState;
   seasonalState: SeasonalState;
   missionsState: MissionsState;
+  lastMysteryChestAt?: number;
   legacyResetBackup?: LegacyResetBackup;
   initialPhotoIds: Set<string>;
   initialSongIds: Set<string>;
@@ -441,6 +443,7 @@ export async function saveCloudWorld(input: SaveCloudInput): Promise<void> {
       aquariumState: input.aquariumState,
       seasonalState: input.seasonalState,
       missionsState: input.missionsState,
+      ...(input.lastMysteryChestAt ? { lastMysteryChestAt: input.lastMysteryChestAt } : {}),
       ...(input.legacyResetBackup ? { legacyResetBackup: input.legacyResetBackup } : {}),
     });
 

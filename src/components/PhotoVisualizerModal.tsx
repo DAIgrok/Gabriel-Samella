@@ -126,7 +126,7 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
     e.stopPropagation();
     navigator.clipboard?.writeText(window.location.href);
     setCopied(true);
-    showToast('Link do nosso álbum copiado com amor! 💌');
+    showToast('Link do nosso álbum copiado com amor! ♡', 'heart');
     setTimeout(() => setCopied(false), 2500);
   };
 
@@ -344,7 +344,7 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
                     </div>
                     <div className="flex justify-between text-purple-300/70">
                       <span>Status:</span>
-                      <span className="text-pink-400 font-medium">{photo.isFavorite ? '⭐ Favorita' : 'Normal'}</span>
+                      <span className="text-pink-400 font-medium">{photo.isFavorite ? 'Favorita' : 'Normal'}</span>
                     </div>
                   </div>
 

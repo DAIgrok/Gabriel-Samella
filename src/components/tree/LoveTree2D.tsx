@@ -423,7 +423,7 @@ export const LoveTree2D: React.FC<LoveTree2DProps> = ({
               fill="none"
               opacity="0.7"
             />
-            {/* Carved G ♥ S Heart Emblem */}
+            {/* Carved G ♡ S Heart Emblem */}
             <g transform="translate(192, 232) scale(0.78)">
               <path
                 d="M 10,6 C 10,0 2,0 2,6 C 2,12 10,18 10,18 C 10,18 18,12 18,6 C 18,0 10,0 10,6 Z"

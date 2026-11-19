@@ -1,12 +1,12 @@
 import { CalendarEvent, CalendarEventCategory, CalendarEventColor } from '../types';
 
 export const CALENDAR_CATEGORIES: { id: CalendarEventCategory; label: string; emoji: string }[] = [
-  { id: 'encontro', label: 'Encontro', emoji: '💘' },
-  { id: 'especial', label: 'Data Especial', emoji: '✨' },
-  { id: 'lembrete', label: 'Lembrete', emoji: '🔔' },
-  { id: 'viagem', label: 'Viagem', emoji: '✈️' },
-  { id: 'aniversario', label: 'Aniversário', emoji: '🎂' },
-  { id: 'outro', label: 'Outro', emoji: '💜' },
+  { id: 'encontro', label: 'Encontro', emoji: 'heart' },
+  { id: 'especial', label: 'Data Especial', emoji: 'sparkles' },
+  { id: 'lembrete', label: 'Lembrete', emoji: 'bell' },
+  { id: 'viagem', label: 'Viagem', emoji: 'plane' },
+  { id: 'aniversario', label: 'Aniversário', emoji: 'cake' },
+  { id: 'outro', label: 'Outro', emoji: 'star' },
 ];
 
 export const CALENDAR_COLORS: {

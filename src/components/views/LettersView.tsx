@@ -32,6 +32,7 @@ export const LettersView: React.FC = () => {
     setSelectedLetter,
     config,
     legacyResetBackup,
+    isSpectator,
   } = useApp();
 
   const [filter, setFilter] = useState<
@@ -41,7 +42,8 @@ export const LettersView: React.FC = () => {
   const [showArchiveModal, setShowArchiveModal] = useState(false);
 
   // Two-way letter composer state
-  const [sender, setSender] = useState<CouplePerson>('Gabriel');
+  const [senderChoice, setSenderChoice] = useState<CouplePerson>('Gabriel');
+  const sender: CouplePerson = isSpectator ? 'Gabriel' : senderChoice;
   const recipient: CouplePerson = sender === 'Gabriel' ? 'Samella' : 'Gabriel';
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
@@ -232,34 +234,40 @@ export const LettersView: React.FC = () => {
         </div>
 
         <form onSubmit={handleCreateLetter} className="space-y-4">
-          <div>
-            <label className="text-xs text-purple-300 block mb-1.5">
-              Quem está escrevendo agora?
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {(['Gabriel', 'Samella'] as CouplePerson[]).map((person) => {
-                const target = person === 'Gabriel' ? 'Samella' : 'Gabriel';
-                const active = sender === person;
-                return (
-                  <button
-                    key={person}
-                    type="button"
-                    onClick={() => setSender(person)}
-                    className={`min-h-[48px] py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer flex flex-col items-center justify-center ${
-                      active
-                        ? 'bg-pink-600/35 border-pink-400 text-white shadow'
-                        : 'glass-panel border-purple-500/25 text-purple-300 hover:text-white'
-                    }`}
-                  >
-                    <span>Sou {person}</span>
-                    <span className="text-[10px] font-normal text-pink-200/80">
-                      Enviar para {target}
-                    </span>
-                  </button>
-                );
-              })}
+          {isSpectator ? (
+            <div className="p-3 rounded-xl bg-pink-600/20 border border-pink-400/40 text-xs font-semibold text-pink-100">
+              Enviando como Gabriel para Samella
             </div>
-          </div>
+          ) : (
+            <div>
+              <label className="text-xs text-purple-300 block mb-1.5">
+                Quem está escrevendo agora?
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {(['Gabriel', 'Samella'] as CouplePerson[]).map((person) => {
+                  const target = person === 'Gabriel' ? 'Samella' : 'Gabriel';
+                  const active = sender === person;
+                  return (
+                    <button
+                      key={person}
+                      type="button"
+                      onClick={() => setSenderChoice(person)}
+                      className={`min-h-[48px] py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer flex flex-col items-center justify-center ${
+                        active
+                          ? 'bg-pink-600/35 border-pink-400 text-white shadow'
+                          : 'glass-panel border-purple-500/25 text-purple-300 hover:text-white'
+                      }`}
+                    >
+                      <span>Sou {person}</span>
+                      <span className="text-[10px] font-normal text-pink-200/80">
+                        Enviar para {target}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="text-xs text-purple-300 block mb-1">Título da Carta</label>
@@ -400,7 +408,7 @@ export const LettersView: React.FC = () => {
           Nossas Cartas Reais ♡
         </h2>
         <p className="text-xs md:text-sm text-purple-200/75 flex items-center justify-center gap-1.5 flex-wrap">
-          <span>Escrevam um para o outro com sincronização em tempo real. Abrir uma carta nova rende +5</span>
+          <span>Escrevam um para o outro com sincronização em tempo real. Abrir uma carta nova rende +2</span>
           <DiamondGemIcon className="w-3.5 h-3.5 inline-block" />
         </p>
       </div>

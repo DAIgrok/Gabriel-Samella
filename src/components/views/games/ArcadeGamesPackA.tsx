@@ -1,5 +1,16 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { ArrowLeft, RotateCcw, Lightbulb, Sparkles, Check, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  RotateCcw,
+  Lightbulb,
+  Sparkles,
+  Check,
+  X,
+  Heart,
+  Trophy,
+  Award,
+  Music,
+} from 'lucide-react';
 import { soundEngine } from '../../../utils/audioSynth';
 import {
   EMOJI_CHARADES_POOL,
@@ -12,22 +23,31 @@ import {
   WORDSEARCH_WORDS,
   pickRandomItems,
 } from '../../../data/gamesCatalog';
+import { DiamondGemIcon, VectorGlyphIcon } from '../../icons/CustomIcons';
+import { GameVectorArt } from './GameVectorArt';
 
 export interface MiniGameProps {
   onWin: (diamonds: number, reason: string, score?: number) => void;
   onExit: () => void;
+  isSpectator?: boolean;
 }
 
 const GameTopBar: React.FC<{
+  iconToken?: string;
   title: string;
-  subtitle?: string;
+  subtitle?: React.ReactNode;
   onRestart?: () => void;
   onExit: () => void;
-}> = ({ title, subtitle, onRestart, onExit }) => (
+}> = ({ iconToken = 'sparkles', title, subtitle, onRestart, onExit }) => (
   <div className="flex items-center justify-between gap-2 pb-3 border-b border-purple-500/20">
-    <div className="min-w-0">
-      <h3 className="text-base font-bold text-white truncate">{title}</h3>
-      {subtitle && <p className="text-[11px] text-purple-200/75 truncate">{subtitle}</p>}
+    <div className="flex items-center gap-2.5 min-w-0">
+      <div className="w-9 h-9 rounded-xl bg-purple-900/60 border border-pink-400/30 flex items-center justify-center text-pink-200 shrink-0">
+        <VectorGlyphIcon name={iconToken} className="w-4 h-4" />
+      </div>
+      <div className="min-w-0">
+        <h3 className="text-base font-bold text-white truncate">{title}</h3>
+        {subtitle && <div className="text-[11px] text-purple-200/75 truncate">{subtitle}</div>}
+      </div>
     </div>
     <div className="flex items-center gap-1.5 shrink-0">
       {onRestart && (
@@ -52,8 +72,18 @@ const GameTopBar: React.FC<{
   </div>
 );
 
+const RewardCallout: React.FC<{ amount: number; isSpectator?: boolean }> = ({ amount, isSpectator }) => {
+  if (isSpectator) return null;
+  return (
+    <span className="inline-flex items-center gap-1 text-pink-300 font-bold ml-1.5">
+      +{amount}
+      <DiamondGemIcon className="w-3.5 h-3.5" />
+    </span>
+  );
+};
+
 // 1. FORCA ROMÂNTICA
-export const HangmanGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
+export const HangmanGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectator }) => {
   const [entry, setEntry] = useState(() => pickRandomItems(HANGMAN_POOL, 1)[0]);
   const [guessed, setGuessed] = useState<string[]>([]);
   const [showHint, setShowHint] = useState(false);
@@ -82,7 +112,7 @@ export const HangmanGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
       const finished = word.split('').every((ch) => next.includes(ch));
       if (finished && !awardedRef.current) {
         awardedRef.current = true;
-        onWin(8, `Forca resolvida: ${word}`, 6 - wrongLetters.length);
+        onWin(4, `Forca resolvida: ${word}`, 6 - wrongLetters.length);
       }
     } else {
       soundEngine.playHeartPop();
@@ -94,8 +124,19 @@ export const HangmanGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-pink-400/30 space-y-4">
       <GameTopBar
-        title="💌 Forca Romântica"
-        subtitle={`Vidas: ${'❤️'.repeat(livesLeft)}${'🖤'.repeat(6 - livesLeft)}`}
+        iconToken="letter"
+        title="Forca Romântica"
+        subtitle={
+          <span className="inline-flex items-center gap-1">
+            <span>Vidas:</span>
+            {Array.from({ length: 6 }, (_, idx) => (
+              <Heart
+                key={idx}
+                className={`w-3 h-3 ${idx < livesLeft ? 'text-pink-400 fill-pink-400' : 'text-purple-700'}`}
+              />
+            ))}
+          </span>
+        }
         onRestart={restart}
         onExit={onExit}
       />
@@ -155,8 +196,9 @@ export const HangmanGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
         </div>
       ) : (
         <div className="text-center py-3 space-y-3 bg-purple-950/50 rounded-2xl p-4 border border-pink-400/25">
-          <p className="text-base font-bold text-white">
-            {won ? 'Você acertou com perfeição! +8 💎' : `Quase! A palavra era ${word} 💌`}
+          <p className="text-base font-bold text-white flex items-center justify-center flex-wrap">
+            <span>{won ? 'Você acertou com perfeição!' : `Quase! A palavra era ${word}`}</span>
+            {won && <RewardCallout amount={4} isSpectator={isSpectator} />}
           </p>
           <div className="flex justify-center gap-2">
             <button
@@ -181,7 +223,7 @@ export const HangmanGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 };
 
 // 2. PALAVRA EMBARALHADA (3 rodadas)
-export const ScrambleGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
+export const ScrambleGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectator }) => {
   const shortPool = useMemo(() => HANGMAN_POOL.filter((i) => i.word.length >= 4 && i.word.length <= 9), []);
 
   const buildRound = (item: { word: string; hint: string }) => {
@@ -232,7 +274,7 @@ export const ScrambleGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
             setFeedback('none');
           } else {
             setFinished(true);
-            onWin(8, 'Palavras desembaralhadas com amor!', 3);
+            onWin(4, 'Palavras desembaralhadas com amor!', 3);
           }
         }, 700);
       } else {
@@ -246,7 +288,8 @@ export const ScrambleGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-purple-400/30 space-y-4">
       <GameTopBar
-        title="🔤 Palavra Embaralhada"
+        iconToken="book"
+        title="Palavra Embaralhada"
         subtitle={`Rodada ${Math.min(step + 1, rounds.length)} de ${rounds.length}`}
         onRestart={restart}
         onExit={onExit}
@@ -254,8 +297,9 @@ export const ScrambleGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 
       {!finished ? (
         <div className="space-y-4 text-center py-2">
-          <p className="text-xs text-pink-200/90 bg-pink-500/10 border border-pink-400/20 rounded-xl px-3 py-2 inline-block">
-            💡 Dica: {current.item.hint}
+          <p className="text-xs text-pink-200/90 bg-pink-500/10 border border-pink-400/20 rounded-xl px-3 py-2 inline-flex items-center gap-1.5">
+            <Lightbulb className="w-3.5 h-3.5 text-amber-300" />
+            <span>Dica: {current.item.hint}</span>
           </p>
 
           <div className="min-h-[54px] flex items-center justify-center gap-1.5 flex-wrap bg-purple-950/60 border border-purple-500/30 rounded-2xl p-3">
@@ -320,8 +364,13 @@ export const ScrambleGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
         </div>
       ) : (
         <div className="text-center py-5 space-y-3">
-          <span className="text-4xl block">🎉</span>
-          <h4 className="text-lg font-bold text-white">Você decifrou todas as palavras! +8 💎</h4>
+          <div className="w-12 h-12 mx-auto rounded-2xl bg-pink-500/20 border border-pink-400/40 flex items-center justify-center text-pink-300">
+            <Award className="w-6 h-6" />
+          </div>
+          <h4 className="text-lg font-bold text-white flex items-center justify-center">
+            <span>Você decifrou todas as palavras!</span>
+            <RewardCallout amount={4} isSpectator={isSpectator} />
+          </h4>
           <button
             type="button"
             onClick={restart}
@@ -371,7 +420,7 @@ export const TrueFalseGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
         setPicked(null);
       } else {
         setFinished(true);
-        const reward = nextScore === 8 ? 10 : nextScore >= 5 ? 8 : 5;
+        const reward = nextScore === 8 ? 5 : nextScore >= 5 ? 3 : 2;
         onWin(reward, `Verdadeiro ou Falso (${nextScore}/8)`, nextScore);
       }
     }, 1150);
@@ -380,7 +429,8 @@ export const TrueFalseGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-indigo-400/30 space-y-4">
       <GameTopBar
-        title="⚖️ Verdadeiro ou Falso"
+        iconToken="award"
+        title="Verdadeiro ou Falso"
         subtitle={`Carta ${step + 1}/${deck.length} · Acertos: ${score}`}
         onRestart={restart}
         onExit={onExit}
@@ -420,7 +470,9 @@ export const TrueFalseGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
         </div>
       ) : (
         <div className="text-center py-5 space-y-3">
-          <span className="text-4xl block">🏆</span>
+          <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300">
+            <Trophy className="w-6 h-6" />
+          </div>
           <h4 className="text-lg font-bold text-white">Você acertou {score} de {deck.length}!</h4>
           <button
             type="button"
@@ -470,7 +522,7 @@ export const LyricGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
         setPicked(null);
       } else {
         setFinished(true);
-        onWin(nextScore >= 5 ? 9 : 6, `Complete a Letra (${nextScore}/${deck.length})`, nextScore);
+        onWin(nextScore >= 5 ? 4 : 2, `Complete a Letra (${nextScore}/${deck.length})`, nextScore);
       }
     }, 850);
   };
@@ -478,7 +530,8 @@ export const LyricGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-pink-400/30 space-y-4">
       <GameTopBar
-        title="🎵 Complete a Letra"
+        iconToken="music"
+        title="Complete a Letra"
         subtitle={`Verso ${step + 1}/${deck.length} · ${current?.artist || ''}`}
         onRestart={restart}
         onExit={onExit}
@@ -511,7 +564,9 @@ export const LyricGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
         </div>
       ) : (
         <div className="text-center py-5 space-y-3">
-          <span className="text-4xl block">🎶</span>
+          <div className="w-12 h-12 mx-auto rounded-2xl bg-pink-500/20 border border-pink-400/40 flex items-center justify-center text-pink-300">
+            <Music className="w-6 h-6" />
+          </div>
           <h4 className="text-lg font-bold text-white">Sintonia Musical: {score}/{deck.length} acertos!</h4>
           <button
             type="button"
@@ -526,7 +581,7 @@ export const LyricGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
   );
 };
 
-// 5. ENIGMA DOS EMOJIS
+// 5. ENIGMA DOS SÍMBOLOS (Vector Art Charades)
 export const EmojiCharadeGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
   const [deck, setDeck] = useState(() => pickRandomItems(EMOJI_CHARADES_POOL, 6));
   const [step, setStep] = useState(0);
@@ -560,7 +615,7 @@ export const EmojiCharadeGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => 
         setPicked(null);
       } else {
         setFinished(true);
-        onWin(nextScore >= 5 ? 9 : 6, `Enigma dos Emojis (${nextScore}/${deck.length})`, nextScore);
+        onWin(nextScore >= 5 ? 4 : 2, `Enigma dos Símbolos (${nextScore}/${deck.length})`, nextScore);
       }
     }, 850);
   };
@@ -568,15 +623,26 @@ export const EmojiCharadeGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => 
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-amber-400/30 space-y-4">
       <GameTopBar
-        title="🎭 Enigma dos Emojis"
+        iconToken="sparkles"
+        title="Enigma dos Símbolos"
         subtitle={`Enigma ${step + 1}/${deck.length} · Categoria: ${current?.category || ''}`}
         onRestart={restart}
         onExit={onExit}
       />
       {!finished ? (
         <div className="space-y-4">
-          <div className="py-5 rounded-2xl bg-purple-950/60 border border-purple-500/30 text-center text-4xl sm:text-5xl tracking-widest">
-            {current.emojis}
+          <div className="py-5 px-4 rounded-2xl bg-purple-950/60 border border-purple-500/30 flex flex-col items-center gap-2.5">
+            <div className="flex items-center justify-center gap-3 flex-wrap">
+              {current.symbols.map((sym, idx) => (
+                <div
+                  key={idx}
+                  className="w-12 h-12 rounded-2xl bg-purple-900/70 border border-pink-400/40 flex items-center justify-center shadow-inner"
+                >
+                  <GameVectorArt token={sym} className="w-8 h-8" />
+                </div>
+              ))}
+            </div>
+            <span className="text-[11px] text-purple-200/75 font-medium">{current.clueText}</span>
           </div>
           <div className="space-y-2">
             {current.options.map((opt) => {
@@ -601,14 +667,16 @@ export const EmojiCharadeGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => 
         </div>
       ) : (
         <div className="text-center py-5 space-y-3">
-          <span className="text-4xl block">✨</span>
+          <div className="w-12 h-12 mx-auto rounded-2xl bg-purple-500/20 border border-pink-400/40 flex items-center justify-center text-pink-300">
+            <Sparkles className="w-6 h-6" />
+          </div>
           <h4 className="text-lg font-bold text-white">Você decifrou {score}/{deck.length} enigmas!</h4>
           <button
             type="button"
             onClick={restart}
             className="min-h-[44px] px-5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold cursor-pointer"
           >
-            Mais Emojis
+            Mais Enigmas
           </button>
         </div>
       )}
@@ -617,7 +685,7 @@ export const EmojiCharadeGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => 
 };
 
 // 6. QUEM É MAIS PROVÁVEL?
-export const WhoMostLikelyGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
+export const WhoMostLikelyGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectator }) => {
   const [cards, setCards] = useState(() => pickRandomItems(WHO_MOST_LIKELY_POOL, 6));
   const [step, setStep] = useState(0);
   const [votes, setVotes] = useState<{ q: string; pick: string }[]>([]);
@@ -635,7 +703,7 @@ export const WhoMostLikelyGame: React.FC<MiniGameProps> = ({ onWin, onExit }) =>
     if (step + 1 < cards.length) {
       setStep((s) => s + 1);
     } else {
-      onWin(6, 'Cartas de Sintonia do Casal');
+      onWin(3, 'Cartas de Sintonia do Casal');
     }
   };
 
@@ -644,7 +712,8 @@ export const WhoMostLikelyGame: React.FC<MiniGameProps> = ({ onWin, onExit }) =>
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-rose-400/30 space-y-4">
       <GameTopBar
-        title="💑 Quem é Mais Provável?"
+        iconToken="heart"
+        title="Quem é Mais Provável?"
         subtitle={`Carta ${Math.min(step + 1, cards.length)} de ${cards.length}`}
         onRestart={restart}
         onExit={onExit}
@@ -657,7 +726,7 @@ export const WhoMostLikelyGame: React.FC<MiniGameProps> = ({ onWin, onExit }) =>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            {['Gabriel 🌹', 'Samella 💖', 'Os dois juntos ♡'].map((who) => (
+            {['Gabriel', 'Samella', 'Os dois juntos ♡'].map((who) => (
               <button
                 key={who}
                 type="button"
@@ -672,7 +741,10 @@ export const WhoMostLikelyGame: React.FC<MiniGameProps> = ({ onWin, onExit }) =>
       ) : (
         <div className="space-y-3 py-2">
           <div className="text-center">
-            <h4 className="text-base font-bold text-pink-200">Resumo das Respostas (+6 💎)</h4>
+            <h4 className="text-base font-bold text-pink-200 flex items-center justify-center">
+              <span>Resumo das Respostas</span>
+              <RewardCallout amount={3} isSpectator={isSpectator} />
+            </h4>
           </div>
           <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
             {votes.map((v, i) => (
@@ -732,7 +804,7 @@ export const RiddleGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
         setShowHint(false);
       } else {
         setFinished(true);
-        onWin(nextScore >= 4 ? 9 : 6, `Charadas do Coração (${nextScore}/${deck.length})`, nextScore);
+        onWin(nextScore >= 4 ? 4 : 2, `Charadas do Coração (${nextScore}/${deck.length})`, nextScore);
       }
     }, 850);
   };
@@ -740,7 +812,8 @@ export const RiddleGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-purple-400/30 space-y-4">
       <GameTopBar
-        title="🔮 Charadas do Coração"
+        iconToken="moon"
+        title="Charadas do Coração"
         subtitle={`Charada ${step + 1}/${deck.length}`}
         onRestart={restart}
         onExit={onExit}
@@ -752,9 +825,10 @@ export const RiddleGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
             <button
               type="button"
               onClick={() => setShowHint(true)}
-              className="text-[11px] text-amber-200 underline cursor-pointer"
+              className="text-[11px] text-amber-200 underline cursor-pointer inline-flex items-center gap-1"
             >
-              {showHint ? `💡 ${current.hint}` : 'Preciso de uma dica'}
+              <Lightbulb className="w-3 h-3" />
+              <span>{showHint ? current.hint : 'Preciso de uma dica'}</span>
             </button>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
@@ -780,7 +854,9 @@ export const RiddleGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
         </div>
       ) : (
         <div className="text-center py-5 space-y-3">
-          <span className="text-4xl block">🔮</span>
+          <div className="w-12 h-12 mx-auto rounded-2xl bg-purple-500/20 border border-purple-400/40 flex items-center justify-center">
+            <GameVectorArt token="moon" className="w-7 h-7" />
+          </div>
           <h4 className="text-lg font-bold text-white">Você acertou {score} de {deck.length} charadas!</h4>
           <button
             type="button"
@@ -843,7 +919,7 @@ function generateWordSearch() {
   return { grid, placed };
 }
 
-export const WordSearchGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
+export const WordSearchGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectator }) => {
   const [puzzle, setPuzzle] = useState(() => generateWordSearch());
   const [foundWords, setFoundWords] = useState<string[]>([]);
   const [anchor, setAnchor] = useState<[number, number] | null>(null);
@@ -879,7 +955,6 @@ export const WordSearchGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
       return;
     }
 
-    // Build straight horizontal or vertical selection
     const selectedKeys: string[] = [];
     if (r0 === r) {
       const step = c >= c0 ? 1 : -1;
@@ -910,7 +985,7 @@ export const WordSearchGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
       const next = [...foundWords, matched.word];
       setFoundWords(next);
       if (next.length === puzzle.placed.length) {
-        onWin(10, 'Caça-Palavras Mágico concluído!');
+        onWin(5, 'Caça-Palavras Mágico concluído!');
       }
     }
     setAnchor(null);
@@ -921,7 +996,8 @@ export const WordSearchGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-purple-400/30 space-y-3.5">
       <GameTopBar
-        title="🔍 Caça-Palavras Mágico"
+        iconToken="compass"
+        title="Caça-Palavras Mágico"
         subtitle="Toque na 1ª letra e depois na última letra da palavra"
         onRestart={restart}
         onExit={onExit}
@@ -973,7 +1049,10 @@ export const WordSearchGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 
       {finished && (
         <div className="text-center py-2 space-y-2">
-          <p className="text-sm font-bold text-emerald-300">Todas as palavras encontradas! +10 💎</p>
+          <p className="text-sm font-bold text-emerald-300 flex items-center justify-center">
+            <span>Todas as palavras encontradas!</span>
+            <RewardCallout amount={5} isSpectator={isSpectator} />
+          </p>
           <button
             type="button"
             onClick={restart}
@@ -991,6 +1070,7 @@ export const WordSearchGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 interface MixedQuestion {
   badge: string;
   prompt: string;
+  symbols?: string[];
   options: string[];
   correctIndex: number;
 }
@@ -1005,7 +1085,13 @@ function buildMarathonDeck(): MixedQuestion[] {
   return [
     { badge: 'Quiz do Casal', prompt: q1.question, options: q1.options, correctIndex: q1.correctIndex },
     { badge: 'Verdadeiro ou Falso', prompt: q2.statement, options: ['Verdadeiro', 'Falso'], correctIndex: q2.isTrue ? 0 : 1 },
-    { badge: 'Enigma dos Emojis', prompt: `O que significa: ${q3.emojis}?`, options: q3.options, correctIndex: q3.options.indexOf(q3.answer) },
+    {
+      badge: 'Enigma dos Símbolos',
+      prompt: `Decifre a combinação: ${q3.clueText}`,
+      symbols: q3.symbols,
+      options: q3.options,
+      correctIndex: q3.options.indexOf(q3.answer),
+    },
     { badge: 'Complete a Letra', prompt: q4.prompt, options: q4.options, correctIndex: q4.correctIndex },
     { badge: 'Charada Surpresa', prompt: q5.question, options: q5.options, correctIndex: q5.correctIndex },
   ];
@@ -1044,7 +1130,7 @@ export const MarathonGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
         setPicked(null);
       } else {
         setFinished(true);
-        const reward = nextScore === 5 ? 15 : nextScore >= 3 ? 10 : 6;
+        const reward = nextScore === 5 ? 6 : nextScore >= 3 ? 4 : 2;
         onWin(reward, `Maratona Surpresa (${nextScore}/5)`, nextScore);
       }
     }, 850);
@@ -1053,7 +1139,8 @@ export const MarathonGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-pink-400/35 space-y-4">
       <GameTopBar
-        title="🎡 Maratona Mista Surpresa"
+        iconToken="star"
+        title="Maratona Mista Surpresa"
         subtitle={`Etapa ${step + 1}/5 · ${current?.badge || ''}`}
         onRestart={restart}
         onExit={onExit}
@@ -1061,10 +1148,19 @@ export const MarathonGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 
       {!finished ? (
         <div className="space-y-3">
-          <div className="p-4 rounded-2xl bg-purple-950/60 border border-pink-400/25 text-center space-y-1">
+          <div className="p-4 rounded-2xl bg-purple-950/60 border border-pink-400/25 text-center space-y-2">
             <span className="text-[11px] font-semibold text-pink-300 flex items-center justify-center gap-1">
               <Sparkles className="w-3 h-3" /> {current.badge}
             </span>
+            {current.symbols && (
+              <div className="flex items-center justify-center gap-2 py-1">
+                {current.symbols.map((sym, idx) => (
+                  <div key={idx} className="w-10 h-10 rounded-xl bg-purple-900/70 border border-pink-400/35 flex items-center justify-center">
+                    <GameVectorArt token={sym} className="w-6 h-6" />
+                  </div>
+                ))}
+              </div>
+            )}
             <p className="text-sm sm:text-base font-bold text-white leading-snug">{current.prompt}</p>
           </div>
           <div className="space-y-2">
@@ -1090,7 +1186,9 @@ export const MarathonGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
         </div>
       ) : (
         <div className="text-center py-5 space-y-3">
-          <span className="text-4xl block">🏆</span>
+          <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300">
+            <Trophy className="w-6 h-6" />
+          </div>
           <h4 className="text-lg font-bold text-white">Maratona Concluída: {score}/5 acertos!</h4>
           <button
             type="button"

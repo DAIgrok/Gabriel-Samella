@@ -31,6 +31,7 @@ import {
   CalendarDays,
   Clock,
   MapPin,
+  Sparkles,
 } from 'lucide-react';
 import { COOLDOWN_MS, INTEGRATED_MISSIONS_CATALOG, PET_SPECIES_CATALOG } from '../data/initialData';
 import { getCouplePhotoUrl, REAL_PHOTO_SLOTS } from '../data/mediaAssets';
@@ -39,6 +40,7 @@ import {
   AquariumCoralIcon,
   DreamHouseCrestIcon,
   MissionCompassIcon,
+  VectorGlyphIcon,
 } from './icons/CustomIcons';
 import {
   formatCountdownDays,
@@ -65,6 +67,9 @@ export const HomeView: React.FC = () => {
     aquarium,
     missionsState,
     activeSeasonalMeta,
+    lastMysteryChestAt,
+    openMysteryChest,
+    isSpectator,
   } = useApp();
   const prefersReducedMotion = useReducedMotion();
 
@@ -92,6 +97,9 @@ export const HomeView: React.FC = () => {
   const wheelRemMs = dailyWheel.lastSpinAt
     ? Math.max(0, dailyWheel.lastSpinAt + COOLDOWN_MS.wheel_spin - nowMs)
     : 0;
+  const chestRemMs = lastMysteryChestAt
+    ? Math.max(0, lastMysteryChestAt + COOLDOWN_MS.mystery_chest - nowMs)
+    : 0;
 
   const completedGoals = coupleGoals.filter((g) => g.completed).length;
   const goalsPct =
@@ -103,7 +111,7 @@ export const HomeView: React.FC = () => {
   const formatCountdownTo = (unlockDate: string) => {
     const target = new Date(`${unlockDate}T00:00:00`);
     const now = new Date(nowMs);
-    if (now >= target) return 'Desbloqueada hoje! 🎁';
+    if (now >= target) return 'Desbloqueada hoje!';
 
     let years = target.getFullYear() - now.getFullYear();
     let months = target.getMonth() - now.getMonth();
@@ -174,7 +182,7 @@ export const HomeView: React.FC = () => {
             <p>Cada dia com você é um presente</p>
             <p className="flex items-center gap-1.5">
               <span>e eu sou muito grato por tudo que construímos juntos.</span>
-              <span className="text-pink-400">💜</span>
+              <Heart className="w-4 h-4 text-pink-400 fill-pink-400 shrink-0" />
             </p>
           </div>
         </div>
@@ -204,7 +212,7 @@ export const HomeView: React.FC = () => {
                 <Gift className="w-5 h-5" />
               </div>
               <span className="text-xs font-bold text-pink-200 tabular-nums">
-                {wheelRemMs === 0 ? 'Pronta agora! 🎡' : formatWheelRemaining(wheelRemMs)}
+                {wheelRemMs === 0 ? 'Pronta agora!' : formatWheelRemaining(wheelRemMs)}
               </span>
             </div>
             <div>
@@ -275,9 +283,12 @@ export const HomeView: React.FC = () => {
                         getCalendarColorStyle(nextCalendarItem.event.color).dot
                       }`}
                     />
-                    <span className="truncate">
-                      {getCalendarCategoryMeta(nextCalendarItem.event.category).emoji}{' '}
-                      {nextCalendarItem.event.title}
+                    <span className="truncate inline-flex items-center gap-1.5">
+                      <VectorGlyphIcon
+                        name={getCalendarCategoryMeta(nextCalendarItem.event.category).emoji}
+                        className="w-3.5 h-3.5 text-pink-300 shrink-0"
+                      />
+                      <span className="truncate">{nextCalendarItem.event.title}</span>
                     </span>
                   </p>
                   <p className="text-[11px] text-purple-200/75 flex flex-wrap items-center gap-x-2 gap-y-0.5 tabular-nums">
@@ -563,12 +574,12 @@ export const HomeView: React.FC = () => {
           );
         })()}
 
-        {/* Card 3: Baú de Surpresas */}
+        {/* Card 3: Baú Misterioso 24h */}
         <div className="rounded-3xl p-4 bg-gradient-to-br from-[#160a2c]/90 to-[#070210]/95 border border-purple-500/25 shadow-lg flex flex-col items-center justify-between text-center">
           <div className="w-full flex items-center justify-between text-xs text-white font-semibold mb-2">
             <div className="flex items-center gap-1.5">
               <Package className="w-3.5 h-3.5 text-pink-400" />
-              <span>Baú de Surpresas</span>
+              <span>Baú Misterioso 24h</span>
             </div>
             <Heart className="w-3 h-3 text-pink-400/60" />
           </div>
@@ -576,19 +587,32 @@ export const HomeView: React.FC = () => {
           <div className="w-20 h-20 rounded-2xl overflow-hidden border border-amber-400/35 shadow-[0_0_20px_rgba(251,191,36,0.2)] bg-purple-950/60 my-1">
             <img
               src={VISUAL_ASSETS.homeChestCard}
-              alt="Baú de Surpresas"
+              alt="Baú Misterioso"
               className="w-full h-full object-cover"
             />
           </div>
 
-          <p className="text-xs text-purple-200/80 my-2">Pode ter uma recompensa te esperando...</p>
+          <p className="text-xs text-purple-200/80 my-2 tabular-nums">
+            {isSpectator
+              ? 'Disponível somente para a Samella abrir'
+              : chestRemMs === 0
+              ? 'Pronto para abrir e ganhar diamantes!'
+              : `Próxima abertura em ${formatWheelRemaining(chestRemMs)}`}
+          </p>
 
           <button
             type="button"
-            onClick={() => triggerEasterEgg('egg-chest')}
-            className="w-full min-h-[44px] py-2 rounded-full bg-[#200c3e]/80 hover:bg-[#321262] border border-purple-500/30 text-xs text-purple-200 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+            disabled={isSpectator || chestRemMs > 0}
+            onClick={() => openMysteryChest()}
+            className="w-full min-h-[44px] py-2 rounded-full bg-[#200c3e]/80 hover:bg-[#321262] border border-purple-500/30 text-xs text-purple-200 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-55 disabled:cursor-not-allowed"
           >
-            <span>Abrir baú</span>
+            <span>
+              {isSpectator
+                ? 'Modo Espectador'
+                : chestRemMs === 0
+                ? 'Abrir baú agora'
+                : 'Aguardando 24h'}
+            </span>
             <ArrowRight className="w-3 h-3 text-purple-300" />
           </button>
         </div>
@@ -665,7 +689,9 @@ export const HomeView: React.FC = () => {
       <footer className="pt-6 pb-2 text-center select-none relative">
         <div className="relative flex items-center justify-center mb-2">
           <div className="w-full border-t border-purple-500/20 max-w-md mx-auto" />
-          <div className="absolute px-3 bg-[#080214] text-pink-400 text-xs">✧</div>
+          <div className="absolute px-3 bg-[#080214] text-pink-400 flex items-center justify-center">
+            <Sparkles className="w-3.5 h-3.5" />
+          </div>
         </div>
         <p className="font-romantic text-xl text-pink-300/80 drop-shadow-[0_0_8px_rgba(244,114,182,0.4)]">
           Nosso Mundo ♡ ♡
@@ -741,8 +767,9 @@ export const HomeView: React.FC = () => {
                           </p>
                         </div>
                       ) : (
-                        <p className="text-xs text-purple-300/70 italic">
-                          🔒 Mensagem selada por {cap.author}. Só poderá ser lida na data marcada!
+                        <p className="text-xs text-purple-300/70 italic flex items-center gap-1.5">
+                          <Lock className="w-3.5 h-3.5 text-pink-300 shrink-0" />
+                          <span>Mensagem selada por {cap.author}. Só poderá ser lida na data marcada!</span>
                         </p>
                       )}
                     </div>

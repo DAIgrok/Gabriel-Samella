@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Pause, Play, Maximize2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pause, Play, Maximize2, Image as ImageIcon } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { SmartPhoto } from './SmartPhoto';
 import { useReducedMotion } from 'motion/react';
@@ -37,7 +37,8 @@ export const HomePhotoLoopCard: React.FC = () => {
       <div className="flex items-center justify-between gap-2">
         <div>
           <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-1.5">
-            <span>🖼️</span> Quadro de Memórias em Loop
+            <ImageIcon className="w-4 h-4 text-pink-300" />
+            <span>Quadro de Memórias em Loop</span>
           </h3>
           <p className="text-[11px] text-purple-200/70">
             {loopPhotos.length} {loopPhotos.length === 1 ? 'foto selecionada' : 'fotos em exibição'} · #{activePhoto.index}

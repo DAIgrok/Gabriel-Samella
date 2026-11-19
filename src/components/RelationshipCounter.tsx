@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Heart, Clock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { VISUAL_ASSETS } from '../data/visualAssets';
-import { PumpkinCrestIcon, SnowflakeCrestIcon } from './icons/CustomIcons';
+import {
+  PumpkinCrestIcon,
+  SantaCounterCharacter,
+  SnowflakeCrestIcon,
+} from './icons/CustomIcons';
 
 interface DetailedTimeDiff {
   years: number;
@@ -150,31 +153,27 @@ export const RelationshipCounter: React.FC = () => {
       : 'border-purple-500/25 shadow-[0_10px_35px_rgba(0,0,0,0.6)]';
 
   return (
-    <div className="relative pt-2">
-      {/* Papai Noel ilustrado sentado no topo do contador durante a temporada de Natal */}
+    <div className="relative pt-8 sm:pt-7">
+      {/* Papai Noel ilustrado sentado em cima do contador durante a temporada de Natal */}
       {activeSeasonalEvent === 'natal' && (
         <button
           type="button"
           onClick={() =>
             claimSeasonalProp(
               'santa-counter-topper',
-              12,
+              6,
               'Presente do Papai Noel no Contador!'
             )
           }
           title="Toque no Papai Noel para receber um mimo de Natal"
-          className="absolute -top-7 right-4 z-20 flex items-end gap-2 group cursor-pointer"
+          className="absolute -top-5 right-4 z-20 flex items-end gap-2 group cursor-pointer"
         >
-          <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#1a0a2e]/95 border border-amber-300/45 text-[10px] font-bold text-amber-200 shadow-lg">
+          <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 mb-5 rounded-full bg-[#1a0a2e]/95 border border-amber-300/45 text-[10px] font-bold text-amber-200 shadow-lg">
             <SnowflakeCrestIcon className="w-3 h-3 text-sky-200" />
-            <span>Natal Encantado</span>
+            <span>Feliz Natal ♡</span>
           </span>
-          <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-amber-300/60 shadow-[0_6px_22px_rgba(251,191,36,0.45)] bg-[#140724] group-hover:scale-105 transition-transform">
-            <img
-              src={VISUAL_ASSETS.santaCounterTopper}
-              alt="Papai Noel no contador"
-              className="w-full h-full object-cover"
-            />
+          <div className="group-hover:scale-105 transition-transform drop-shadow-[0_6px_16px_rgba(0,0,0,0.65)]">
+            <SantaCounterCharacter className="w-24 h-20" />
           </div>
         </button>
       )}

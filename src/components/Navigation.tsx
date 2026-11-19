@@ -44,21 +44,25 @@ export const Navigation: React.FC = () => {
     config,
     kitten,
     photos,
+    unreadChatCount,
+    isSpectator,
   } = useApp();
 
   const currentSpecies = PET_SPECIES_CATALOG.find((s) => s.type === (kitten.petType || 'cat')) || PET_SPECIES_CATALOG[0];
   const petDisplayName = kitten.name?.trim() || currentSpecies.name;
 
-  const navItems: { id: ActiveTab; label: string; icon: React.ElementType }[] = [
+  const navItems: { id: ActiveTab; label: string; icon: React.ElementType; badge?: number }[] = [
     { id: 'inicio', label: 'Início', icon: Home },
     { id: 'cartas', label: 'Cartas', icon: Mail },
     { id: 'fotos', label: 'Fotos', icon: ImageIcon },
+    { id: 'conversas', label: 'Chat', icon: MessageCircle, badge: unreadChatCount },
     { id: 'musica', label: 'Música', icon: Music },
     { id: 'perfil', label: 'Perfil', icon: User },
   ];
 
-  const drawerItems: { id: ExtendedView; label: string; icon: React.ElementType; color: string; badge?: string }[] = [
+  const allDrawerItems: { id: ExtendedView; label: string; icon: React.ElementType; color: string; badge?: string }[] = [
     { id: 'inicio', label: 'Página Inicial', icon: Home, color: 'text-pink-400' },
+    { id: 'conversas', label: 'Chat do Casal', icon: MessageCircle, color: 'text-pink-300', badge: unreadChatCount > 0 ? String(unreadChatCount) : undefined },
     { id: 'casa', label: 'Casa dos Sonhos 3D', icon: DreamHouseCrestIcon, color: 'text-pink-300', badge: '3D' },
     { id: 'aquario', label: 'Aquário Mágico 3D', icon: AquariumCoralIcon, color: 'text-cyan-300', badge: '3D' },
     { id: 'missoes', label: 'Missões & Sazonal', icon: MissionCompassIcon, color: 'text-amber-300' },
@@ -72,17 +76,20 @@ export const Navigation: React.FC = () => {
     { id: 'jogos', label: '25 Jogos do Casal', icon: Gamepad2, color: 'text-indigo-400' },
     { id: 'gatinho', label: `Mascote (${petDisplayName})`, icon: Cat, color: 'text-pink-300', badge: kitten.hunger < 35 ? 'Fome!' : undefined },
     { id: 'loja', label: 'Loja do Amor', icon: ShoppingBag, color: 'text-rose-400', badge: `${coins}` },
-    { id: 'conversas', label: 'Conversas & Recados', icon: MessageCircle, color: 'text-purple-300' },
     { id: 'frases', label: '50+ Frases Românticas', icon: BookHeart, color: 'text-pink-300' },
     { id: 'config', label: 'Configurações (Criador)', icon: Settings, color: 'text-slate-300' },
   ];
+
+  const drawerItems = isSpectator
+    ? allDrawerItems.filter((item) => item.id !== 'config')
+    : allDrawerItems;
 
   return (
     <>
       {/* Bottom Floating Navigation Bar (Mobile Only) */}
       <div className="fixed bottom-0 left-0 right-0 z-30 pointer-events-auto select-none md:hidden">
-        <div className="max-w-lg mx-auto px-4 pb-safe pb-2 pt-1">
-          <div className="relative glass rounded-[28px] px-3 py-2 border border-white/10 shadow-[0_-8px_30px_rgba(0,0,0,0.8)] backdrop-blur-2xl">
+        <div className="max-w-lg mx-auto px-3 pb-safe pb-2 pt-1">
+          <div className="relative glass rounded-[28px] px-2 py-2 border border-white/10 shadow-[0_-8px_30px_rgba(0,0,0,0.8)] backdrop-blur-2xl">
             {/* Top Floating Glow Heart indicator */}
             <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 pointer-events-none">
               <motion.div
@@ -101,14 +108,16 @@ export const Navigation: React.FC = () => {
             <div className="flex items-center justify-around relative z-10 pt-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = activeTab === item.id && ['inicio', 'cartas', 'fotos', 'musica', 'perfil'].includes(extendedView);
+                const isActive =
+                  activeTab === item.id &&
+                  ['inicio', 'cartas', 'fotos', 'conversas', 'musica', 'perfil'].includes(extendedView);
 
                 return (
                   <button
                     key={item.id}
                     id={`nav-tab-${item.id}`}
                     onClick={() => setActiveTab(item.id)}
-                    className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all duration-300 relative cursor-pointer ${
+                    className={`flex flex-col items-center justify-center py-1 px-2 rounded-2xl transition-all duration-300 relative cursor-pointer ${
                       isActive
                         ? 'text-purple-300 scale-105'
                         : 'text-white/40 hover:text-white active:scale-95'
@@ -122,11 +131,18 @@ export const Navigation: React.FC = () => {
                       />
                     )}
 
-                    <Icon
-                      className={`w-5 h-5 mb-0.5 relative z-10 ${
-                        isActive ? 'neon-glow-purple fill-purple-400/20 stroke-[2.2]' : 'stroke-[1.8]'
-                      }`}
-                    />
+                    <div className="relative">
+                      <Icon
+                        className={`w-5 h-5 mb-0.5 relative z-10 ${
+                          isActive ? 'neon-glow-purple fill-purple-400/20 stroke-[2.2]' : 'stroke-[1.8]'
+                        }`}
+                      />
+                      {item.badge !== undefined && item.badge > 0 && (
+                        <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-pink-500 text-white text-[9px] font-bold flex items-center justify-center shadow-[0_0_8px_rgba(236,72,153,0.9)]">
+                          {item.badge > 9 ? '9+' : item.badge}
+                        </span>
+                      )}
+                    </div>
 
                     <span
                       className={`text-[10px] font-medium tracking-tight relative z-10 ${

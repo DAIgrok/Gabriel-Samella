@@ -355,7 +355,18 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
   const isTired = (kitten.energy ?? 80) < 35 && !isSleeping;
   const isSad = (kitten.hunger ?? 80) < 30 || (kitten.thirst ?? 80) < 30 || (kitten.fun ?? 80) < 30;
 
-  const colors = useMemo(() => getPalette(petType, isSleeping), [petType, isSleeping]);
+  const colors = useMemo(() => {
+    const base = getPalette(petType, isSleeping);
+    const customHex = kitten.petColors?.[petType];
+    if (!customHex) return base;
+    return {
+      ...base,
+      light: customHex,
+      mid: customHex,
+      dark: customHex,
+      earOuter: customHex,
+    };
+  }, [petType, isSleeping, kitten.petColors]);
 
   const hatId = kitten.equippedHat || (hasCrown ? 'item-cat-crown' : hasRibbon ? 'item-cat-ribbon' : '');
   const glassesId = kitten.equippedGlasses || (hasSunglasses ? 'item-cat-sunglasses' : '');
@@ -782,9 +793,9 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
           {outfitId === 'item-pet-pajamas' && (
             <g className="pointer-events-none">
               <path d="M72,150 Q120,162 168,150 L172,196 Q120,212 68,196 Z" fill="#312e81" stroke="#818cf8" strokeWidth="2" />
-              <text x="96" y="176" fontSize="10" fill="#fef08a">★</text>
-              <text x="136" y="182" fontSize="11" fill="#fef08a">✦</text>
-              <text x="115" y="194" fontSize="9" fill="#fef08a">★</text>
+              <polygon points="98,167 100,171 104,171 101,174 102,178 98,176 94,178 95,174 92,171 96,171" fill="#fef08a" />
+              <polygon points="138,173 140,177 144,177 141,180 142,184 138,182 134,184 135,180 132,177 136,177" fill="#fef08a" />
+              <polygon points="118,185 119.5,188.5 123,188.5 120.5,191 121.5,194.5 118,192.5 114.5,194.5 115.5,191 113,188.5 116.5,188.5" fill="#fef08a" />
             </g>
           )}
           {outfitId === 'item-pet-jacket' && (
@@ -1167,7 +1178,7 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
             <g className="pointer-events-none">
               <ellipse cx="120" cy="56" rx="52" ry="9" fill="#4c1d95" stroke="#c084fc" strokeWidth="2" />
               <polygon points="94,54 126,12 146,54" fill="#5b21b6" stroke="#c084fc" strokeWidth="2" />
-              <text x="120" y="42" textAnchor="middle" fontSize="11" fill="#facc15">★</text>
+              <polygon points="122,31 124,36 129,36 125,39 126.5,44 122,41 117.5,44 119,39 115,36 120,36" fill="#facc15" />
             </g>
           )}
 

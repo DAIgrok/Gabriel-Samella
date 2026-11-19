@@ -1,7 +1,22 @@
 import React, { useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import { Plus, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
+import {
+  Plus,
+  ChevronDown,
+  ChevronUp,
+  ChevronRight,
+  Trees,
+  Droplets,
+  Sun,
+  Scissors,
+  Apple,
+  Heart,
+  Sparkles,
+  Sprout,
+  Lock,
+} from 'lucide-react';
 import { formatCooldownMs } from '../../context/AppContext';
+import { DiamondGemIcon } from '../icons/CustomIcons';
 
 export interface LoveTreeRibbonItem {
   id: string;
@@ -31,6 +46,7 @@ export interface LoveTreeDesignProps {
   isWatering: boolean;
   isSunbathing: boolean;
   isPruning: boolean;
+  isSpectator?: boolean;
   cdWater: number;
   cdSun: number;
   cdPrune: number;
@@ -79,6 +95,7 @@ export const LoveTreeDesign: React.FC<LoveTreeDesignProps> = ({
   isWatering,
   isSunbathing,
   isPruning,
+  isSpectator = false,
   cdWater,
   cdSun,
   cdPrune,
@@ -103,26 +120,27 @@ export const LoveTreeDesign: React.FC<LoveTreeDesignProps> = ({
 
   const hydrationPercent = Math.min(100, 35 + (waterCount || 0) * 10);
   const sunlightPercent = Math.min(100, 35 + (sunCount || 0) * 10);
-  const canHarvestFruit = (safeLevel >= 3 || hasGoldenApples) && cdFruit <= 0;
+  const canHarvestFruit = !isSpectator && (safeLevel >= 3 || hasGoldenApples) && cdFruit <= 0;
 
   return (
     <div className="space-y-3.5 text-white text-left">
-      {/* Header matching ChatGPT LoveTree */}
+      {/* Header */}
       <div className="flex items-center justify-between gap-2 px-1">
         <div className="min-w-0">
-          <h2 className="text-base sm:text-lg font-bold tracking-tight text-white truncate">
-            🌳 Nossa Árvore do Amor
+          <h2 className="text-base sm:text-lg font-bold tracking-tight text-white truncate flex items-center gap-2">
+            <Trees className="w-5 h-5 text-emerald-300 shrink-0" />
+            <span className="truncate">Nossa Árvore do Amor</span>
           </h2>
           <p className="text-[11px] text-purple-200/75 truncate">{stageLabel}</p>
         </div>
 
         <div className="bg-white/10 border border-white/15 px-3 py-1.5 rounded-full font-bold text-xs text-white flex items-center gap-1.5 tabular-nums shrink-0 shadow-sm">
-          <span>💎</span>
+          <DiamondGemIcon className="w-3.5 h-3.5" />
           <span>{coins}</span>
         </div>
       </div>
 
-      {/* Cosmic Starry Emerald Scene matching ChatGPT tree-scene */}
+      {/* Cosmic Starry Emerald Scene */}
       <div
         onClick={onTreeTap}
         role="button"
@@ -159,20 +177,22 @@ export const LoveTreeDesign: React.FC<LoveTreeDesignProps> = ({
           />
         ))}
 
-        {/* Watering / Sun / Pruning subtle visual feedback */}
+        {/* Watering / Sun / Pruning visual feedback */}
         {isWatering && (
-          <div className="absolute inset-x-0 top-10 flex justify-center gap-4 text-xl pointer-events-none z-20 animate-bounce">
-            <span>💧</span>
-            <span>💧</span>
-            <span>💧</span>
+          <div className="absolute inset-x-0 top-10 flex justify-center gap-4 pointer-events-none z-20 animate-bounce text-cyan-300">
+            <Droplets className="w-5 h-5" />
+            <Droplets className="w-5 h-5" />
+            <Droplets className="w-5 h-5" />
           </div>
         )}
         {isSunbathing && (
           <div className="absolute top-6 left-1/2 -translate-x-1/2 w-28 h-28 rounded-full bg-amber-300/20 blur-xl pointer-events-none z-10" />
         )}
         {isPruning && (
-          <div className="absolute top-12 left-1/2 -translate-x-1/2 text-xl pointer-events-none z-20 animate-pulse">
-            ✨🌿✨
+          <div className="absolute top-12 left-1/2 -translate-x-1/2 flex items-center gap-2 text-emerald-300 pointer-events-none z-20 animate-pulse">
+            <Sparkles className="w-5 h-5" />
+            <Sprout className="w-5 h-5" />
+            <Sparkles className="w-5 h-5" />
           </div>
         )}
 
@@ -187,22 +207,29 @@ export const LoveTreeDesign: React.FC<LoveTreeDesignProps> = ({
             e.stopPropagation();
             onHarvestFruit();
           }}
-          disabled={!canHarvestFruit && (safeLevel >= 3 || hasGoldenApples)}
-          className={`absolute top-3.5 right-4 z-20 px-3 py-1 rounded-full border text-xs font-bold tabular-nums backdrop-blur-sm transition ${
+          disabled={isSpectator || (!canHarvestFruit && (safeLevel >= 3 || hasGoldenApples))}
+          className={`absolute top-3.5 right-4 z-20 px-3 py-1 rounded-full border text-xs font-bold tabular-nums backdrop-blur-sm transition flex items-center gap-1.5 ${
             canHarvestFruit
               ? 'bg-rose-500/80 border-rose-300/60 text-white shadow-lg hover:brightness-110 cursor-pointer'
               : 'bg-black/50 border-white/15 text-white/90 cursor-default'
           }`}
           title={
-            safeLevel < 3 && !hasGoldenApples
+            isSpectator
+              ? 'Modo Espectador ativo'
+              : safeLevel < 3 && !hasGoldenApples
               ? 'Frutos amadurecem a partir do Nível 3'
               : cdFruit > 0
               ? `Próximo fruto em ${formatCooldownMs(cdFruit)}`
               : 'Toque para colher um Fruto do Amor!'
           }
         >
-          {hasGoldenApples ? '🍏' : '🍎'} {fruitsHarvested || 0}
-          {canHarvestFruit && <span className="ml-1 text-[10px] text-amber-200">Colher!</span>}
+          <Apple
+            className={`w-3.5 h-3.5 ${
+              hasGoldenApples ? 'text-amber-300 fill-amber-300' : 'text-rose-300 fill-rose-400'
+            }`}
+          />
+          <span>{fruitsHarvested || 0}</span>
+          {canHarvestFruit && <span className="ml-0.5 text-[10px] text-amber-200">Colher!</span>}
         </button>
 
         {/* Emerald Ground Mound */}
@@ -213,35 +240,43 @@ export const LoveTreeDesign: React.FC<LoveTreeDesignProps> = ({
           }}
         />
 
-        {/* Crystals / Swing / Store ornaments */}
+        {/* Crystals / Lanterns / Swing / Butterfly / Songbird SVG Ornaments */}
         {hasCrystals && (
-          <div className="absolute bottom-[58px] left-[24%] text-lg pointer-events-none z-10 drop-shadow">
-            🔮
-          </div>
+          <svg viewBox="0 0 28 28" className="w-7 h-7 absolute bottom-[56px] left-[24%] pointer-events-none z-10 drop-shadow-[0_0_8px_rgba(244,114,182,0.8)]">
+            <polygon points="10,24 6,12 12,4 16,13 14,24" fill="#f472b6" />
+            <polygon points="16,24 14,14 20,7 24,16 20,24" fill="#38bdf8" />
+          </svg>
         )}
         {hasLanterns && (
-          <div className="absolute bottom-[132px] left-[29%] text-base pointer-events-none z-10 animate-pulse">
-            🏮
-          </div>
+          <svg viewBox="0 0 20 28" className="w-5 h-7 absolute bottom-[132px] left-[29%] pointer-events-none z-10 animate-pulse">
+            <line x1="10" y1="0" x2="10" y2="6" stroke="#78350f" strokeWidth="2" />
+            <rect x="4" y="6" width="12" height="16" rx="4" fill="#fef08a" stroke="#f59e0b" strokeWidth="1.5" />
+          </svg>
         )}
         {hasSwing && (
-          <div className="absolute bottom-[105px] right-[29%] text-base pointer-events-none z-10">
-            🪵
-          </div>
+          <svg viewBox="0 0 36 48" className="w-9 h-12 absolute bottom-[92px] right-[28%] pointer-events-none z-10">
+            <line x1="8" y1="0" x2="8" y2="38" stroke="#fde68a" strokeWidth="1.6" />
+            <line x1="28" y1="0" x2="28" y2="38" stroke="#fde68a" strokeWidth="1.6" />
+            <rect x="4" y="36" width="28" height="5" rx="2.5" fill="#92400e" stroke="#f59e0b" strokeWidth="1" />
+          </svg>
         )}
         {hasButterfly && (
-          <motion.span
+          <motion.svg
+            viewBox="0 0 28 22"
             animate={prefersReducedMotion ? undefined : { x: [0, 14, -8, 0], y: [0, -10, -4, 0] }}
             transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-            className="absolute top-[115px] right-[26%] text-lg pointer-events-none z-20"
+            className="w-6 h-5 absolute top-[115px] right-[26%] pointer-events-none z-20"
           >
-            🦋
-          </motion.span>
+            <path d="M14,11 C6,1 0,6 7,13 C2,17 8,22 14,13 Z" fill="#c084fc" />
+            <path d="M14,11 C22,1 28,6 21,13 C26,17 20,22 14,13 Z" fill="#f472b6" />
+          </motion.svg>
         )}
         {hasSongbird && (
-          <span className="absolute top-[102px] left-[28%] text-base pointer-events-none z-20">
-            🐦
-          </span>
+          <svg viewBox="0 0 24 20" className="w-5 h-4 absolute top-[102px] left-[28%] pointer-events-none z-20">
+            <ellipse cx="10" cy="11" rx="7" ry="5" fill="#38bdf8" />
+            <circle cx="15" cy="7" r="4" fill="#7dd3fc" />
+            <polygon points="18,6 22,8 18,9" fill="#facc15" />
+          </svg>
         )}
 
         {/* Tree Silhouette + Dynamic Level-Scaled Crown & Trunk */}
@@ -269,9 +304,9 @@ export const LoveTreeDesign: React.FC<LoveTreeDesignProps> = ({
             {/* Fairy Lights */}
             {hasFairyLights && (
               <>
-                <span className="absolute top-[28%] left-[25%] text-xs animate-pulse">✨</span>
-                <span className="absolute top-[42%] right-[24%] text-xs animate-pulse">✨</span>
-                <span className="absolute bottom-[25%] left-[48%] text-xs animate-pulse">✨</span>
+                <span className="absolute top-[28%] left-[25%] w-2.5 h-2.5 rounded-full bg-amber-200 shadow-[0_0_8px_#fde047] animate-pulse" />
+                <span className="absolute top-[42%] right-[24%] w-2.5 h-2.5 rounded-full bg-pink-200 shadow-[0_0_8px_#f472b6] animate-pulse" />
+                <span className="absolute bottom-[25%] left-[48%] w-2.5 h-2.5 rounded-full bg-amber-200 shadow-[0_0_8px_#fde047] animate-pulse" />
               </>
             )}
 
@@ -291,12 +326,22 @@ export const LoveTreeDesign: React.FC<LoveTreeDesignProps> = ({
             {/* Visible Fruits when Level >= 3 or Golden Apples unlocked */}
             {(safeLevel >= 3 || hasGoldenApples) && (
               <>
-                <span className="absolute top-[36%] left-[32%] text-sm drop-shadow">
-                  {hasGoldenApples ? '🍏' : '🍎'}
-                </span>
-                <span className="absolute top-[52%] right-[30%] text-sm drop-shadow">
-                  {hasGoldenApples ? '🍏' : '🍎'}
-                </span>
+                <span
+                  className="absolute top-[36%] left-[32%] w-4 h-4 rounded-full shadow-md border border-white/40"
+                  style={{
+                    background: hasGoldenApples
+                      ? 'radial-gradient(circle at 30% 30%, #fef08a, #ca8a04)'
+                      : 'radial-gradient(circle at 30% 30%, #fda4af, #e11d48)',
+                  }}
+                />
+                <span
+                  className="absolute top-[52%] right-[30%] w-4 h-4 rounded-full shadow-md border border-white/40"
+                  style={{
+                    background: hasGoldenApples
+                      ? 'radial-gradient(circle at 30% 30%, #fef08a, #ca8a04)'
+                      : 'radial-gradient(circle at 30% 30%, #fda4af, #e11d48)',
+                  }}
+                />
               </>
             )}
           </motion.div>
@@ -312,12 +357,19 @@ export const LoveTreeDesign: React.FC<LoveTreeDesignProps> = ({
         </div>
       </div>
 
-      {/* Growth Card matching ChatGPT design */}
+      {isSpectator && (
+        <div className="px-3.5 py-2.5 rounded-2xl bg-purple-950/70 border border-purple-400/30 text-[11px] text-purple-200 flex items-center gap-2">
+          <Lock className="w-3.5 h-3.5 text-pink-300 shrink-0" />
+          <span>Modo Espectador ativo: apenas a Samella pode cuidar da Árvore do Amor ou amarrar fitas.</span>
+        </div>
+      )}
+
+      {/* Growth Card */}
       <div className="bg-white/[0.06] border border-white/10 rounded-[18px] p-4 space-y-2.5">
         <div className="flex items-center justify-between text-xs sm:text-sm font-semibold">
           <span>Crescimento da Árvore</span>
           <span className="font-mono text-pink-200 tabular-nums">
-            {safeLevel >= 10 ? 'Plenitude ✨' : `${xp || 0} / ${maxXp || 100} XP`}
+            {safeLevel >= 10 ? 'Plenitude ♡' : `${xp || 0} / ${maxXp || 100} XP`}
           </span>
         </div>
 
@@ -333,55 +385,65 @@ export const LoveTreeDesign: React.FC<LoveTreeDesignProps> = ({
 
         <div className="grid grid-cols-2 gap-2 pt-1 text-[11px] text-purple-200/85 tabular-nums">
           <div className="px-2.5 py-1.5 rounded-xl bg-black/25 border border-white/10 flex items-center justify-between">
-            <span>💧 Hidratação ({waterCount || 0})</span>
+            <span className="inline-flex items-center gap-1.5">
+              <Droplets className="w-3.5 h-3.5 text-cyan-300" />
+              <span>Hidratação ({waterCount || 0})</span>
+            </span>
             <span className="font-bold text-cyan-200">{hydrationPercent}%</span>
           </div>
           <div className="px-2.5 py-1.5 rounded-xl bg-black/25 border border-white/10 flex items-center justify-between">
-            <span>☀️ Luz solar ({sunCount || 0})</span>
+            <span className="inline-flex items-center gap-1.5">
+              <Sun className="w-3.5 h-3.5 text-amber-300" />
+              <span>Luz solar ({sunCount || 0})</span>
+            </span>
             <span className="font-bold text-amber-200">{sunlightPercent}%</span>
           </div>
         </div>
       </div>
 
-      {/* 4-Column Care & Harvest Buttons matching ChatGPT */}
+      {/* 4-Column Care & Harvest Buttons */}
       <div className="grid grid-cols-4 gap-2">
         <button
           type="button"
           onClick={onWater}
-          disabled={isWatering || cdWater > 0}
+          disabled={isSpectator || isWatering || cdWater > 0}
           className="min-h-[54px] px-1.5 py-2.5 rounded-[14px] bg-white/[0.07] hover:bg-white/[0.12] border border-white/15 text-white text-[11px] sm:text-xs font-semibold flex flex-col items-center justify-center gap-1 cursor-pointer transition disabled:opacity-55 tabular-nums"
         >
-          <span className="text-base">💧</span>
+          <Droplets className="w-4 h-4 text-cyan-300" />
           <span>{cdWater > 0 ? formatCooldownMs(cdWater) : 'Regar'}</span>
         </button>
 
         <button
           type="button"
           onClick={onSun}
-          disabled={isSunbathing || cdSun > 0}
+          disabled={isSpectator || isSunbathing || cdSun > 0}
           className="min-h-[54px] px-1.5 py-2.5 rounded-[14px] bg-white/[0.07] hover:bg-white/[0.12] border border-white/15 text-white text-[11px] sm:text-xs font-semibold flex flex-col items-center justify-center gap-1 cursor-pointer transition disabled:opacity-55 tabular-nums"
         >
-          <span className="text-base">☀️</span>
+          <Sun className="w-4 h-4 text-amber-300" />
           <span>{cdSun > 0 ? formatCooldownMs(cdSun) : 'Luz solar'}</span>
         </button>
 
         <button
           type="button"
           onClick={onPrune}
-          disabled={isPruning || cdPrune > 0}
+          disabled={isSpectator || isPruning || cdPrune > 0}
           className="min-h-[54px] px-1.5 py-2.5 rounded-[14px] bg-white/[0.07] hover:bg-white/[0.12] border border-white/15 text-white text-[11px] sm:text-xs font-semibold flex flex-col items-center justify-center gap-1 cursor-pointer transition disabled:opacity-55 tabular-nums"
         >
-          <span className="text-base">✂️</span>
+          <Scissors className="w-4 h-4 text-emerald-300" />
           <span>{cdPrune > 0 ? formatCooldownMs(cdPrune) : 'Podar'}</span>
         </button>
 
         <button
           type="button"
           onClick={onHarvestFruit}
-          disabled={cdFruit > 0 || (safeLevel < 3 && !hasGoldenApples)}
+          disabled={isSpectator || cdFruit > 0 || (safeLevel < 3 && !hasGoldenApples)}
           className="min-h-[54px] px-1.5 py-2.5 rounded-[14px] bg-white/[0.07] hover:bg-white/[0.12] border border-white/15 text-white text-[11px] sm:text-xs font-semibold flex flex-col items-center justify-center gap-1 cursor-pointer transition disabled:opacity-55 tabular-nums"
         >
-          <span className="text-base">{hasGoldenApples ? '🍏' : '🍎'}</span>
+          <Apple
+            className={`w-4 h-4 ${
+              hasGoldenApples ? 'text-amber-300 fill-amber-300' : 'text-rose-300 fill-rose-400'
+            }`}
+          />
           <span>
             {safeLevel < 3 && !hasGoldenApples
               ? 'Nv. 3+'
@@ -400,7 +462,8 @@ export const LoveTreeDesign: React.FC<LoveTreeDesignProps> = ({
             onClick={() => setPromisesOpen((prev) => !prev)}
             className="flex-1 flex items-center gap-2 text-left text-xs sm:text-sm font-bold text-white cursor-pointer"
           >
-            <span>💗 Jardim de Promessas ({ribbons.length})</span>
+            <Heart className="w-4 h-4 text-pink-400 fill-pink-400/30 shrink-0" />
+            <span>Jardim de Promessas ({ribbons.length})</span>
             {promisesOpen ? (
               <ChevronUp className="w-4 h-4 text-purple-200/75" />
             ) : (
@@ -408,14 +471,16 @@ export const LoveTreeDesign: React.FC<LoveTreeDesignProps> = ({
             )}
           </button>
 
-          <button
-            type="button"
-            onClick={onOpenAddRibbon}
-            className="px-3 py-1.5 rounded-xl bg-pink-500/20 hover:bg-pink-500/30 border border-pink-400/40 text-pink-200 text-xs font-bold flex items-center gap-1 cursor-pointer transition shrink-0 tabular-nums"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>{cdRibbon > 0 ? formatCooldownMs(cdRibbon) : 'Nova Fita'}</span>
-          </button>
+          {!isSpectator && (
+            <button
+              type="button"
+              onClick={onOpenAddRibbon}
+              className="px-3 py-1.5 rounded-xl bg-pink-500/20 hover:bg-pink-500/30 border border-pink-400/40 text-pink-200 text-xs font-bold flex items-center gap-1 cursor-pointer transition shrink-0 tabular-nums"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{cdRibbon > 0 ? formatCooldownMs(cdRibbon) : 'Nova Fita'}</span>
+            </button>
+          )}
         </div>
 
         {promisesOpen && (
@@ -447,15 +512,18 @@ export const LoveTreeDesign: React.FC<LoveTreeDesignProps> = ({
       <button
         type="button"
         onClick={onPlantSeed}
-        disabled={safeLevel >= 10}
-        className="w-full min-h-[48px] px-4 py-3 rounded-[16px] font-bold text-sm text-white shadow-[0_8px_24px_rgba(255,95,162,0.3)] transition cursor-pointer hover:brightness-110 active:scale-[0.99] disabled:opacity-55 tabular-nums"
+        disabled={isSpectator || safeLevel >= 10}
+        className="w-full min-h-[48px] px-4 py-3 rounded-[16px] font-bold text-sm text-white shadow-[0_8px_24px_rgba(255,95,162,0.3)] transition cursor-pointer hover:brightness-110 active:scale-[0.99] disabled:opacity-55 tabular-nums flex items-center justify-center gap-2"
         style={{
           background: 'linear-gradient(135deg, #ff5fa2, #9d4edd)',
         }}
       >
-        {safeLevel >= 10
-          ? '🌌 Árvore na Plenitude Máxima (Nível 10)'
-          : '🌱 Plantar nova semente (+50 XP) — 100 💎'}
+        <Sprout className="w-4 h-4 shrink-0" />
+        <span>
+          {safeLevel >= 10
+            ? 'Árvore na Plenitude Máxima (Nível 10)'
+            : 'Plantar nova semente (+50 XP) — 100 diamantes'}
+        </span>
       </button>
     </div>
   );

@@ -120,18 +120,16 @@ export function detectAutoSeasonalEvent(
 }
 
 export function resolveActiveSeasonalEvent(
-  seasonalState: SeasonalState | undefined,
+  _seasonalState: SeasonalState | undefined,
   anniversaryIso: string,
   calendarEvents: CalendarEvent[],
   now: Date = new Date()
 ): { activeEvent: SeasonalEventId; isPreview: boolean; meta: SeasonalThemeMeta } {
   const autoEvent = detectAutoSeasonalEvent(now, anniversaryIso, calendarEvents);
-  const isPreview = seasonalState?.mode === 'preview' && Boolean(seasonalState.previewEvent);
-  const activeEvent: SeasonalEventId = isPreview ? seasonalState!.previewEvent : autoEvent;
 
   return {
-    activeEvent,
-    isPreview,
-    meta: SEASONAL_THEMES[activeEvent] || SEASONAL_THEMES.normal,
+    activeEvent: autoEvent,
+    isPreview: false,
+    meta: SEASONAL_THEMES[autoEvent] || SEASONAL_THEMES.normal,
   };
 }

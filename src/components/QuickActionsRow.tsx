@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Image as ImageIcon, Trees, Trophy, Gamepad2, Cat } from 'lucide-react';
+import { Heart, Image as ImageIcon, Trees, Trophy, Gamepad2, Cat, Fish } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { motion } from 'motion/react';
 import { ExtendedView } from '../types';
@@ -11,7 +11,7 @@ interface ActionItem {
   glowClass: string;
   borderHover: string;
   iconColor: string;
-  badge?: string;
+  hasHungryBadge?: boolean;
 }
 
 export const QuickActionsRow: React.FC = () => {
@@ -65,7 +65,7 @@ export const QuickActionsRow: React.FC = () => {
       glowClass: 'neon-glow-pink',
       borderHover: 'hover:border-pink-400/50',
       iconColor: 'text-pink-300',
-      badge: kitten.mood === 'com-fome' ? '🐟' : undefined,
+      hasHungryBadge: kitten.mood === 'com-fome',
     },
   ];
 
@@ -85,9 +85,9 @@ export const QuickActionsRow: React.FC = () => {
               className="h-[84px] sm:h-[90px] rounded-[22px] glass-panel flex flex-col items-center justify-center p-1.5 sm:p-2 border border-purple-400/20 shadow-md hover:border-purple-300/40 hover:bg-purple-950/40 transition-all relative group cursor-pointer"
             >
               {/* Badge if any */}
-              {item.badge && (
-                <span className="absolute -top-1 -right-1 text-xs animate-bounce">
-                  {item.badge}
+              {item.hasHungryBadge && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-500/90 border border-amber-200 text-white flex items-center justify-center shadow animate-bounce">
+                  <Fish className="w-3 h-3" />
                 </span>
               )}
 

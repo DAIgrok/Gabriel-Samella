@@ -29,7 +29,7 @@
         },
         "config": {
           "type": "object",
-          "description": "Configurações personalizáveis do casal (nomes, data, senha)."
+          "description": "Configurações personalizáveis do casal (nomes, data, senha, URLs opcionais de modelos 3D .glb)."
         },
         "treeState": {
           "type": "object",
@@ -97,7 +97,7 @@
         },
         "dreamHouseState": {
           "type": "object",
-          "description": "Estado dos cômodos 3D, paredes, pisos, iluminação e móveis da Casa dos Sonhos."
+          "description": "Estado dos cômodos 3D, paredes, pisos, iluminação, móveis e posições/rotações personalizadas da Casa dos Sonhos."
         },
         "aquariumState": {
           "type": "object",

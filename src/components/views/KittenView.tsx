@@ -19,6 +19,17 @@ import {
   X,
   Orbit,
   Camera,
+  PawPrint,
+  Sparkles,
+  Music,
+  RefreshCw,
+  ArrowUp,
+  Hand,
+  Sofa,
+  BedDouble,
+  Gamepad2,
+  Palette,
+  Lock,
 } from 'lucide-react';
 import {
   useApp,
@@ -30,22 +41,25 @@ import { soundEngine } from '../../utils/audioSynth';
 import { PetCharacter } from '../pets/PetCharacter';
 import { PetWorldDesign } from '../pets/PetWorldDesign';
 import { PetCanvas3D, PetDanceMove } from '../3d/PetCanvas3D';
-import { PET_SPECIES_CATALOG } from '../../data/initialData';
+import { PET_SPECIES_CATALOG, resolvePetGlbUrl } from '../../data/initialData';
 import { PetType } from '../../types';
+import { DiamondGemIcon, VectorGlyphIcon } from '../icons/CustomIcons';
 
 type PetRoom = 'sala' | 'cozinha' | 'banheiro' | 'quarto';
 
 const ROOM_ORDER: PetRoom[] = ['sala', 'cozinha', 'banheiro', 'quarto'];
 
-const ROOM_META: Record<PetRoom, { label: string; title: string; icon: string }> = {
-  sala: { label: 'Sala', title: 'Sala de Estar', icon: '🛋️' },
-  cozinha: { label: 'Cozinha', title: 'Cozinha', icon: '🍽️' },
-  banheiro: { label: 'Banho', title: 'Banheiro', icon: '🛁' },
-  quarto: { label: 'Quarto', title: 'Quarto', icon: '🛏️' },
+const ROOM_META: Record<PetRoom, { label: string; title: string; iconKey: string }> = {
+  sala: { label: 'Sala', title: 'Sala de Estar', iconKey: 'sofa' },
+  cozinha: { label: 'Cozinha', title: 'Cozinha', iconKey: 'utensils' },
+  banheiro: { label: 'Banho', title: 'Banheiro', iconKey: 'bath' },
+  quarto: { label: 'Quarto', title: 'Quarto', iconKey: 'bed' },
 };
 
 export const KittenView: React.FC = () => {
   const {
+    isSpectator,
+    config,
     coins,
     kitten,
     petKitten,
@@ -56,6 +70,8 @@ export const KittenView: React.FC = () => {
     playWithKitten,
     switchPet,
     renamePet,
+    setPetColor,
+    setAccessoryColor,
     storeItems,
     buyStoreItem,
     equipKittenItem,
@@ -81,22 +97,19 @@ export const KittenView: React.FC = () => {
   const [customNameInput, setCustomNameInput] = useState(kitten.name || '');
 
   const [petReaction, setPetReaction] = useState<string>('Oi! Que saudade de você ♡');
-  const [flyingFood, setFlyingFood] = useState<{ emoji: string; key: number } | null>(null);
-  const [activeToyEmoji, setActiveToyEmoji] = useState<string>('🧶');
+  const [flyingFood, setFlyingFood] = useState<{ iconKey: string; key: number } | null>(null);
+  const [activeToyIcon, setActiveToyIcon] = useState<string>('game');
 
-  // Bathroom states
   const [spongeMode, setSpongeMode] = useState(false);
   const [soapFoamActive, setSoapFoamActive] = useState(false);
   const [isShowering, setIsShowering] = useState(false);
   const [floatingBubbles, setFloatingBubbles] = useState<{ id: number; x: number; y: number }[]>([]);
   const lastScrubTimeRef = useRef<number>(0);
 
-  // Switch pet farewell modal
   const [farewellPetTarget, setFarewellPetTarget] = useState<typeof PET_SPECIES_CATALOG[0] | null>(null);
   const [switchPetName, setSwitchPetName] = useState<string>('');
   const [, setTick] = useState(0);
 
-  // Live 1s ticker for cooldown badges
   useEffect(() => {
     const id = window.setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(id);
@@ -175,79 +188,86 @@ export const KittenView: React.FC = () => {
     e.stopPropagation();
     playSpeciesSound();
     triggerHeartExplosion();
-    triggerEasterEgg('egg-kitten-nose');
-    setPetReaction(`Bip! Focinho de ${displayName}! ✨`);
+    if (!isSpectator) triggerEasterEgg('egg-kitten-nose');
+    setPetReaction(`Bip! Focinho de ${displayName}!`);
   };
 
   const handleBodyClick = (part: 'head' | 'belly' | 'paw') => {
+    if (isSpectator) {
+      playSpeciesSound();
+      setPetReaction(`${displayName} abanou pra você ♡`);
+      return;
+    }
     if (kitten.isSleeping) {
       soundEngine.playSleepSnore();
-      setPetReaction(`Zzz... ${displayName} está dormindo 🌙`);
+      setPetReaction(`Zzz... ${displayName} está dormindo`);
       return;
     }
     if (currentRoom === 'banheiro' && spongeMode) return;
 
     if (part === 'head') {
       playSpeciesSound();
-      setPetReaction(`Amo cafuné na cabecinha! 🥰`);
+      setPetReaction(`Amo cafuné na cabecinha ♡`);
       petKitten('head');
     } else if (part === 'belly') {
       soundEngine.playPurr();
-      setPetReaction(`Cosquinha na barriguinha! 🐾`);
+      setPetReaction(`Cosquinha na barriguinha ♡`);
       petKitten('belly');
     } else {
       soundEngine.playToyBoing();
-      setPetReaction(`High-five com ${displayName}! ✋`);
+      setPetReaction(`High-five com ${displayName}!`);
       petKitten('paw');
     }
   };
 
-  const handleFeed = (foodName: string, emoji: string, hungerBoost: number, happyBoost: number) => {
+  const handleFeed = (foodName: string, iconKey: string, hungerBoost: number, happyBoost: number) => {
+    if (isSpectator) return;
     if (kitten.isSleeping) {
-      setPetReaction(`Acorde ${displayName} no Quarto primeiro 🌙`);
+      setPetReaction(`Acorde ${displayName} no Quarto primeiro`);
       return;
     }
     if (feedKitten(foodName, hungerBoost, happyBoost)) {
-      setFlyingFood({ emoji, key: Date.now() });
-      setPetReaction(`Nham nham! Delícia de ${foodName}! ${emoji}`);
+      setFlyingFood({ iconKey, key: Date.now() });
+      setPetReaction(`Nham nham! Delícia de ${foodName} ♡`);
       setTimeout(() => setFlyingFood(null), 950);
     }
   };
 
   const handleDrinkWater = () => {
+    if (isSpectator) return;
     if (kitten.isSleeping) {
-      setPetReaction(`Acorde ${displayName} no Quarto primeiro 🌙`);
+      setPetReaction(`Acorde ${displayName} no Quarto primeiro`);
       return;
     }
     if (giveWaterKitten()) {
-      setFlyingFood({ emoji: '💧', key: Date.now() });
-      setPetReaction(`Glub glub... Água fresquinha! 💧`);
+      setFlyingFood({ iconKey: 'fish', key: Date.now() });
+      setPetReaction(`Glub glub... Água fresquinha!`);
       setTimeout(() => setFlyingFood(null), 950);
     }
   };
 
-  const handlePlayToy = (toyName: string, emoji: string) => {
+  const handlePlayToy = (toyName: string, iconKey: string) => {
+    if (isSpectator) return;
     if (kitten.isSleeping) {
-      setPetReaction(`Acorde ${displayName} no Quarto para brincar 🌙`);
+      setPetReaction(`Acorde ${displayName} no Quarto para brincar`);
       return;
     }
     if (playWithKitten(toyName, 'toy')) {
-      setActiveToyEmoji(emoji);
-      setPetReaction(`Ebaaa! Brincando com ${toyName}! ${emoji}`);
+      setActiveToyIcon(iconKey);
+      setPetReaction(`Ebaaa! Brincando com ${toyName}!`);
     }
   };
 
   const triggerDanceMove = (move: Exclude<PetDanceMove, 'idle'>, label: string, msg: string) => {
     if (kitten.isSleeping) {
-      setPetReaction(`Acorde ${displayName} no Quarto para dançar 🌙`);
+      setPetReaction(`Acorde ${displayName} no Quarto para dançar`);
       return;
     }
     if (danceTimerRef.current) {
       window.clearTimeout(danceTimerRef.current);
     }
-    // Always let visual animation play for joy, while XP/coins enforce pet_dance cooldown
     setDanceMove(move);
-    playWithKitten(label, 'dance');
+    if (!isSpectator) playWithKitten(label, 'dance');
     if (move === 'kiss' || move === 'dance') {
       triggerHeartExplosion(0.5, 0.45);
       soundEngine.playSparkle();
@@ -261,7 +281,7 @@ export const KittenView: React.FC = () => {
   };
 
   const handleStageSoapInteract = (clientX: number, clientY: number, currentTarget: HTMLDivElement) => {
-    if (currentRoom !== 'banheiro' || !spongeMode) return;
+    if (isSpectator || currentRoom !== 'banheiro' || !spongeMode) return;
     const now = Date.now();
     if (now - lastScrubTimeRef.current < 260) return;
     lastScrubTimeRef.current = now;
@@ -272,12 +292,13 @@ export const KittenView: React.FC = () => {
     setFloatingBubbles((prev) => [...prev.slice(-14), { id: now + Math.random(), x, y }]);
     setSoapFoamActive(true);
     soundEngine.playBathSplash();
-    setPetReaction(`Espuma cheirosinha! 🧽🫧`);
+    setPetReaction(`Espuma cheirosinha!`);
   };
 
   const handleShower = () => {
+    if (isSpectator) return;
     if (kitten.isSleeping) {
-      setPetReaction(`Acorde ${displayName} antes do chuveiro 🌙`);
+      setPetReaction(`Acorde ${displayName} antes do chuveiro`);
       return;
     }
     if (batheKitten(100)) {
@@ -285,7 +306,7 @@ export const KittenView: React.FC = () => {
       setIsShowering(true);
       setSoapFoamActive(false);
       setFloatingBubbles([]);
-      setPetReaction(`Limpinho e cheiroso! ✨🚿`);
+      setPetReaction(`Limpinho e cheiroso ♡`);
       setTimeout(() => setIsShowering(false), 1800);
     }
   };
@@ -297,6 +318,7 @@ export const KittenView: React.FC = () => {
 
   const handleSaveName = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (isSpectator) return;
     if (customNameInput.trim()) {
       renamePet(customNameInput.trim());
       setIsEditingName(false);
@@ -320,53 +342,53 @@ export const KittenView: React.FC = () => {
     switch (currentPetType) {
       case 'dog':
         return [
-          { name: 'Osso Doce', emoji: '🦴', hunger: 30, happy: 18 },
-          { name: 'Bife', emoji: '🥩', hunger: 45, happy: 24 },
-          { name: 'Petisco', emoji: '🥓', hunger: 35, happy: 26 },
+          { name: 'Osso Doce', iconKey: 'utensils', hunger: 30, happy: 18 },
+          { name: 'Bife', iconKey: 'utensils', hunger: 45, happy: 24 },
+          { name: 'Petisco', iconKey: 'heart', hunger: 35, happy: 26 },
         ];
       case 'bunny':
       case 'hamster':
       case 'turtle':
         return [
-          { name: 'Cenoura', emoji: '🥕', hunger: 35, happy: 22 },
-          { name: 'Folhas', emoji: '🥬', hunger: 30, happy: 18 },
-          { name: 'Morango', emoji: '🍓', hunger: 38, happy: 30 },
+          { name: 'Cenoura', iconKey: 'seed', hunger: 35, happy: 22 },
+          { name: 'Folhas', iconKey: 'tree', hunger: 30, happy: 18 },
+          { name: 'Morango', iconKey: 'heart', hunger: 38, happy: 30 },
         ];
       case 'fox':
       case 'bear':
       case 'hedgehog':
         return [
-          { name: 'Mel', emoji: '🍯', hunger: 40, happy: 32 },
-          { name: 'Frutas', emoji: '🫐', hunger: 32, happy: 24 },
-          { name: 'Maçã', emoji: '🍎', hunger: 34, happy: 20 },
+          { name: 'Mel', iconKey: 'sparkles', hunger: 40, happy: 32 },
+          { name: 'Frutas', iconKey: 'flower', hunger: 32, happy: 24 },
+          { name: 'Maçã', iconKey: 'utensils', hunger: 34, happy: 20 },
         ];
       case 'panda':
         return [
-          { name: 'Bambu', emoji: '🎋', hunger: 42, happy: 28 },
-          { name: 'Melancia', emoji: '🍉', hunger: 30, happy: 26 },
-          { name: 'Bolinho', emoji: '🥟', hunger: 38, happy: 24 },
+          { name: 'Bambu', iconKey: 'tree', hunger: 42, happy: 28 },
+          { name: 'Melancia', iconKey: 'utensils', hunger: 30, happy: 26 },
+          { name: 'Bolinho', iconKey: 'cake', hunger: 38, happy: 24 },
         ];
       case 'penguin':
       case 'shark':
       case 'dolphin':
       case 'whale':
         return [
-          { name: 'Peixe', emoji: '🐟', hunger: 38, happy: 26 },
-          { name: 'Camarão', emoji: '🦐', hunger: 42, happy: 30 },
-          { name: 'Lula', emoji: '🦑', hunger: 35, happy: 22 },
+          { name: 'Peixe', iconKey: 'fish', hunger: 38, happy: 26 },
+          { name: 'Camarão', iconKey: 'fish', hunger: 42, happy: 30 },
+          { name: 'Algas', iconKey: 'coral', hunger: 35, happy: 22 },
         ];
       case 'bee':
         return [
-          { name: 'Néctar', emoji: '🌸', hunger: 35, happy: 28 },
-          { name: 'Mel', emoji: '🍯', hunger: 42, happy: 32 },
-          { name: 'Morango', emoji: '🍓', hunger: 30, happy: 22 },
+          { name: 'Néctar', iconKey: 'flower', hunger: 35, happy: 28 },
+          { name: 'Mel', iconKey: 'sparkles', hunger: 42, happy: 32 },
+          { name: 'Morango', iconKey: 'heart', hunger: 30, happy: 22 },
         ];
       case 'cat':
       default:
         return [
-          { name: 'Sardinha', emoji: '🐟', hunger: 36, happy: 24 },
-          { name: 'Bife', emoji: '🥩', hunger: 44, happy: 28 },
-          { name: 'Morango', emoji: '🍓', hunger: 30, happy: 32 },
+          { name: 'Sardinha', iconKey: 'fish', hunger: 36, happy: 24 },
+          { name: 'Bife', iconKey: 'utensils', hunger: 44, happy: 28 },
+          { name: 'Morango', iconKey: 'heart', hunger: 30, happy: 32 },
         ];
     }
   };
@@ -393,6 +415,7 @@ export const KittenView: React.FC = () => {
   const hygieneVal = kitten.hygiene ?? 80;
   const energyVal = kitten.energy ?? 80;
   const funVal = kitten.fun ?? 80;
+  const currentFurHex = kitten.petColors?.[currentPetType] || '#f7b2c9';
 
   const drawersPortal = (
     <AnimatePresence>
@@ -415,7 +438,7 @@ export const KittenView: React.FC = () => {
                   Armário de {displayName}
                 </h3>
                 <p className="text-[11px] text-purple-200/75">
-                  Combine chapéus, óculos, gravatas e roupas
+                  Combine chapéus, óculos, gravatas e roupas em qualquer cor
                 </p>
               </div>
               <button
@@ -456,29 +479,59 @@ export const KittenView: React.FC = () => {
                 const slot =
                   (item.slotType as 'hat' | 'accessory' | 'outfit' | 'collar' | 'glasses') ||
                   'accessory';
+                const itemHex =
+                  kitten.accessoryColors?.[item.id] || item.defaultColor || '#ec4899';
+
                 return (
-                  <button
+                  <div
                     key={item.id}
-                    disabled={!item.purchased}
-                    onClick={() => item.purchased && equipKittenItem(item.id, slot)}
-                    className={`p-3 rounded-2xl border flex flex-col items-center text-center gap-1 transition-all ${
+                    className={`p-3 rounded-2xl border flex flex-col items-center text-center gap-1.5 transition-all ${
                       !item.purchased
-                        ? 'bg-purple-950/30 border-white/5 opacity-50 cursor-not-allowed'
+                        ? 'bg-purple-950/30 border-white/5 opacity-60'
                         : equipped
-                        ? 'bg-pink-500/25 border-pink-400 shadow-md cursor-pointer'
-                        : 'glass-panel-interactive border-purple-500/30 cursor-pointer'
+                        ? 'bg-pink-500/25 border-pink-400 shadow-md'
+                        : 'glass-panel-interactive border-purple-500/30'
                     }`}
                   >
-                    <span className="text-3xl">{item.icon}</span>
+                    <div className="w-10 h-10 rounded-xl bg-purple-950/70 border border-pink-400/25 flex items-center justify-center text-pink-300">
+                      <VectorGlyphIcon name={item.icon} className="w-5 h-5" />
+                    </div>
                     <span className="text-xs font-bold text-white line-clamp-1">{item.title}</span>
-                    <span className="text-[10px] font-semibold text-pink-300">
-                      {item.purchased
-                        ? equipped
-                          ? 'Equipado ✨'
-                          : 'Equipar'
-                        : `${item.price} 💎 na Loja`}
-                    </span>
-                  </button>
+
+                    {item.purchased && !isSpectator && (
+                      <label className="w-full px-2 py-1 rounded-lg bg-black/30 border border-white/10 flex items-center justify-between text-[10px] text-purple-200 cursor-pointer">
+                        <span>Cor</span>
+                        <input
+                          type="color"
+                          value={itemHex}
+                          onChange={(e) => setAccessoryColor(item.id, e.target.value)}
+                          className="w-4 h-4 rounded border-0 bg-transparent cursor-pointer"
+                          aria-label={`Cor de ${item.title}`}
+                        />
+                      </label>
+                    )}
+
+                    <button
+                      type="button"
+                      disabled={!item.purchased || isSpectator}
+                      onClick={() => item.purchased && equipKittenItem(item.id, slot)}
+                      className="w-full min-h-[32px] rounded-xl bg-purple-900/70 border border-pink-400/25 text-[10px] font-bold text-pink-200 flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                    >
+                      {item.purchased ? (
+                        equipped ? (
+                          'Equipado'
+                        ) : (
+                          'Equipar'
+                        )
+                      ) : (
+                        <>
+                          <span>{item.price}</span>
+                          <DiamondGemIcon className="w-3 h-3" />
+                          <span>na Loja</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -531,7 +584,7 @@ export const KittenView: React.FC = () => {
                   <div
                     key={species.type}
                     onClick={() => {
-                      if (!isOwned || isActive) return;
+                      if (!isOwned || isActive || isSpectator) return;
                       setDrawerModal('none');
                       setFarewellPetTarget(species);
                       setSwitchPetName(savedCustomName);
@@ -545,8 +598,8 @@ export const KittenView: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="text-2xl p-2 rounded-xl bg-purple-950/60 border border-purple-500/30">
-                        {species.emoji}
+                      <div className="w-10 h-10 rounded-xl bg-purple-950/60 border border-purple-500/30 flex items-center justify-center text-pink-300 shrink-0">
+                        <VectorGlyphIcon name={species.emoji} className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
@@ -595,12 +648,12 @@ export const KittenView: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-sm rounded-3xl p-5 bg-gradient-to-b from-[#1b0a2f] via-[#120622] to-[#080214] border border-pink-400/40 shadow-2xl space-y-4 text-center"
           >
-            <div className="flex justify-center -space-x-2 text-4xl pt-1">
-              <span className="p-2 rounded-2xl bg-purple-950/80 border border-purple-500/30 shadow-md">
-                {currentSpecies.emoji}
+            <div className="flex justify-center gap-3 pt-1">
+              <span className="w-12 h-12 rounded-2xl bg-purple-950/80 border border-purple-500/30 shadow-md flex items-center justify-center text-purple-200">
+                <VectorGlyphIcon name={currentSpecies.emoji} className="w-6 h-6" />
               </span>
-              <span className="p-2 rounded-2xl bg-pink-950/80 border border-pink-500/30 shadow-md">
-                {farewellPetTarget.emoji}
+              <span className="w-12 h-12 rounded-2xl bg-pink-950/80 border border-pink-500/30 shadow-md flex items-center justify-center text-pink-300">
+                <VectorGlyphIcon name={farewellPetTarget.emoji} className="w-6 h-6" />
               </span>
             </div>
 
@@ -686,11 +739,13 @@ export const KittenView: React.FC = () => {
         </div>
 
         <PetWorldDesign
+          isSpectator={isSpectator}
           coins={coins}
           displayName={displayName}
           needsNaming={needsNaming}
           currentPetType={currentPetType}
           currentSpecies={currentSpecies}
+          kittenState={kitten}
           ownedPets={ownedPets}
           customNames={kitten.customNames}
           level={kitten.level || 1}
@@ -715,15 +770,15 @@ export const KittenView: React.FC = () => {
           cdSleep={cdSleep}
           cdPlay={cdPlay}
           onFeed={() =>
-            handleFeed(primaryFood.name, primaryFood.emoji, primaryFood.hunger, primaryFood.happy)
+            handleFeed(primaryFood.name, primaryFood.iconKey, primaryFood.hunger, primaryFood.happy)
           }
-          onPlay={() => handlePlayToy('Novelo de Lã', '🧶')}
+          onPlay={() => handlePlayToy('Novelo de Lã', 'game')}
           onBath={handleShower}
           onToggleSleep={() => toggleSleepKitten()}
           onPetTap={() => handleBodyClick('head')}
           onPlaySound={() => {
             playSpeciesSound();
-            setPetReaction(`${displayName} mandou um som fofo! 💖`);
+            setPetReaction(`${displayName} mandou um som fofo ♡`);
           }}
           onRenamePet={(newName) => {
             renamePet(newName);
@@ -734,8 +789,10 @@ export const KittenView: React.FC = () => {
             setFarewellPetTarget(species);
             setSwitchPetName(savedCustom);
           }}
-          onBuyStoreItem={(itemId) => buyStoreItem(itemId)}
+          onBuyStoreItem={(itemId, customColor) => buyStoreItem(itemId, customColor)}
           onEquipItem={(itemId, slot) => equipKittenItem(itemId, slot)}
+          onChangePetColor={setPetColor}
+          onChangeAccessoryColor={setAccessoryColor}
           onOpenWardrobeModal={() => setDrawerModal('armario')}
         />
 
@@ -752,18 +809,18 @@ export const KittenView: React.FC = () => {
       transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
       className="space-y-3 pb-32 sm:pb-24 max-w-xl mx-auto"
     >
-      {/* Compact Header: Identity + Quick Wardrobe & Pets */}
+      {/* Compact Header */}
       <div className="glass-panel px-3.5 py-2.5 rounded-2xl border border-pink-500/20 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-xl shadow relative shrink-0">
-            <span>{currentSpecies.emoji}</span>
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-white shadow relative shrink-0">
+            <VectorGlyphIcon name={currentSpecies.emoji} className="w-5 h-5" />
             <span className="absolute -bottom-1 -right-1 bg-amber-400 text-purple-950 font-black text-[9px] px-1 py-0.2 rounded-full border border-purple-950">
               {kitten.level || 1}
             </span>
           </div>
 
           <div className="min-w-0">
-            {isEditingName ? (
+            {isEditingName && !isSpectator ? (
               <form onSubmit={handleSaveName} className="flex items-center gap-1">
                 <input
                   type="text"
@@ -784,16 +841,18 @@ export const KittenView: React.FC = () => {
             ) : (
               <div className="flex items-center gap-1">
                 <h2 className="text-sm sm:text-base font-bold text-white truncate">{displayName}</h2>
-                <button
-                  onClick={() => {
-                    setCustomNameInput(kitten.name || '');
-                    setIsEditingName(true);
-                  }}
-                  className="p-1 text-pink-300/75 hover:text-white cursor-pointer"
-                  title="Renomear"
-                >
-                  <Edit2 className="w-3 h-3" />
-                </button>
+                {!isSpectator && (
+                  <button
+                    onClick={() => {
+                      setCustomNameInput(kitten.name || '');
+                      setIsEditingName(true);
+                    }}
+                    className="p-1 text-pink-300/75 hover:text-white cursor-pointer"
+                    title="Renomear"
+                  >
+                    <Edit2 className="w-3 h-3" />
+                  </button>
+                )}
               </div>
             )}
 
@@ -812,6 +871,21 @@ export const KittenView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
+          {!isSpectator && (
+            <label
+              className="min-w-[40px] min-h-[40px] px-2 rounded-xl glass-panel border border-pink-500/25 text-pink-200 flex items-center justify-center gap-1 cursor-pointer"
+              title="Escolher cor do pet"
+            >
+              <Palette className="w-3.5 h-3.5" />
+              <input
+                type="color"
+                value={currentFurHex}
+                onChange={(e) => setPetColor(currentPetType, e.target.value)}
+                className="w-4 h-4 rounded border-0 bg-transparent cursor-pointer"
+                aria-label="Cor do mascote"
+              />
+            </label>
+          )}
           <button
             onClick={() => setDrawerModal('armario')}
             className="min-w-[40px] min-h-[40px] px-2.5 rounded-xl glass-panel border border-pink-500/25 text-pink-200 hover:text-white flex items-center justify-center gap-1 text-xs font-bold cursor-pointer"
@@ -825,12 +899,12 @@ export const KittenView: React.FC = () => {
             className="min-w-[40px] min-h-[40px] px-2.5 rounded-xl glass-panel border border-purple-500/25 text-purple-200 hover:text-white flex items-center justify-center gap-1 text-xs font-bold cursor-pointer"
             title="Mascotes"
           >
-            <span>🐾</span>
+            <PawPrint className="w-4 h-4" />
           </button>
           <button
             onClick={() => {
               playSpeciesSound();
-              setPetReaction(`${displayName} mandou um som fofo! 💖`);
+              setPetReaction(`${displayName} mandou um som fofo ♡`);
             }}
             className="min-w-[40px] min-h-[40px] rounded-xl glass-panel border border-pink-500/25 text-pink-300 hover:text-white flex items-center justify-center cursor-pointer"
             title="Ouvir Som"
@@ -840,8 +914,14 @@ export const KittenView: React.FC = () => {
         </div>
       </div>
 
-      {/* Inline Naming Prompt */}
-      {needsNaming && !isEditingName && (
+      {isSpectator && (
+        <div className="px-3.5 py-2 rounded-2xl bg-purple-950/60 border border-amber-400/30 text-amber-200 text-xs font-semibold flex items-center gap-2">
+          <Lock className="w-4 h-4 shrink-0 text-amber-300" />
+          <span>Modo Espectador: você pode girar o pet 3D e tirar fotos virtuais.</span>
+        </div>
+      )}
+
+      {needsNaming && !isEditingName && !isSpectator && (
         <form
           onSubmit={handleSaveName}
           className="flex items-center gap-2 p-2 rounded-2xl bg-pink-500/15 border border-pink-400/35"
@@ -863,7 +943,7 @@ export const KittenView: React.FC = () => {
         </form>
       )}
 
-      {/* Pou-Style Compact 5 Gauges */}
+      {/* Compact 5 Gauges */}
       <div className="grid grid-cols-5 gap-1.5">
         {[
           { label: 'Fome', value: hungerVal, icon: Utensils, targetRoom: 'cozinha' as PetRoom },
@@ -914,7 +994,6 @@ export const KittenView: React.FC = () => {
         onClick={(e) => handleStageSoapInteract(e.clientX, e.clientY, e.currentTarget)}
         className={`relative rounded-3xl p-3.5 sm:p-4 border bg-gradient-to-b transition-all duration-500 overflow-hidden select-none min-h-[370px] flex flex-col justify-between ${getRoomBackdropClass()}`}
       >
-        {/* Minimalist Top Bar: Room Cycle + Clean 3D|2D */}
         <div className="relative z-20 flex items-center justify-between gap-2">
           <button
             onClick={(e) => {
@@ -928,7 +1007,7 @@ export const KittenView: React.FC = () => {
           </button>
 
           <div className="px-3 py-1 rounded-full bg-black/45 border border-white/10 text-xs font-bold text-white flex items-center gap-1.5">
-            <span>{ROOM_META[currentRoom].icon}</span>
+            <VectorGlyphIcon name={ROOM_META[currentRoom].iconKey} className="w-3.5 h-3.5 text-pink-300" />
             <span>{ROOM_META[currentRoom].title}</span>
           </div>
 
@@ -1021,9 +1100,9 @@ export const KittenView: React.FC = () => {
                 initial={{ y: 90, scale: 1.3, opacity: 1 }}
                 animate={{ y: -5, scale: 0.5, opacity: 0 }}
                 transition={{ duration: 0.75, ease: 'easeInOut' }}
-                className="absolute z-40 text-4xl pointer-events-none"
+                className="absolute z-40 p-3 rounded-full bg-pink-500/80 text-white shadow-lg pointer-events-none"
               >
-                {flyingFood.emoji}
+                <VectorGlyphIcon name={flyingFood.iconKey} className="w-7 h-7" />
               </motion.div>
             )}
           </AnimatePresence>
@@ -1036,13 +1115,13 @@ export const KittenView: React.FC = () => {
                   : { rotate: [0, 360], x: [-24, 24, -24], y: [0, -24, 0] }
               }
               transition={{ duration: 1.4, repeat: Infinity }}
-              className="absolute z-30 top-6 left-8 text-4xl pointer-events-none"
+              className="absolute z-30 top-6 left-8 p-2.5 rounded-full bg-purple-600/80 text-pink-200 pointer-events-none"
             >
-              {activeToyEmoji}
+              <VectorGlyphIcon name={activeToyIcon} className="w-6 h-6" />
             </motion.div>
           )}
 
-          {currentRoom === 'quarto' && (
+          {currentRoom === 'quarto' && !isSpectator && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -1073,6 +1152,7 @@ export const KittenView: React.FC = () => {
                 danceMove={danceMove}
                 hasSoapFoam={soapFoamActive}
                 isShowering={isShowering}
+                customModelUrl={resolvePetGlbUrl(currentPetType, config)}
                 onPetTouch={handleBodyClick}
               />
               <button
@@ -1108,13 +1188,14 @@ export const KittenView: React.FC = () => {
         {/* Compact Dance Strip */}
         <div className="relative z-20 flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
           {[
-            { move: 'dance' as const, emoji: '💃', label: 'Dançar', msg: `${displayName} dançando ao som do amor! 💃✨` },
-            { move: 'spin' as const, emoji: '🔄', label: 'Pirueta', msg: `Pirueta perfeita de ${displayName}! 🌟` },
-            { move: 'jump' as const, emoji: '🦘', label: 'Pular', msg: `Pulo alegre de felicidade! 🎉` },
-            { move: 'wave' as const, emoji: '👋', label: 'Acenar', msg: `${displayName} está acenando pra você! 👋` },
-            { move: 'kiss' as const, emoji: '😘', label: 'Beijo', msg: `Muuuack! Um beijinho pra você! 😘` },
+            { move: 'dance' as const, Icon: Music, label: 'Dançar', msg: `${displayName} dançando ao som do amor ♡` },
+            { move: 'spin' as const, Icon: RefreshCw, label: 'Pirueta', msg: `Pirueta perfeita de ${displayName}!` },
+            { move: 'jump' as const, Icon: ArrowUp, label: 'Pular', msg: `Pulo alegre de felicidade!` },
+            { move: 'wave' as const, Icon: Hand, label: 'Acenar', msg: `${displayName} está acenando pra você ♡` },
+            { move: 'kiss' as const, Icon: Heart, label: 'Beijo', msg: `Muuuack! Um beijinho pra você ♡` },
           ].map((btn) => {
             const active = danceMove === btn.move;
+            const BtnIcon = btn.Icon;
             return (
               <button
                 key={btn.move}
@@ -1129,7 +1210,7 @@ export const KittenView: React.FC = () => {
                     : 'bg-black/45 border-white/15 text-pink-100 hover:bg-white/10'
                 }`}
               >
-                <span>{btn.emoji}</span>
+                <BtnIcon className="w-3 h-3" />
                 <span>{btn.label}</span>
                 {cdDance > 0 && <span className="text-[9px] text-amber-300 ml-0.5">({formatCooldownMs(cdDance)})</span>}
               </button>
@@ -1137,31 +1218,32 @@ export const KittenView: React.FC = () => {
           })}
         </div>
 
-        {/* Room Action Tray with Cooldown Countdowns */}
+        {/* Room Action Tray */}
         <div className="relative z-20 pt-2">
           {currentRoom === 'sala' && (
             <div className="grid grid-cols-4 gap-2">
               <button
+                disabled={isSpectator}
                 onClick={() => handleBodyClick('head')}
-                className="min-h-[58px] p-2 rounded-2xl bg-pink-500/20 hover:bg-pink-500/30 border border-pink-400/30 flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 transition"
+                className="min-h-[58px] p-2 rounded-2xl bg-pink-500/20 hover:bg-pink-500/30 border border-pink-400/30 flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition disabled:opacity-50"
               >
-                <span className="text-xl">🥰</span>
+                <Heart className="w-5 h-5 text-pink-300" />
                 <span className="text-[10px] font-bold text-white">
                   {cdPet > 0 ? formatCooldownMs(cdPet) : 'Carinho'}
                 </span>
               </button>
               {[
-                { name: 'Novelo de Lã', label: 'Novelo', emoji: '🧶' },
-                { name: 'Ponto Laser', label: 'Laser', emoji: '🔴' },
-                { name: 'Bolinha', label: 'Bolinha', emoji: '🎾' },
+                { name: 'Novelo de Lã', label: 'Novelo', iconKey: 'sparkles' },
+                { name: 'Ponto Laser', label: 'Laser', iconKey: 'target' },
+                { name: 'Bolinha', label: 'Bolinha', iconKey: 'game' },
               ].map((toy) => (
                 <button
                   key={toy.name}
-                  onClick={() => handlePlayToy(toy.name, toy.emoji)}
-                  disabled={cdPlay > 0}
-                  className="min-h-[58px] p-2 rounded-2xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 transition disabled:opacity-55"
+                  onClick={() => handlePlayToy(toy.name, toy.iconKey)}
+                  disabled={isSpectator || cdPlay > 0}
+                  className="min-h-[58px] p-2 rounded-2xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition disabled:opacity-50"
                 >
-                  <span className="text-xl">{toy.emoji}</span>
+                  <VectorGlyphIcon name={toy.iconKey} className="w-5 h-5 text-purple-200" />
                   <span className="text-[10px] font-bold text-white">
                     {cdPlay > 0 ? formatCooldownMs(cdPlay) : toy.label}
                   </span>
@@ -1175,11 +1257,11 @@ export const KittenView: React.FC = () => {
               {getFoodMenu().map((food) => (
                 <button
                   key={food.name}
-                  onClick={() => handleFeed(food.name, food.emoji, food.hunger, food.happy)}
-                  disabled={cdFeed > 0}
-                  className="min-h-[60px] p-2 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/30 flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 transition disabled:opacity-55"
+                  onClick={() => handleFeed(food.name, food.iconKey, food.hunger, food.happy)}
+                  disabled={isSpectator || cdFeed > 0}
+                  className="min-h-[60px] p-2 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/30 flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition disabled:opacity-50"
                 >
-                  <span className="text-2xl">{food.emoji}</span>
+                  <VectorGlyphIcon name={food.iconKey} className="w-5 h-5 text-amber-300" />
                   <span className="text-[10px] font-bold text-white leading-tight line-clamp-1">
                     {cdFeed > 0 ? formatCooldownMs(cdFeed) : food.name}
                   </span>
@@ -1187,10 +1269,10 @@ export const KittenView: React.FC = () => {
               ))}
               <button
                 onClick={handleDrinkWater}
-                disabled={cdWater > 0}
-                className="min-h-[60px] p-2 rounded-2xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/35 flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95 transition disabled:opacity-55"
+                disabled={isSpectator || cdWater > 0}
+                className="min-h-[60px] p-2 rounded-2xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/35 flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition disabled:opacity-50"
               >
-                <span className="text-2xl">🥛</span>
+                <Droplets className="w-5 h-5 text-cyan-300" />
                 <span className="text-[10px] font-bold text-white leading-tight">
                   {cdWater > 0 ? formatCooldownMs(cdWater) : 'Água'}
                 </span>
@@ -1201,28 +1283,29 @@ export const KittenView: React.FC = () => {
           {currentRoom === 'banheiro' && (
             <div className="grid grid-cols-2 gap-2.5">
               <button
+                disabled={isSpectator}
                 onClick={() => {
                   const next = !spongeMode;
                   setSpongeMode(next);
                   if (next) {
                     setSoapFoamActive(true);
-                    setPetReaction('Passe a esponja no pet para ensaboar! 🧽');
+                    setPetReaction('Passe a esponja no pet para ensaboar!');
                   }
                 }}
-                className={`min-h-[56px] px-3 py-2 rounded-2xl border flex items-center justify-center gap-2 cursor-pointer transition active:scale-95 ${
+                className={`min-h-[56px] px-3 py-2 rounded-2xl border flex items-center justify-center gap-2 cursor-pointer transition active:scale-95 disabled:opacity-50 ${
                   spongeMode
                     ? 'bg-cyan-500/35 border-cyan-300 text-white'
                     : 'bg-teal-500/20 border-teal-400/30 text-teal-100'
                 }`}
               >
-                <span className="text-xl">🧽</span>
+                <Sparkles className="w-5 h-5 text-cyan-300" />
                 <span className="text-xs font-bold">{spongeMode ? 'Ensaboando' : 'Esponja'}</span>
               </button>
 
               <button
                 onClick={handleShower}
-                disabled={cdBath > 0}
-                className="min-h-[56px] px-3 py-2 rounded-2xl bg-sky-500/25 hover:bg-sky-500/35 border border-sky-400/40 text-white flex items-center justify-center gap-2 cursor-pointer transition active:scale-95 disabled:opacity-55"
+                disabled={isSpectator || cdBath > 0}
+                className="min-h-[56px] px-3 py-2 rounded-2xl bg-sky-500/25 hover:bg-sky-500/35 border border-sky-400/40 text-white flex items-center justify-center gap-2 cursor-pointer transition active:scale-95 disabled:opacity-50"
               >
                 <ShowerHead className="w-5 h-5 text-sky-300" />
                 <span className="text-xs font-bold">
@@ -1239,24 +1322,27 @@ export const KittenView: React.FC = () => {
                   {kitten.isSleeping ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4 text-amber-300" />}
                 </div>
                 <div className="text-xs font-bold text-white">
-                  {kitten.isSleeping ? `${displayName} dormindo 💤` : `${displayName} acordado`}
+                  {kitten.isSleeping ? `${displayName} dormindo (Zzz)` : `${displayName} acordado`}
                 </div>
               </div>
 
               <button
                 onClick={toggleSleepKitten}
-                disabled={!kitten.isSleeping && cdSleep > 0}
-                className={`min-h-[42px] px-4 rounded-xl font-bold text-xs cursor-pointer transition disabled:opacity-55 ${
+                disabled={isSpectator || (!kitten.isSleeping && cdSleep > 0)}
+                className={`min-h-[42px] px-4 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer transition disabled:opacity-50 ${
                   kitten.isSleeping
                     ? 'bg-amber-500 text-purple-950 hover:bg-amber-400'
                     : 'bg-indigo-600 text-white hover:bg-indigo-500'
                 }`}
               >
-                {kitten.isSleeping
-                  ? 'Acordar ☀️'
-                  : cdSleep > 0
-                  ? formatCooldownMs(cdSleep)
-                  : 'Dormir 🌙'}
+                {kitten.isSleeping ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+                <span>
+                  {kitten.isSleeping
+                    ? 'Acordar'
+                    : cdSleep > 0
+                    ? formatCooldownMs(cdSleep)
+                    : 'Dormir'}
+                </span>
               </button>
             </div>
           )}
@@ -1268,6 +1354,8 @@ export const KittenView: React.FC = () => {
         {ROOM_ORDER.map((room) => {
           const meta = ROOM_META[room];
           const isActive = currentRoom === room;
+          const RoomIcon =
+            room === 'sala' ? Sofa : room === 'cozinha' ? Utensils : room === 'banheiro' ? Bath : BedDouble;
           return (
             <button
               key={room}
@@ -1282,7 +1370,7 @@ export const KittenView: React.FC = () => {
                   : 'text-purple-200/75 hover:text-white hover:bg-white/5'
               }`}
             >
-              <span className="text-base">{meta.icon}</span>
+              <RoomIcon className="w-4 h-4" />
               <span className="hidden xs:inline sm:inline">{meta.label}</span>
             </button>
           );

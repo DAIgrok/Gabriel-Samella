@@ -20,6 +20,7 @@ import {
   Repeat,
   Clock,
   Edit3,
+  Box,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { motion } from 'motion/react';
@@ -27,13 +28,18 @@ import { saveMediaBlob } from '../../services/localMediaStore';
 import { extractYouTubeId, fetchYouTubeMetadata, getYouTubeThumbnailUrl } from '../../services/realAudio';
 import { compressImageToDataUrl } from '../../services/googleDrive';
 import { REAL_PHOTO_SLOTS } from '../../data/mediaAssets';
+import {
+  HOUSE_FURNITURE_CATALOG,
+  PET_SPECIES_CATALOG,
+} from '../../data/initialData';
+import { PetType } from '../../types';
 import { SmartPhoto } from '../SmartPhoto';
 
 interface Props {
   onClose: () => void;
 }
 
-type AdminTab = 'geral' | 'musicas' | 'fotos' | 'quiz' | 'qr';
+type AdminTab = 'geral' | 'musicas' | 'fotos' | 'quiz' | 'modelos3d' | 'qr';
 
 export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
   const {
@@ -112,6 +118,21 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
   const [capDate, setCapDate] = useState('2027-06-12');
   const [capMessage, setCapMessage] = useState('');
 
+  // Modelos 3D (.glb) state
+  const [selectedGlbPet, setSelectedGlbPet] = useState<PetType>(
+    PET_SPECIES_CATALOG[0]?.type || 'dog'
+  );
+  const [selectedGlbFurniture, setSelectedGlbFurniture] = useState<string>(
+    HOUSE_FURNITURE_CATALOG[0]?.id || 'house-sofa'
+  );
+  const [glbPetsDraft, setGlbPetsDraft] = useState<Partial<Record<PetType, string>>>(
+    () => ({ ...(config.customGlbModels?.pets || {}) })
+  );
+  const [glbFurnitureDraft, setGlbFurnitureDraft] = useState<Record<string, string>>(
+    () => ({ ...(config.customGlbModels?.furniture || {}) })
+  );
+  const [isGlbSaved, setIsGlbSaved] = useState(false);
+
   // Reset state
   const [confirmReset, setConfirmReset] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -133,11 +154,11 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
       partnerName: partnerName.trim() || 'Samella',
       myName: myName.trim() || 'Gabriel',
       anniversaryDate,
-      passcode: passcode.trim() || '1206',
-      creatorPasscode: creatorPasscode.trim() || '2023',
+      passcode: passcode.trim() || '120623',
+      creatorPasscode: creatorPasscode.trim() || '2010',
     });
     setIsSaved(true);
-    showToast('Configurações e senhas salvas! 💖');
+    showToast('Configurações e senhas salvas!');
     setTimeout(() => setIsSaved(false), 1200);
   };
 
@@ -183,7 +204,7 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
       setSongLyrics('');
       playSong({ ...newSong, id: `song-${Date.now()}` });
     } catch {
-      showToast('Não foi possível salvar esse áudio MP3.', '⚠️');
+      showToast('Não foi possível salvar esse áudio MP3.');
     } finally {
       setIsUploadingSong(false);
       e.target.value = '';
@@ -194,7 +215,7 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
     e.preventDefault();
     const rawUrl = songUrl.trim();
     if (!rawUrl) {
-      showToast('Cole o link do YouTube ou link direto de áudio.', '⚠️');
+      showToast('Cole o link do YouTube ou link direto de áudio.');
       return;
     }
 
@@ -257,7 +278,7 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
       setPhotoTitle('');
       setPhotoCaption('');
     } catch {
-      showToast('Erro ao processar imagem selecionada.', '⚠️');
+      showToast('Erro ao processar imagem selecionada.');
     } finally {
       setIsUploadingPhoto(false);
       e.target.value = '';
@@ -267,7 +288,7 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
   const handleAddPhotoByUrl = (e: React.FormEvent) => {
     e.preventDefault();
     if (!photoUrl.trim()) {
-      showToast('Cole a URL da imagem primeiro.', '⚠️');
+      showToast('Cole a URL da imagem primeiro.');
       return;
     }
     addPhoto({
@@ -286,7 +307,7 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
   const handleAddQuizQuestion = (e: React.FormEvent) => {
     e.preventDefault();
     if (!qText.trim() || !qOpt0.trim() || !qOpt1.trim()) {
-      showToast('Preencha a pergunta e pelo menos 2 alternativas.', '⚠️');
+      showToast('Preencha a pergunta e pelo menos 2 alternativas.');
       return;
     }
     const opts = [qOpt0.trim(), qOpt1.trim(), qOpt2.trim(), qOpt3.trim()].filter(Boolean);
@@ -308,7 +329,7 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
   const handleAddCapsule = (e: React.FormEvent) => {
     e.preventDefault();
     if (!capTitle.trim() || !capMessage.trim() || !capDate) {
-      showToast('Preencha título, data de abertura e mensagem da cápsula.', '⚠️');
+      showToast('Preencha título, data de abertura e mensagem da cápsula.');
       return;
     }
     addTimeCapsule({
@@ -319,6 +340,31 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
     });
     setCapTitle('');
     setCapMessage('');
+  };
+
+  const handleSaveGlbModels = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanedPets: Partial<Record<PetType, string>> = {};
+    (Object.entries(glbPetsDraft) as [PetType, string | undefined][]).forEach(([k, v]) => {
+      const trimmed = (v || '').trim();
+      if (trimmed) cleanedPets[k] = trimmed;
+    });
+    const cleanedFurniture: Record<string, string> = {};
+    (Object.entries(glbFurnitureDraft) as [string, string | undefined][]).forEach(([k, v]) => {
+      const trimmed = typeof v === 'string' ? v.trim() : '';
+      if (trimmed) cleanedFurniture[k] = trimmed;
+    });
+    updateConfig({
+      customGlbModels: {
+        pets: cleanedPets,
+        furniture: cleanedFurniture,
+      },
+    });
+    setGlbPetsDraft(cleanedPets);
+    setGlbFurnitureDraft(cleanedFurniture);
+    setIsGlbSaved(true);
+    showToast('URLs de modelos .glb salvas!');
+    setTimeout(() => setIsGlbSaved(false), 1200);
   };
 
   const handlePreLaunchReset = async () => {
@@ -418,6 +464,7 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                 { id: 'musicas', label: `Músicas (${songs.length})`, icon: Music },
                 { id: 'fotos', label: `Fotos (${photos.length})`, icon: ImageIcon },
                 { id: 'quiz', label: 'Quiz & Cápsulas', icon: HelpCircle },
+                { id: 'modelos3d', label: 'Modelos 3D (.glb)', icon: Box },
                 { id: 'qr', label: 'QR & Lançamento', icon: QrCode },
               ].map((t) => {
                 const Icon = t.icon;
@@ -481,7 +528,7 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                     <label className="text-xs text-purple-300 block mb-1">PIN de Entrada (Dela)</label>
                     <input
                       type="text"
-                      maxLength={4}
+                      maxLength={6}
                       required
                       value={passcode}
                       onChange={(e) => setPasscode(e.target.value)}
@@ -902,7 +949,147 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
               </div>
             )}
 
-            {/* TAB 5: QR & LANÇAMENTO */}
+            {/* TAB 5: MODELOS 3D (.GLB) */}
+            {activeTab === 'modelos3d' && (
+              <form onSubmit={handleSaveGlbModels} className="space-y-4">
+                <div className="p-3.5 rounded-2xl bg-purple-950/60 border border-pink-400/25 text-xs text-purple-200/85 space-y-1">
+                  <p className="font-bold text-pink-300">
+                    Substituição Opcional de Modelos .glb (Pets & Móveis)
+                  </p>
+                  <p className="text-[11px] text-purple-200/75 leading-relaxed">
+                    Cole a URL pública de um arquivo <code className="text-pink-300 font-mono">.glb</code> para carregar o modelo externo automaticamente com iluminação de estúdio e sombras suaves. Deixe vazio para continuar exibindo o modelo 3D fofo padrão do app.
+                  </p>
+                </div>
+
+                {/* Pet GLB selector & URL */}
+                <div className="p-4 rounded-2xl glass-panel border border-purple-500/25 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-xs font-bold text-pink-300 uppercase tracking-wider">
+                      Mascote 3D (.glb)
+                    </h4>
+                    <span className="text-[11px] text-purple-300/70">
+                      {(Object.values(glbPetsDraft) as (string | undefined)[])
+                        .filter((v) => typeof v === 'string' && v.trim().length > 0).length} configurado(s)
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <select
+                      value={selectedGlbPet}
+                      onChange={(e) => setSelectedGlbPet(e.target.value as PetType)}
+                      className="min-h-[42px] px-3 py-2 rounded-xl bg-purple-950/80 border border-purple-500/35 text-white text-xs focus:outline-none focus:border-pink-400"
+                    >
+                      {PET_SPECIES_CATALOG.map((pet) => (
+                        <option key={pet.type} value={pet.type}>
+                          {pet.name} ({pet.defaultName})
+                        </option>
+                      ))}
+                    </select>
+
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="url"
+                        placeholder="https://.../pet.glb (opcional)"
+                        value={glbPetsDraft[selectedGlbPet] || ''}
+                        onChange={(e) =>
+                          setGlbPetsDraft((prev) => ({
+                            ...prev,
+                            [selectedGlbPet]: e.target.value,
+                          }))
+                        }
+                        className="flex-1 min-h-[42px] px-3 py-2 rounded-xl bg-purple-950/70 border border-purple-500/35 text-white text-xs font-mono focus:outline-none focus:border-pink-400"
+                      />
+                      {(glbPetsDraft[selectedGlbPet] || '').trim() && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setGlbPetsDraft((prev) => {
+                              const next = { ...prev };
+                              delete next[selectedGlbPet];
+                              return next;
+                            })
+                          }
+                          className="min-h-[42px] px-3 rounded-xl bg-rose-500/20 border border-rose-400/35 text-rose-200 text-xs font-bold cursor-pointer"
+                          title="Usar modelo padrão"
+                        >
+                          Limpar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Furniture GLB selector & URL */}
+                <div className="p-4 rounded-2xl glass-panel border border-purple-500/25 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-xs font-bold text-pink-300 uppercase tracking-wider">
+                      Móvel da Casa dos Sonhos (.glb)
+                    </h4>
+                    <span className="text-[11px] text-purple-300/70">
+                      {(Object.values(glbFurnitureDraft) as (string | undefined)[])
+                        .filter((v) => typeof v === 'string' && v.trim().length > 0).length} configurado(s)
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <select
+                      value={selectedGlbFurniture}
+                      onChange={(e) => setSelectedGlbFurniture(e.target.value)}
+                      className="min-h-[42px] px-3 py-2 rounded-xl bg-purple-950/80 border border-purple-500/35 text-white text-xs focus:outline-none focus:border-pink-400"
+                    >
+                      {HOUSE_FURNITURE_CATALOG.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name} ({item.room})
+                        </option>
+                      ))}
+                    </select>
+
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="url"
+                        placeholder="https://.../movel.glb (opcional)"
+                        value={glbFurnitureDraft[selectedGlbFurniture] || ''}
+                        onChange={(e) =>
+                          setGlbFurnitureDraft((prev) => ({
+                            ...prev,
+                            [selectedGlbFurniture]: e.target.value,
+                          }))
+                        }
+                        className="flex-1 min-h-[42px] px-3 py-2 rounded-xl bg-purple-950/70 border border-purple-500/35 text-white text-xs font-mono focus:outline-none focus:border-pink-400"
+                      />
+                      {(glbFurnitureDraft[selectedGlbFurniture] || '').trim() && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setGlbFurnitureDraft((prev) => {
+                              const next = { ...prev };
+                              delete next[selectedGlbFurniture];
+                              return next;
+                            })
+                          }
+                          className="min-h-[42px] px-3 rounded-xl bg-rose-500/20 border border-rose-400/35 text-rose-200 text-xs font-bold cursor-pointer"
+                          title="Usar modelo padrão"
+                        >
+                          Limpar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    className="px-6 min-h-[44px] rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold text-xs shadow-md flex items-center gap-2 cursor-pointer"
+                  >
+                    {isGlbSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                    <span>{isGlbSaved ? 'Salvo!' : 'Salvar URLs .glb'}</span>
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* TAB 6: QR & LANÇAMENTO */}
             {activeTab === 'qr' && (
               <div className="space-y-4">
                 <div className="p-3.5 rounded-2xl bg-purple-950/60 border border-purple-500/25 flex items-center gap-2.5 text-xs">
@@ -925,10 +1112,10 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                     <span>Arquivos Estáticos para GitHub (Opcional):</span>
                   </h4>
                   <p>
-                    📸 Fotos estáticas: <code className="text-pink-300 font-mono">public/assets/img/1.jpg ... 38.jpg</code>
+                    Fotos estáticas: <code className="text-pink-300 font-mono">public/assets/img/1.jpg ... 38.jpg</code>
                   </p>
                   <p>
-                    🎵 Músicas estáticas: <code className="text-pink-300 font-mono">public/assets/audio/nome.mp3</code>
+                    Músicas estáticas: <code className="text-pink-300 font-mono">public/assets/audio/nome.mp3</code>
                   </p>
                   <p className="text-[11px] text-purple-300/70">
                     Você também pode enviar fotos e MP3 diretamente pelas abas acima sem tocar em código.

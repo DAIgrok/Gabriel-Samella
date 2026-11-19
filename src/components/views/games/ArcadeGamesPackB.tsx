@@ -1,18 +1,34 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, RotateCcw, ArrowUp, ArrowDown, ArrowRight } from 'lucide-react';
+import {
+  ArrowLeft,
+  RotateCcw,
+  ArrowUp,
+  ArrowDown,
+  ArrowRight,
+  Clock,
+  Sparkles,
+} from 'lucide-react';
 import { soundEngine } from '../../../utils/audioSynth';
 import type { MiniGameProps } from './ArcadeGamesPackA';
+import { DiamondGemIcon, VectorGlyphIcon } from '../../icons/CustomIcons';
+import { GameVectorArt } from './GameVectorArt';
 
 const Bar: React.FC<{
+  iconToken?: string;
   title: string;
-  subtitle?: string;
+  subtitle?: React.ReactNode;
   onRestart?: () => void;
   onExit: () => void;
-}> = ({ title, subtitle, onRestart, onExit }) => (
+}> = ({ iconToken = 'sparkles', title, subtitle, onRestart, onExit }) => (
   <div className="flex items-center justify-between gap-2 pb-3 border-b border-purple-500/20">
-    <div className="min-w-0">
-      <h3 className="text-base font-bold text-white truncate">{title}</h3>
-      {subtitle && <p className="text-[11px] text-purple-200/75 truncate">{subtitle}</p>}
+    <div className="flex items-center gap-2.5 min-w-0">
+      <div className="w-9 h-9 rounded-xl bg-purple-900/60 border border-pink-400/30 flex items-center justify-center text-pink-200 shrink-0">
+        <VectorGlyphIcon name={iconToken} className="w-4 h-4" />
+      </div>
+      <div className="min-w-0">
+        <h3 className="text-base font-bold text-white truncate">{title}</h3>
+        {subtitle && <div className="text-[11px] text-purple-200/75 truncate">{subtitle}</div>}
+      </div>
     </div>
     <div className="flex items-center gap-1.5 shrink-0">
       {onRestart && (
@@ -37,12 +53,22 @@ const Bar: React.FC<{
   </div>
 );
 
+const GemInline: React.FC<{ amount: number; isSpectator?: boolean }> = ({ amount, isSpectator }) => {
+  if (isSpectator) return null;
+  return (
+    <span className="inline-flex items-center gap-1 text-pink-300 font-bold ml-1.5">
+      +{amount}
+      <DiamondGemIcon className="w-3.5 h-3.5" />
+    </span>
+  );
+};
+
 // 10. PEDRA, PAPEL & TESOURA (Melhor de 5)
-export const RpsGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
+export const RpsGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectator }) => {
   const choices = [
-    { id: 'pedra', label: 'Pedra', icon: '🪨' },
-    { id: 'papel', label: 'Papel', icon: '📄' },
-    { id: 'tesoura', label: 'Tesoura', icon: '✂️' },
+    { id: 'pedra', label: 'Pedra', icon: 'rock' },
+    { id: 'papel', label: 'Papel', icon: 'paper' },
+    { id: 'tesoura', label: 'Tesoura', icon: 'scissors' },
   ] as const;
 
   const [you, setYou] = useState(0);
@@ -84,16 +110,16 @@ export const RpsGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
       setMatchOver(true);
       if (ny > nb) {
         soundEngine.playSparkle();
-        onWin(7, 'Vitória no Pedra, Papel & Tesoura', ny);
+        onWin(3, 'Vitória no Pedra, Papel & Tesoura', ny);
       } else {
-        onWin(4, 'Partida divertida no Pedra, Papel & Tesoura', ny);
+        onWin(2, 'Partida divertida no Pedra, Papel & Tesoura', ny);
       }
     }
   };
 
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-rose-400/30 space-y-4">
-      <Bar title="✂️ Pedra, Papel & Tesoura" subtitle={`Melhor de 5 · Você ${you} × ${bot} Cupido`} onRestart={restart} onExit={onExit} />
+      <Bar iconToken="zap" title="Pedra, Papel & Tesoura" subtitle={`Melhor de 5 · Você ${you} × ${bot} Cupido`} onRestart={restart} onExit={onExit} />
       <div className="p-4 rounded-2xl bg-purple-950/60 border border-purple-500/25 text-center">
         <p className="text-sm font-semibold text-pink-200">{roundLog}</p>
       </div>
@@ -104,16 +130,19 @@ export const RpsGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
               key={c.id}
               type="button"
               onClick={() => play(c.id)}
-              className="min-h-[76px] rounded-2xl bg-purple-900/50 hover:bg-pink-600/25 border border-purple-400/30 flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95"
+              className="min-h-[82px] rounded-2xl bg-purple-900/50 hover:bg-pink-600/25 border border-purple-400/30 flex flex-col items-center justify-center gap-1.5 cursor-pointer active:scale-95"
             >
-              <span className="text-3xl">{c.icon}</span>
+              <GameVectorArt token={c.icon} className="w-9 h-9" />
               <span className="text-xs font-bold text-white">{c.label}</span>
             </button>
           ))}
         </div>
       ) : (
         <div className="text-center py-3 space-y-3">
-          <h4 className="text-lg font-bold text-white">{you > bot ? 'Você venceu o duelo! +7 💎' : 'Belo duelo! +4 💎'}</h4>
+          <h4 className="text-lg font-bold text-white flex items-center justify-center">
+            <span>{you > bot ? 'Você venceu o duelo!' : 'Belo duelo!'}</span>
+            <GemInline amount={you > bot ? 3 : 2} isSpectator={isSpectator} />
+          </h4>
           <button type="button" onClick={restart} className="min-h-[44px] px-5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold cursor-pointer">
             Jogar de Novo
           </button>
@@ -123,7 +152,7 @@ export const RpsGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
   );
 };
 
-// 11. MATEMÁTICA RELÂMPAGO (30s)
+// 11. MATEMÁTICA RELÂMPAGO (25s)
 function genMathQuestion() {
   const op = Math.random() > 0.35 ? (Math.random() > 0.5 ? '+' : '-') : '×';
   let a = Math.floor(Math.random() * 18) + 2;
@@ -161,7 +190,7 @@ export const MathSpeedGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
           window.clearInterval(t);
           setDone(true);
           const s = scoreRef.current;
-          onWin(s >= 10 ? 11 : s >= 5 ? 8 : 5, `Matemática Relâmpago (${s} acertos)`, s);
+          onWin(s >= 10 ? 5 : s >= 5 ? 3 : 2, `Matemática Relâmpago (${s} acertos)`, s);
           return 0;
         }
         return prev - 1;
@@ -192,7 +221,20 @@ export const MathSpeedGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-indigo-400/30 space-y-4">
-      <Bar title="🧮 Matemática Relâmpago" subtitle={`Acertos: ${score} · ⏳ ${timeLeft}s`} onRestart={restart} onExit={onExit} />
+      <Bar
+        iconToken="target"
+        title="Matemática Relâmpago"
+        subtitle={
+          <span className="inline-flex items-center gap-2">
+            <span>Acertos: {score}</span>
+            <span className="inline-flex items-center gap-1">
+              <Clock className="w-3 h-3" /> {timeLeft}s
+            </span>
+          </span>
+        }
+        onRestart={restart}
+        onExit={onExit}
+      />
       {!done ? (
         <div className="space-y-4">
           <div className="py-6 rounded-2xl bg-purple-950/60 border border-purple-500/30 text-center text-3xl font-bold text-white tabular-nums">
@@ -224,12 +266,12 @@ export const MathSpeedGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 };
 
 // 12. SEQUÊNCIA GENIUS
-export const GeniusGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
+export const GeniusGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectator }) => {
   const pads = [
-    { id: 0, label: '💖', bg: 'bg-pink-600/40 border-pink-400', activeBg: 'bg-pink-400 scale-105 shadow-[0_0_25px_rgba(244,114,182,0.9)]' },
-    { id: 1, label: '💜', bg: 'bg-purple-600/40 border-purple-400', activeBg: 'bg-purple-400 scale-105 shadow-[0_0_25px_rgba(192,132,252,0.9)]' },
-    { id: 2, label: '🌟', bg: 'bg-amber-600/40 border-amber-400', activeBg: 'bg-amber-400 scale-105 shadow-[0_0_25px_rgba(251,191,36,0.9)]' },
-    { id: 3, label: '💎', bg: 'bg-cyan-600/40 border-cyan-400', activeBg: 'bg-cyan-400 scale-105 shadow-[0_0_25px_rgba(34,211,238,0.9)]' },
+    { id: 0, token: 'heart', bg: 'bg-pink-600/35 border-pink-400', activeBg: 'bg-pink-400 scale-105 shadow-[0_0_25px_rgba(244,114,182,0.9)]' },
+    { id: 1, token: 'moon', bg: 'bg-purple-600/35 border-purple-400', activeBg: 'bg-purple-400 scale-105 shadow-[0_0_25px_rgba(192,132,252,0.9)]' },
+    { id: 2, token: 'star', bg: 'bg-amber-600/35 border-amber-400', activeBg: 'bg-amber-400 scale-105 shadow-[0_0_25px_rgba(251,191,36,0.9)]' },
+    { id: 3, token: 'diamond', bg: 'bg-cyan-600/35 border-cyan-400', activeBg: 'bg-cyan-400 scale-105 shadow-[0_0_25px_rgba(34,211,238,0.9)]' },
   ];
 
   const [seq, setSeq] = useState<number[]>([]);
@@ -267,7 +309,7 @@ export const GeniusGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
       setPhase('gameover');
       const cleared = Math.max(0, seq.length - 1);
       if (cleared >= 2) {
-        onWin(cleared >= 5 ? 11 : 6, `Sequência Genius (Rodada ${cleared})`, cleared);
+        onWin(cleared >= 5 ? 5 : 3, `Sequência Genius (Rodada ${cleared})`, cleared);
       }
       return;
     }
@@ -277,7 +319,7 @@ export const GeniusGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
     if (nextIdx === seq.length) {
       if (seq.length >= 6) {
         setPhase('gameover');
-        onWin(14, 'Mestra da Memória Genius (6 rodadas)!', 6);
+        onWin(6, 'Mestra da Memória Genius (6 rodadas)!', 6);
       } else {
         const nextSeq = [...seq, Math.floor(Math.random() * 4)];
         setSeq(nextSeq);
@@ -291,7 +333,8 @@ export const GeniusGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-purple-400/30 space-y-4">
       <Bar
-        title="✨ Sequência Genius"
+        iconToken="sparkles"
+        title="Sequência Genius"
         subtitle={`Rodada: ${seq.length || 0}/6 · ${phase === 'showing' ? 'Observe...' : phase === 'input' ? 'Sua vez!' : ''}`}
         onRestart={startGame}
         onExit={onExit}
@@ -304,11 +347,11 @@ export const GeniusGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
             type="button"
             disabled={phase !== 'input'}
             onClick={() => tapPad(p.id)}
-            className={`aspect-square rounded-2xl border-2 text-3xl flex items-center justify-center transition-all cursor-pointer ${
+            className={`aspect-square rounded-2xl border-2 flex items-center justify-center transition-all cursor-pointer ${
               lit === p.id ? p.activeBg : p.bg
             }`}
           >
-            {p.label}
+            <GameVectorArt token={p.token} className="w-11 h-11" />
           </button>
         ))}
       </div>
@@ -316,8 +359,9 @@ export const GeniusGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
       {(phase === 'idle' || phase === 'gameover') && (
         <div className="text-center space-y-2">
           {phase === 'gameover' && (
-            <p className="text-sm font-bold text-pink-200">
-              {seq.length >= 6 ? 'Sequência Máxima Vencida! +14 💎' : `Você chegou até a rodada ${seq.length}!`}
+            <p className="text-sm font-bold text-pink-200 flex items-center justify-center">
+              <span>{seq.length >= 6 ? 'Sequência Máxima Vencida!' : `Você chegou até a rodada ${seq.length}!`}</span>
+              {seq.length >= 6 && <GemInline amount={6} isSpectator={isSpectator} />}
             </p>
           )}
           <button
@@ -334,15 +378,15 @@ export const GeniusGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 };
 
 // 13. 2048 DAS FLORES
-const FLOWER_MAP: Record<number, { icon: string; bg: string }> = {
-  2: { icon: '🌱', bg: 'bg-emerald-950/70 border-emerald-500/30' },
-  4: { icon: '🌿', bg: 'bg-teal-900/60 border-teal-400/40' },
-  8: { icon: '🌷', bg: 'bg-pink-900/60 border-pink-400/40' },
-  16: { icon: '🌸', bg: 'bg-fuchsia-900/60 border-fuchsia-400/50' },
-  32: { icon: '🌹', bg: 'bg-rose-800/70 border-rose-400/60' },
-  64: { icon: '💐', bg: 'bg-purple-800/80 border-pink-300/70' },
-  128: { icon: '💍', bg: 'bg-amber-700/70 border-amber-300/80' },
-  256: { icon: '👑', bg: 'bg-gradient-to-br from-pink-600 to-amber-500 border-white/70' },
+const FLOWER_MAP: Record<number, { token: string; bg: string }> = {
+  2: { token: 'seed', bg: 'bg-emerald-950/70 border-emerald-500/30' },
+  4: { token: 'sprout', bg: 'bg-teal-900/60 border-teal-400/40' },
+  8: { token: 'tulip', bg: 'bg-pink-900/60 border-pink-400/40' },
+  16: { token: 'blossom', bg: 'bg-fuchsia-900/60 border-fuchsia-400/50' },
+  32: { token: 'rose', bg: 'bg-rose-800/70 border-rose-400/60' },
+  64: { token: 'bouquet', bg: 'bg-purple-800/80 border-pink-300/70' },
+  128: { token: 'ring', bg: 'bg-amber-700/70 border-amber-300/80' },
+  256: { token: 'crown', bg: 'bg-gradient-to-br from-pink-600 to-amber-500 border-white/70' },
 };
 
 function spawn2048(board: number[]): number[] {
@@ -353,7 +397,7 @@ function spawn2048(board: number[]): number[] {
   return next;
 }
 
-export const Floral2048Game: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
+export const Floral2048Game: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectator }) => {
   const initBoard = () => spawn2048(spawn2048(Array(16).fill(0)));
   const [board, setBoard] = useState<number[]>(initBoard);
   const [score, setScore] = useState(0);
@@ -414,7 +458,7 @@ export const Floral2048Game: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
       setScore(ns);
       if (!won256 && spawned.some((v) => v >= 128)) {
         setWon256(true);
-        onWin(12, 'Alcançou a Aliança 💍 no 2048 das Flores!', ns);
+        onWin(6, 'Alcançou a Aliança no 2048 das Flores!', ns);
       }
     }
   };
@@ -427,7 +471,7 @@ export const Floral2048Game: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-pink-400/30 space-y-3">
-      <Bar title="🌸 2048 das Flores" subtitle={`Pontos: ${score} · Meta: 💍 (128)`} onRestart={restart} onExit={onExit} />
+      <Bar iconToken="flower" title="2048 das Flores" subtitle={`Pontos: ${score} · Meta: Aliança (128)`} onRestart={restart} onExit={onExit} />
 
       <div
         onTouchStart={(e) => {
@@ -455,7 +499,7 @@ export const Floral2048Game: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
             >
               {val > 0 && (
                 <>
-                  <span className="text-xl leading-none">{meta?.icon || '✨'}</span>
+                  <GameVectorArt token={meta?.token || 'sparkle'} className="w-6 h-6" />
                   <span className="text-[10px] font-bold text-white/90 mt-0.5 tabular-nums">{val}</span>
                 </>
               )}
@@ -479,16 +523,16 @@ export const Floral2048Game: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
         </button>
       </div>
 
-      {score >= 160 && !won256 && (
+      {score >= 160 && !won256 && !isSpectator && (
         <button
           type="button"
           onClick={() => {
             setWon256(true);
-            onWin(8, 'Pontuação 2048 das Flores!', score);
+            onWin(3, 'Pontuação 2048 das Flores!', score);
           }}
-          className="w-full min-h-[42px] rounded-xl bg-emerald-600/30 border border-emerald-400/40 text-xs font-bold text-emerald-100 cursor-pointer"
+          className="w-full min-h-[42px] rounded-xl bg-emerald-600/30 border border-emerald-400/40 text-xs font-bold text-emerald-100 cursor-pointer inline-flex items-center justify-center gap-1"
         >
-          Resgatar +8 💎 com {score} pts
+          <span>Resgatar +3 diamantes com {score} pts</span>
         </button>
       )}
     </div>
@@ -496,8 +540,8 @@ export const Floral2048Game: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 };
 
 // 14. COFRE SECRETO (Mastermind)
-export const MastermindGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
-  const symbols = ['🌹', '💖', '💎', '🌸', '🌙', '⭐'];
+export const MastermindGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectator }) => {
+  const symbols = ['rose', 'heart', 'diamond', 'blossom', 'moon', 'star'];
   const makeSecret = () => [...symbols].sort(() => Math.random() - 0.5).slice(0, 4);
 
   const [secret, setSecret] = useState<string[]>(makeSecret);
@@ -537,7 +581,7 @@ export const MastermindGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
     if (exact === 4) {
       setStatus('won');
       soundEngine.playSparkle();
-      onWin(12, 'Cofre Secreto Aberto!');
+      onWin(6, 'Cofre Secreto Aberto!');
     } else if (nextHist.length >= 7) {
       setStatus('lost');
     }
@@ -545,12 +589,18 @@ export const MastermindGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-purple-400/30 space-y-3.5">
-      <Bar title="🔐 Cofre Secreto" subtitle={`Tentativas: ${history.length}/7 · 4 símbolos diferentes`} onRestart={restart} onExit={onExit} />
+      <Bar iconToken="crown" title="Cofre Secreto" subtitle={`Tentativas: ${history.length}/7 · 4 símbolos diferentes`} onRestart={restart} onExit={onExit} />
 
       <div className="flex justify-center gap-2 py-1">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="w-12 h-12 rounded-xl bg-purple-950/70 border border-pink-400/40 flex items-center justify-center text-2xl">
-            {status !== 'playing' ? secret[i] : currentGuess[i] || '•'}
+          <div key={i} className="w-12 h-12 rounded-xl bg-purple-950/70 border border-pink-400/40 flex items-center justify-center">
+            {status !== 'playing' ? (
+              <GameVectorArt token={secret[i]} className="w-7 h-7" />
+            ) : currentGuess[i] ? (
+              <GameVectorArt token={currentGuess[i]} className="w-7 h-7" />
+            ) : (
+              <span className="text-purple-400 font-bold">•</span>
+            )}
           </div>
         ))}
       </div>
@@ -563,11 +613,11 @@ export const MastermindGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
                 key={sym}
                 type="button"
                 onClick={() => toggleSymbol(sym)}
-                className={`w-11 h-11 rounded-xl border text-xl cursor-pointer ${
+                className={`w-11 h-11 rounded-xl border flex items-center justify-center cursor-pointer ${
                   currentGuess.includes(sym) ? 'bg-pink-500/30 border-pink-400' : 'bg-purple-900/50 border-purple-500/30'
                 }`}
               >
-                {sym}
+                <GameVectorArt token={sym} className="w-7 h-7" />
               </button>
             ))}
           </div>
@@ -584,8 +634,9 @@ export const MastermindGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 
       {status !== 'playing' && (
         <div className="text-center space-y-2">
-          <p className="text-sm font-bold text-white">
-            {status === 'won' ? 'Senha Desvendada! +12 💎' : 'Cofre trancou! Tente outra combinação.'}
+          <p className="text-sm font-bold text-white flex items-center justify-center">
+            <span>{status === 'won' ? 'Senha Desvendada!' : 'Cofre trancou! Tente outra combinação.'}</span>
+            {status === 'won' && <GemInline amount={6} isSpectator={isSpectator} />}
           </p>
           <button type="button" onClick={restart} className="min-h-[44px] px-5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold cursor-pointer">
             Jogar Novamente
@@ -597,7 +648,11 @@ export const MastermindGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
         <div className="space-y-1.5 max-h-40 overflow-y-auto">
           {history.map((h, i) => (
             <div key={i} className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-purple-950/50 border border-purple-500/20 text-xs">
-              <span className="tracking-widest text-base">{h.guess.join(' ')}</span>
+              <div className="flex items-center gap-1.5">
+                {h.guess.map((g, gi) => (
+                  <GameVectorArt key={gi} token={g} className="w-5 h-5" />
+                ))}
+              </div>
               <span className="text-purple-200 font-mono">
                 {h.exact} certo · {h.close} fora do lugar
               </span>
@@ -610,7 +665,7 @@ export const MastermindGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 };
 
 // 15. JARDIM SEM ESPINHOS (Minesweeper 5x5)
-export const MinesweeperLoveGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
+export const MinesweeperLoveGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectator }) => {
   const [thorns, setThorns] = useState<Set<number> | null>(null);
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
   const [lost, setLost] = useState(false);
@@ -675,7 +730,7 @@ export const MinesweeperLoveGame: React.FC<MiniGameProps> = ({ onWin, onExit }) 
     }
     setRevealed(next);
     if (next.size >= 20) {
-      onWin(10, 'Jardim Sem Espinhos Completo!');
+      onWin(5, 'Jardim Sem Espinhos Completo!');
     }
   };
 
@@ -683,7 +738,7 @@ export const MinesweeperLoveGame: React.FC<MiniGameProps> = ({ onWin, onExit }) 
 
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-emerald-400/30 space-y-3.5">
-      <Bar title="🌷 Jardim Sem Espinhos" subtitle={`Flores abertas: ${revealed.size}/20 · Espinhos: 5`} onRestart={restart} onExit={onExit} />
+      <Bar iconToken="seed" title="Jardim Sem Espinhos" subtitle={`Flores abertas: ${revealed.size}/20 · Espinhos: 5`} onRestart={restart} onExit={onExit} />
       <div className="grid grid-cols-5 gap-1.5 max-w-[270px] mx-auto">
         {Array.from({ length: 25 }, (_, i) => {
           const isOpen = revealed.has(i);
@@ -702,14 +757,23 @@ export const MinesweeperLoveGame: React.FC<MiniGameProps> = ({ onWin, onExit }) 
                   : 'bg-purple-950/70 border-purple-500/30 hover:border-pink-400/50 text-purple-300'
               }`}
             >
-              {isThorn ? '🥀' : isOpen ? (adj === 0 ? '🌷' : adj) : '🌱'}
+              {isThorn ? (
+                <GameVectorArt token="thorn" className="w-6 h-6" />
+              ) : isOpen ? (
+                adj === 0 ? <GameVectorArt token="tulip" className="w-6 h-6" /> : adj
+              ) : (
+                <GameVectorArt token="seed" className="w-5 h-5 opacity-75" />
+              )}
             </button>
           );
         })}
       </div>
       {(lost || won) && (
         <div className="text-center space-y-2">
-          <p className="text-sm font-bold text-white">{won ? 'Jardim salvo com carinho! +10 💎' : 'Ops! Tocou em um espinho 🥀'}</p>
+          <p className="text-sm font-bold text-white flex items-center justify-center">
+            <span>{won ? 'Jardim salvo com carinho!' : 'Ops! Tocou em um espinho.'}</span>
+            {won && <GemInline amount={5} isSpectator={isSpectator} />}
+          </p>
           <button type="button" onClick={restart} className="min-h-[44px] px-5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold cursor-pointer">
             Plantar Novo Jardim
           </button>
@@ -722,7 +786,6 @@ export const MinesweeperLoveGame: React.FC<MiniGameProps> = ({ onWin, onExit }) 
 // 16. LABIRINTO DO CUPIDO (Procedural 7x7 DFS Maze)
 function buildMaze7x7() {
   const N = 7;
-  // walls bitmask: 1=top, 2=right, 4=bottom, 8=left
   const walls = Array.from({ length: N }, () => Array(N).fill(15));
   const vis = Array.from({ length: N }, () => Array(N).fill(false));
 
@@ -749,7 +812,7 @@ function buildMaze7x7() {
   return walls;
 }
 
-export const CupidMazeGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
+export const CupidMazeGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectator }) => {
   const [maze, setMaze] = useState(() => buildMaze7x7());
   const [pos, setPos] = useState<[number, number]>([0, 0]);
   const [won, setWon] = useState(false);
@@ -776,13 +839,13 @@ export const CupidMazeGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
     if (nr === 6 && nc === 6) {
       setWon(true);
       soundEngine.playSparkle();
-      onWin(10, 'Cupido chegou ao Coração no Labirinto!');
+      onWin(5, 'Cupido chegou ao Coração no Labirinto!');
     }
   };
 
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-purple-400/30 space-y-3">
-      <Bar title="🧭 Labirinto do Cupido" subtitle="Leve 💘 até o Coração 💖" onRestart={restart} onExit={onExit} />
+      <Bar iconToken="compass" title="Labirinto do Cupido" subtitle="Guie o Viajante até o Coração" onRestart={restart} onExit={onExit} />
 
       <div className="grid grid-cols-7 max-w-[266px] mx-auto bg-purple-950/70 p-1.5 rounded-xl border border-purple-500/30">
         {maze.map((row, r) =>
@@ -798,9 +861,13 @@ export const CupidMazeGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
                   borderBottomWidth: w & 4 ? 2 : 0,
                   borderLeftWidth: w & 8 ? 2 : 0,
                 }}
-                className="w-9 h-9 border-pink-400/60 flex items-center justify-center text-base"
+                className="w-9 h-9 border-pink-400/60 flex items-center justify-center"
               >
-                {isPlayer ? '💘' : isGoal ? '💖' : ''}
+                {isPlayer ? (
+                  <GameVectorArt token="bot" className="w-6 h-6" />
+                ) : isGoal ? (
+                  <GameVectorArt token="heart" className="w-6 h-6" />
+                ) : null}
               </div>
             );
           })
@@ -824,7 +891,10 @@ export const CupidMazeGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
         </div>
       ) : (
         <div className="text-center space-y-2">
-          <p className="text-sm font-bold text-emerald-300">Caminho encontrado! +10 💎</p>
+          <p className="text-sm font-bold text-emerald-300 flex items-center justify-center">
+            <span>Caminho encontrado!</span>
+            <GemInline amount={5} isSpectator={isSpectator} />
+          </p>
           <button type="button" onClick={restart} className="min-h-[44px] px-5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold cursor-pointer">
             Novo Labirinto
           </button>
@@ -836,7 +906,7 @@ export const CupidMazeGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 
 // 17. ESTOURA BALÕES (25s)
 export const BalloonPopGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
-  const [items, setItems] = useState<{ id: number; x: number; y: number; icon: string; pts: number }[]>([]);
+  const [items, setItems] = useState<{ id: number; x: number; y: number; token: string; pts: number }[]>([]);
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(25);
   const [done, setDone] = useState(false);
@@ -850,7 +920,7 @@ export const BalloonPopGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
           window.clearInterval(sec);
           setDone(true);
           const s = scoreRef.current;
-          onWin(s >= 18 ? 11 : s >= 10 ? 8 : 5, `Estoura Balões (${s} pts)`, s);
+          onWin(s >= 18 ? 5 : s >= 10 ? 3 : 2, `Estoura Balões (${s} pts)`, s);
           return 0;
         }
         return t - 1;
@@ -864,7 +934,7 @@ export const BalloonPopGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
           id: Date.now() + Math.random(),
           x: Math.random() * 75 + 10,
           y: Math.random() * 68 + 12,
-          icon: bad ? '💣' : Math.random() < 0.3 ? '💖' : '🎈',
+          token: bad ? 'bomb' : Math.random() < 0.3 ? 'heart' : 'balloon',
           pts: bad ? -3 : 2,
         },
       ]);
@@ -894,7 +964,7 @@ export const BalloonPopGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-pink-400/30 space-y-3">
-      <Bar title="🎈 Estoura Balões" subtitle={`Pontos: ${score} · ⏳ ${timeLeft}s (evite 💣)`} onRestart={restart} onExit={onExit} />
+      <Bar iconToken="gift" title="Estoura Balões" subtitle={`Pontos: ${score} · ${timeLeft}s (evite as bombas)`} onRestart={restart} onExit={onExit} />
       <div className="relative h-64 rounded-2xl bg-purple-950/60 border border-purple-500/25 overflow-hidden">
         {!done ? (
           items.map((it) => (
@@ -903,14 +973,14 @@ export const BalloonPopGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
               type="button"
               onClick={() => pop(it.id, it.pts)}
               style={{ left: `${it.x}%`, top: `${it.y}%` }}
-              className="absolute -translate-x-1/2 -translate-y-1/2 min-w-[46px] min-h-[46px] text-3xl cursor-pointer active:scale-90 transition-transform"
+              className="absolute -translate-x-1/2 -translate-y-1/2 min-w-[46px] min-h-[46px] flex items-center justify-center cursor-pointer active:scale-90 transition-transform"
             >
-              {it.icon}
+              <GameVectorArt token={it.token} className="w-9 h-9" />
             </button>
           ))
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center">
-            <span className="text-4xl">🎈</span>
+            <GameVectorArt token="balloon" className="w-11 h-11" />
             <h4 className="text-lg font-bold text-white">Placar Final: {score} pontos!</h4>
             <button type="button" onClick={restart} className="min-h-[44px] px-5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold cursor-pointer">
               Jogar Novamente
@@ -923,7 +993,7 @@ export const BalloonPopGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 };
 
 // 18. TORRE DOS SONHOS (Stacker)
-export const TowerStackGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
+export const TowerStackGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectator }) => {
   const [floors, setFloors] = useState(0);
   const [pos, setPos] = useState(50);
   const dirRef = useRef(1);
@@ -962,20 +1032,20 @@ export const TowerStackGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
       setFloors(nf);
       if (nf >= 10) {
         setOver(true);
-        onWin(13, 'Torre dos Sonhos Completa (10 andares)!', 10);
+        onWin(6, 'Torre dos Sonhos Completa (10 andares)!', 10);
       }
     } else {
       soundEngine.playHeartPop();
       setOver(true);
       if (floors >= 4) {
-        onWin(floors >= 7 ? 9 : 6, `Torre dos Sonhos (${floors} andares)`, floors);
+        onWin(floors >= 7 ? 4 : 3, `Torre dos Sonhos (${floors} andares)`, floors);
       }
     }
   };
 
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-purple-400/30 space-y-4">
-      <Bar title="🏰 Torre dos Sonhos" subtitle={`Andares alinhados: ${floors}/10`} onRestart={restart} onExit={onExit} />
+      <Bar iconToken="house" title="Torre dos Sonhos" subtitle={`Andares alinhados: ${floors}/10`} onRestart={restart} onExit={onExit} />
       <div className="relative h-44 rounded-2xl bg-purple-950/70 border border-purple-500/25 overflow-hidden flex flex-col justify-between p-4">
         <div className="relative h-8 w-full bg-black/30 rounded-xl">
           <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[36%] border-x border-pink-400/30 bg-pink-500/10" />
@@ -1001,8 +1071,9 @@ export const TowerStackGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
         </button>
       ) : (
         <div className="text-center space-y-2">
-          <p className="text-sm font-bold text-white">
-            {floors >= 10 ? 'Torre Máxima! +13 💎' : `Você empilhou ${floors} andares!`}
+          <p className="text-sm font-bold text-white flex items-center justify-center">
+            <span>{floors >= 10 ? 'Torre Máxima!' : `Você empilhou ${floors} andares!`}</span>
+            {floors >= 10 && <GemInline amount={6} isSpectator={isSpectator} />}
           </p>
           <button type="button" onClick={restart} className="min-h-[44px] px-5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold cursor-pointer">
             Recomeçar Torre
@@ -1014,7 +1085,7 @@ export const TowerStackGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 };
 
 // 19. ALVO 5.00 SEGUNDOS
-export const TargetChronoGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
+export const TargetChronoGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectator }) => {
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [result, setResult] = useState<string | null>(null);
@@ -1042,22 +1113,22 @@ export const TargetChronoGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => 
       const diff = Math.abs(finalSec - 5);
       if (diff <= 0.25) {
         soundEngine.playSparkle();
-        setResult(`Incrível! Diferença de apenas ${diff.toFixed(2)}s (+12 💎)`);
-        onWin(12, 'Mestra do Tempo no Alvo 5.00s!');
+        setResult(`Incrível! Diferença de apenas ${diff.toFixed(2)}s${isSpectator ? '' : ' (+5 diamantes)'}`);
+        onWin(5, 'Mestra do Tempo no Alvo 5.00s!');
       } else if (diff <= 0.6) {
         soundEngine.playSparkle();
-        setResult(`Muito bom! Diferença de ${diff.toFixed(2)}s (+8 💎)`);
-        onWin(8, 'Alvo 5.00s próximo!');
+        setResult(`Muito bom! Diferença de ${diff.toFixed(2)}s${isSpectator ? '' : ' (+3 diamantes)'}`);
+        onWin(3, 'Alvo 5.00s próximo!');
       } else {
-        setResult(`Você parou em ${finalSec.toFixed(2)}s (+4 💎 pela tentativa)`);
-        onWin(4, 'Desafio Alvo 5.00s');
+        setResult(`Você parou em ${finalSec.toFixed(2)}s${isSpectator ? '' : ' (+2 diamantes pela tentativa)'}`);
+        onWin(2, 'Desafio Alvo 5.00s');
       }
     }
   };
 
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-teal-400/30 space-y-4 text-center">
-      <Bar title="⏱️ Alvo 5.00 Segundos" subtitle="Pare o cronômetro o mais perto de 5.00s" onExit={onExit} />
+      <Bar iconToken="sun" title="Alvo 5.00 Segundos" subtitle="Pare o cronômetro o mais perto de 5.00s" onExit={onExit} />
       <div className="py-6 rounded-2xl bg-purple-950/60 border border-purple-500/30">
         <span className="text-4xl font-mono font-bold text-pink-200 tabular-nums">{elapsed.toFixed(2)}s</span>
       </div>
@@ -1109,7 +1180,7 @@ export const ReflexGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
       if (next.length >= 3) {
         setStage('done');
         const avg = Math.round(next.reduce((a, b) => a + b, 0) / next.length);
-        onWin(avg < 420 ? 10 : 6, `Reflexo Apaixonado (${avg}ms)`, avg);
+        onWin(avg < 420 ? 5 : 3, `Reflexo Apaixonado (${avg}ms)`, avg);
       } else {
         triggerNext();
       }
@@ -1120,7 +1191,7 @@ export const ReflexGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-pink-400/30 space-y-4 text-center">
-      <Bar title="⚡ Reflexo Apaixonado" subtitle={`Rodadas: ${times.length}/3`} onExit={onExit} />
+      <Bar iconToken="zap" title="Reflexo Apaixonado" subtitle={`Rodadas: ${times.length}/3`} onExit={onExit} />
       <button
         type="button"
         onClick={stage === 'done' ? () => { setTimes([]); triggerNext(); } : handlePad}
@@ -1134,10 +1205,15 @@ export const ReflexGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
       >
         {stage === 'idle' && 'Toque para Começar'}
         {stage === 'waiting' && 'Espere ficar ROSA...'}
-        {stage === 'ready' && 'TOQUE AGORA! 💖'}
+        {stage === 'ready' && (
+          <span className="inline-flex items-center gap-2">
+            <span>TOQUE AGORA!</span>
+            <Sparkles className="w-5 h-5" />
+          </span>
+        )}
         {stage === 'done' && (
           <>
-            <span>Média: {avg}ms! ✨</span>
+            <span>Média: {avg}ms!</span>
             <span className="text-xs font-normal text-pink-200">Toque para testar de novo</span>
           </>
         )}
@@ -1175,7 +1251,7 @@ export const ShellRingGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
       soundEngine.playSparkle();
       const nw = wins + 1;
       setWins(nw);
-      onWin(nw >= 3 ? 11 : 7, 'Encontrou a Aliança!');
+      onWin(nw >= 3 ? 5 : 3, 'Encontrou a Aliança!');
     } else {
       soundEngine.playHeartPop();
     }
@@ -1183,7 +1259,7 @@ export const ShellRingGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 
   return (
     <div className="glass-card-glow rounded-3xl p-4 sm:p-6 border border-amber-400/30 space-y-4 text-center">
-      <Bar title="💍 Onde Está a Aliança?" subtitle={`Acertos seguidos: ${wins}`} onExit={onExit} />
+      <Bar iconToken="diam" title="Onde Está a Aliança?" subtitle={`Acertos seguidos: ${wins}`} onExit={onExit} />
       <div className="grid grid-cols-3 gap-3 py-4">
         {[0, 1, 2].map((cup) => {
           const showRing = (phase === 'peek' || phase === 'result') && ringCup === cup;
@@ -1193,11 +1269,11 @@ export const ShellRingGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
               type="button"
               disabled={phase !== 'guess'}
               onClick={() => chooseCup(cup)}
-              className={`min-h-[96px] rounded-2xl border flex flex-col items-center justify-center gap-1 text-3xl cursor-pointer transition-all ${
+              className={`min-h-[96px] rounded-2xl border flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all ${
                 phase === 'shuffling' ? 'animate-pulse bg-purple-800/60 border-pink-400/40' : 'bg-purple-950/70 border-purple-500/30 hover:border-pink-400'
               } ${picked === cup && cup === ringCup ? 'border-emerald-400 bg-emerald-950/50' : ''}`}
             >
-              <span>{showRing ? '💍' : '🍷'}</span>
+              <GameVectorArt token={showRing ? 'ring' : 'chalice'} className="w-10 h-10" />
               <span className="text-[11px] text-purple-200">Taça {cup + 1}</span>
             </button>
           );
@@ -1210,11 +1286,11 @@ export const ShellRingGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
         </button>
       )}
       {phase === 'shuffling' && <p className="text-xs text-pink-200">Embaralhando as taças...</p>}
-      {phase === 'guess' && <p className="text-xs text-purple-100 font-semibold">Toque na taça onde está a aliança 💍</p>}
+      {phase === 'guess' && <p className="text-xs text-purple-100 font-semibold">Toque na taça onde está a aliança</p>}
       {phase === 'result' && (
         <div className="space-y-2">
           <p className="text-sm font-bold text-white">
-            {picked === ringCup ? 'Olho clínico! Você achou a aliança! ✨' : `Estava na Taça ${ringCup + 1}!`}
+            {picked === ringCup ? 'Olho clínico! Você achou a aliança!' : `Estava na Taça ${ringCup + 1}!`}
           </p>
           <button
             type="button"

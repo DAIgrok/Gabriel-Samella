@@ -9,6 +9,7 @@ import {
   Sun,
   Utensils,
   Waves,
+  Lock,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AquariumCanvas3D } from '../3d/AquariumCanvas3D';
@@ -40,6 +41,7 @@ export const AquariumView: React.FC = () => {
     captureVirtualPhoto,
     showToast,
     setExtendedView,
+    isSpectator,
   } = useApp();
 
   const stageRef = useRef<HTMLDivElement>(null);
@@ -99,7 +101,7 @@ export const AquariumView: React.FC = () => {
             activeDecorIds={aquarium.activeDecorIds}
             feedPulseCount={feedPulseCount}
             onTapFish={(fishName) =>
-              showToast(`${fishName} deu um mergulho feliz no aquário!`, '✨')
+              showToast(`${fishName} deu um mergulho feliz no aquário!`, 'sparkles')
             }
           />
         </div>
@@ -162,12 +164,20 @@ export const AquariumView: React.FC = () => {
           </div>
         </div>
 
+        {isSpectator && (
+          <div className="px-3 py-2 rounded-2xl bg-purple-950/70 border border-purple-400/30 text-[11px] text-purple-200 flex items-center gap-2">
+            <Lock className="w-3.5 h-3.5 text-pink-300 shrink-0" />
+            <span>Modo Espectador: você pode explorar o aquário 3D, mas apenas a Samella pode cuidar ou alterar o tanque.</span>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="grid grid-cols-3 gap-2.5">
           <button
             type="button"
+            disabled={isSpectator}
             onClick={handleFeed}
-            className="min-h-[48px] px-3 rounded-2xl bg-gradient-to-r from-amber-500 to-pink-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md hover:brightness-110 cursor-pointer"
+            className="min-h-[48px] px-3 rounded-2xl bg-gradient-to-r from-amber-500 to-pink-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md hover:brightness-110 cursor-pointer disabled:opacity-45"
           >
             <Utensils className="w-4 h-4" />
             <span>Alimentar</span>
@@ -175,8 +185,9 @@ export const AquariumView: React.FC = () => {
 
           <button
             type="button"
+            disabled={isSpectator}
             onClick={() => cleanAquarium()}
-            className="min-h-[48px] px-3 rounded-2xl bg-gradient-to-r from-cyan-600 to-teal-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md hover:brightness-110 cursor-pointer"
+            className="min-h-[48px] px-3 rounded-2xl bg-gradient-to-r from-cyan-600 to-teal-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md hover:brightness-110 cursor-pointer disabled:opacity-45"
           >
             <Sparkles className="w-4 h-4" />
             <span>Limpar Vidro</span>
@@ -184,8 +195,9 @@ export const AquariumView: React.FC = () => {
 
           <button
             type="button"
+            disabled={isSpectator}
             onClick={toggleAquariumBubbles}
-            className={`min-h-[48px] px-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 border cursor-pointer transition ${
+            className={`min-h-[48px] px-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 border cursor-pointer transition disabled:opacity-45 ${
               aquarium.bubblesActive
                 ? 'bg-cyan-500/25 border-cyan-300/50 text-cyan-100'
                 : 'bg-purple-950/60 border-purple-500/25 text-purple-300'

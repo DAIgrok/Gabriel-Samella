@@ -1,3 +1,10 @@
+export type ViewerRole = 'samella' | 'gabriel_spectator';
+
+export interface CustomGlbModelsConfig {
+  pets?: Partial<Record<PetType, string>>;
+  furniture?: Record<string, string>;
+}
+
 export interface CoupleConfig {
   partnerName: string;
   myName: string;
@@ -6,6 +13,7 @@ export interface CoupleConfig {
   passcode: string;
   creatorPasscode?: string;
   themeGlowColor: string;
+  customGlbModels?: CustomGlbModelsConfig;
 }
 
 export type CouplePerson = 'Gabriel' | 'Samella';
@@ -52,7 +60,7 @@ export interface MemoryPhoto {
   title: string;
   subtitle: string;
   date: string;
-  url: string; // Local primary url (e.g. /assets/img/1.jpg), compressed data: URL, idb:// key, or external url
+  url: string; // Local primary url (e.g. /assets/img/1.jpg), compressed data: URL, or external url
   localPath?: string;
   driveUrl?: string;
   driveFileId?: string;
@@ -70,7 +78,7 @@ export interface Song {
   duration: number; // in seconds
   durationFormatted: string;
   coverUrl: string;
-  audioUrl?: string; // YouTube link, direct audio URL, or idb:// key
+  audioUrl?: string; // YouTube link or direct audio URL
   sourceType?: 'youtube' | 'audio' | 'idb';
   youtubeId?: string;
   lyrics?: string[];
@@ -83,7 +91,7 @@ export interface Achievement {
   title: string;
   description: string;
   icon: string;
-  category: 'memories' | 'music' | 'letters' | 'games' | 'special' | 'secrets' | 'tree' | 'pets';
+  category: 'memories' | 'music' | 'letters' | 'games' | 'special' | 'secrets' | 'tree' | 'pets' | 'house' | 'chat';
   rewardCoins: number;
   unlocked: boolean;
   unlockedAt?: string;
@@ -109,6 +117,22 @@ export type StoreCategory =
   | 'cartas'
   | 'gatinho';
 
+export type HouseFurnitureCategory =
+  | 'sofas'
+  | 'mesas'
+  | 'cadeiras'
+  | 'tvs'
+  | 'pcs'
+  | 'camas'
+  | 'cozinha'
+  | 'banheiro'
+  | 'decoracao'
+  | 'iluminacao'
+  | 'plantas'
+  | 'varanda'
+  | 'paredes'
+  | 'pisos';
+
 export interface StoreItem {
   id: string;
   title: string;
@@ -117,6 +141,10 @@ export interface StoreItem {
   price: number;
   icon: string;
   category: StoreCategory;
+  houseCategory?: HouseFurnitureCategory;
+  supportsCustomColor?: boolean;
+  defaultColor?: string;
+  customColor?: string;
   purchased: boolean;
   equipped?: boolean;
   voucherCode?: string;
@@ -136,6 +164,7 @@ export interface StoreItem {
     | 'frame'
     | 'house-furniture'
     | 'house-wall'
+    | 'house-floor'
     | 'aquarium-fish'
     | 'aquarium-decor'
     | 'pet-seasonal';
@@ -209,6 +238,8 @@ export interface KittenState {
   maxXp: number;
   ownedPets?: PetType[];
   customNames?: Partial<Record<PetType, string>>;
+  petColors?: Partial<Record<PetType, string>>;
+  accessoryColors?: Record<string, string>;
 }
 
 export interface TreeDecorationItem {
@@ -238,8 +269,13 @@ export interface LoveTreeState {
 export interface ChatMessage {
   id: string;
   sender: 'partner' | 'me';
+  senderName?: string;
   text: string;
+  msgType?: 'text' | 'audio' | 'image';
+  mediaUrl?: string;
   time: string;
+  createdAt?: string;
+  readAt?: string | null;
   status: 'sent' | 'delivered' | 'read';
   hasHeart?: boolean;
   replyTo?: string;
@@ -338,21 +374,33 @@ export interface HouseFurnitureCatalogItem {
   id: string;
   name: string;
   room: HouseRoomId;
+  category: HouseFurnitureCategory;
   description: string;
   unlockedByDefault?: boolean;
   price?: number;
   accentHex: string;
+  modelVariant?: string;
+}
+
+export interface HouseFurnitureTransform {
+  x: number;
+  z: number;
+  rotY: number;
 }
 
 export interface DreamHouseState {
   activeRoom: HouseRoomId;
   wallTheme: HouseWallTheme;
   floorTheme: HouseFloorTheme;
+  customWallHex?: string;
+  customFloorHex?: string;
+  customColors?: Record<string, string>;
   lightsOn: boolean;
   fireplaceLit: boolean;
   musicNoteGlow: boolean;
   unlockedFurnitureIds: string[];
   placedFurniture: Record<HouseRoomId, string[]>;
+  furnitureTransforms?: Record<string, HouseFurnitureTransform>;
   comfortLevel: number;
   lastInteractedAt?: string;
 }
@@ -428,7 +476,7 @@ export interface LegacyResetBackup {
   coupleGoals: CoupleGoal[];
 }
 
-export type ActiveTab = 'inicio' | 'cartas' | 'fotos' | 'musica' | 'perfil';
+export type ActiveTab = 'inicio' | 'cartas' | 'fotos' | 'musica' | 'conversas' | 'perfil';
 export type ExtendedView =
   | ActiveTab
   | 'arvore'
@@ -439,11 +487,11 @@ export type ExtendedView =
   | 'jogos'
   | 'gatinho'
   | 'loja'
-  | 'conversas'
   | 'frases'
   | 'metas'
   | 'calendario'
   | 'config';
+
 
 
 

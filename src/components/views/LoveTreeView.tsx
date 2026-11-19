@@ -35,28 +35,28 @@ interface PromiseRibbon {
 const DEFAULT_RIBBONS: PromiseRibbon[] = [
   {
     id: 'r1',
-    title: 'Fita da Lealdade 🌹',
+    title: 'Fita da Lealdade ♡',
     message:
       'Prometo estar ao seu lado não apenas nos dias de festa, mas especialmente nos momentos em que você precisar de colo e silêncio.',
     color: '#f43f5e',
   },
   {
     id: 'r2',
-    title: 'Fita dos Sonhos Compartilhados ✨',
+    title: 'Fita dos Sonhos Compartilhados',
     message:
       'Nenhum sonho seu é pequeno demais. Quero construir cada detalhe do nosso futuro segurando a sua mão com orgulho.',
     color: '#eab308',
   },
   {
     id: 'r3',
-    title: 'Fita da Calmaria 🌸',
+    title: 'Fita da Calmaria',
     message:
       'O mundo lá fora pode ser barulhento e caótico, mas dentro do nosso abraço sempre haverá refúgio e serenidade.',
     color: '#ec4899',
   },
   {
     id: 'r4',
-    title: 'Fita da Eternidade 💍',
+    title: 'Fita da Eternidade ♡',
     message:
       'O que começou no dia 12/06/2023 é apenas o primeiro capítulo da mais linda história que Deus escreveu.',
     color: '#a855f7',
@@ -78,6 +78,7 @@ export const LoveTreeView: React.FC = () => {
     triggerHeartExplosion,
     storeItems,
     captureVirtualPhoto,
+    isSpectator,
   } = useApp();
 
   const stageRef = useRef<HTMLDivElement>(null);
@@ -129,11 +130,11 @@ export const LoveTreeView: React.FC = () => {
     (treeState.creaturesUnlocked || []).includes('Passarinho Cantor');
 
   const getStageLabel = (lvl: number) => {
-    if (lvl === 1) return 'Semente do Amor 🌱';
-    if (lvl <= 3) return 'Muda em Crescimento 🌸';
-    if (lvl <= 6) return 'Cerejeira Florida 🌳';
-    if (lvl <= 9) return 'Árvore das Promessas 🎀';
-    return 'Árvore da Eternidade 🌌';
+    if (lvl === 1) return 'Semente do Amor';
+    if (lvl <= 3) return 'Muda em Crescimento';
+    if (lvl <= 6) return 'Cerejeira Florida';
+    if (lvl <= 9) return 'Árvore das Promessas';
+    return 'Árvore da Eternidade';
   };
 
   const handleWater = () => {
@@ -180,7 +181,7 @@ export const LoveTreeView: React.FC = () => {
     ...DEFAULT_RIBBONS,
     ...(treeState.promiseRibbons || []).map((text, i) => ({
       id: `custom-r-${i}`,
-      title: `Promessa #${i + 1} 💌`,
+      title: `Promessa #${i + 1} ♡`,
       message: text,
       color: '#ec4899',
     })),
@@ -212,7 +213,7 @@ export const LoveTreeView: React.FC = () => {
             <div className="w-12 h-12 mx-auto rounded-2xl bg-pink-500/30 border border-pink-400/40 flex items-center justify-center text-pink-300">
               <Ribbon className="w-6 h-6" />
             </div>
-            <h4 className="text-lg font-bold text-white font-display">Amarre uma Nova Promessa 🎀</h4>
+            <h4 className="text-lg font-bold text-white font-display">Amarre uma Nova Promessa ♡</h4>
             <form onSubmit={handleSaveCustomRibbon} className="space-y-3">
               <textarea
                 value={newRibbonText}
@@ -229,7 +230,7 @@ export const LoveTreeView: React.FC = () => {
               >
                 {cdRibbon > 0
                   ? `Aguarde ${formatCooldownMs(cdRibbon)}`
-                  : 'Amarrar na Árvore (+3 💎)'}
+                  : 'Amarrar na Árvore (+2 diamantes)'}
               </button>
             </form>
           </motion.div>
@@ -295,7 +296,7 @@ export const LoveTreeView: React.FC = () => {
             <div className="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white shadow-lg">
               <Apple className="w-6 h-6" />
             </div>
-            <h4 className="text-lg font-bold text-white font-display">Fruto do Amor Colhido 🍎</h4>
+            <h4 className="text-lg font-bold text-white font-display">Fruto do Amor Colhido ♡</h4>
             <div className="p-4 rounded-2xl bg-purple-950/50 border border-amber-500/30 text-sm text-amber-100 italic leading-relaxed">
               {harvestedFruitMsg}
             </div>
@@ -368,6 +369,7 @@ export const LoveTreeView: React.FC = () => {
           isWatering={isWatering}
           isSunbathing={isSunbathing}
           isPruning={isPruning}
+          isSpectator={isSpectator}
           cdWater={cdWater}
           cdSun={cdSun}
           cdPrune={cdPrune}
@@ -381,7 +383,7 @@ export const LoveTreeView: React.FC = () => {
           onTreeTap={() => {
             soundEngine.playSparkle();
             triggerHeartExplosion();
-            showToast('A Árvore do Amor vibra com o carinho de vocês! 🌿💖', '✨');
+            showToast('A Árvore do Amor vibra com o carinho de vocês! ♡', 'sparkles');
           }}
           onSelectRibbon={(r) => {
             soundEngine.playEnvelopeOpen();
@@ -488,7 +490,7 @@ export const LoveTreeView: React.FC = () => {
                 onTreeInteract={() => {
                   soundEngine.playSparkle();
                   triggerHeartExplosion();
-                  showToast('A Árvore do Amor vibra com o carinho de vocês! 🌿💖', '✨');
+                  showToast('A Árvore do Amor vibra com o carinho de vocês! ♡', 'sparkles');
                 }}
               />
               <button
@@ -526,7 +528,7 @@ export const LoveTreeView: React.FC = () => {
               onTreeTap={() => {
                 soundEngine.playSparkle();
                 triggerHeartExplosion();
-                showToast('A Árvore do Amor vibra com o carinho de vocês! 🌿💖', '✨');
+                showToast('A Árvore do Amor vibra com o carinho de vocês! ♡', 'sparkles');
               }}
             />
           )}
@@ -536,7 +538,7 @@ export const LoveTreeView: React.FC = () => {
             <button
               type="button"
               onClick={() => handleHarvestFruit(harvestedFruits.length % 5)}
-              disabled={cdFruit > 0}
+              disabled={isSpectator || cdFruit > 0}
               className="absolute top-3 right-3 z-20 px-3 min-h-[36px] rounded-full bg-gradient-to-r from-amber-500 to-rose-500 text-white text-[11px] font-bold shadow-lg flex items-center gap-1.5 cursor-pointer border border-amber-300/40 disabled:opacity-65"
             >
               <Apple className="w-3.5 h-3.5 fill-amber-200" />
@@ -555,7 +557,7 @@ export const LoveTreeView: React.FC = () => {
           </div>
           <div className="flex justify-between text-[10px] text-purple-300/75 font-mono tabular-nums">
             <span>Crescimento {xpPercent}%</span>
-            <span>{currentLevel >= 10 ? 'Plenitude ✨' : `${currentXp}/${maxXp} XP`}</span>
+            <span>{currentLevel >= 10 ? 'Plenitude ♡' : `${currentXp}/${maxXp} XP`}</span>
           </div>
         </div>
 
@@ -564,7 +566,7 @@ export const LoveTreeView: React.FC = () => {
           <button
             type="button"
             onClick={handleWater}
-            disabled={isWatering || cdWater > 0}
+            disabled={isSpectator || isWatering || cdWater > 0}
             className="min-h-[56px] p-2.5 rounded-2xl bg-gradient-to-r from-teal-600/80 to-cyan-600/80 text-white font-bold text-xs shadow-md flex flex-col items-center justify-center gap-1 hover:brightness-110 transition-all disabled:opacity-55 cursor-pointer"
           >
             <Droplets className={`w-4 h-4 text-cyan-100 ${isWatering ? 'animate-bounce' : ''}`} />
@@ -574,7 +576,7 @@ export const LoveTreeView: React.FC = () => {
           <button
             type="button"
             onClick={handleSun}
-            disabled={isSunbathing || cdSun > 0}
+            disabled={isSpectator || isSunbathing || cdSun > 0}
             className="min-h-[56px] p-2.5 rounded-2xl bg-gradient-to-r from-amber-600/80 to-rose-600/80 text-white font-bold text-xs shadow-md flex flex-col items-center justify-center gap-1 hover:brightness-110 transition-all disabled:opacity-55 cursor-pointer"
           >
             <Sun className="w-4 h-4 text-amber-100" />
@@ -584,7 +586,7 @@ export const LoveTreeView: React.FC = () => {
           <button
             type="button"
             onClick={handlePrune}
-            disabled={isPruning || cdPrune > 0}
+            disabled={isSpectator || isPruning || cdPrune > 0}
             className="min-h-[56px] p-2.5 rounded-2xl bg-gradient-to-r from-emerald-600/80 to-teal-700/80 text-white font-bold text-xs shadow-md flex flex-col items-center justify-center gap-1 hover:brightness-110 transition-all disabled:opacity-55 cursor-pointer"
           >
             <Scissors className="w-4 h-4 text-emerald-100" />
@@ -600,13 +602,15 @@ export const LoveTreeView: React.FC = () => {
             <Ribbon className="w-4 h-4 text-pink-400" />
             <h3 className="text-sm font-bold text-white">Fitas de Promessas ({allRibbons.length})</h3>
           </div>
-          <button
-            onClick={() => setIsAddingRibbon(true)}
-            className="px-3 py-1.5 rounded-xl bg-pink-500/20 text-pink-300 border border-pink-400/40 text-xs font-bold flex items-center gap-1 hover:bg-pink-500/30 transition cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>{cdRibbon > 0 ? formatCooldownMs(cdRibbon) : 'Nova Fita'}</span>
-          </button>
+          {!isSpectator && (
+            <button
+              onClick={() => setIsAddingRibbon(true)}
+              className="px-3 py-1.5 rounded-xl bg-pink-500/20 text-pink-300 border border-pink-400/40 text-xs font-bold flex items-center gap-1 hover:bg-pink-500/30 transition cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{cdRibbon > 0 ? formatCooldownMs(cdRibbon) : 'Nova Fita'}</span>
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

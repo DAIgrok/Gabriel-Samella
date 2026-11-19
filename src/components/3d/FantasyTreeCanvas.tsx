@@ -1,7 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import {
+  addCozyThreePointLights,
+  detectSoftwareWebGL,
+  disposeObject3D,
+  setupCozyStudioRenderer,
+} from '../../utils/threeCozyHelpers';
 
 interface FantasyTreeCanvasProps {
   level: number;
@@ -20,22 +26,6 @@ interface FantasyTreeCanvasProps {
   harvestedFruits?: number[];
   onHarvestFruit?: (index: number) => void;
   onTreeInteract?: () => void;
-}
-
-function disposeObject3D(root: THREE.Object3D) {
-  root.traverse((obj) => {
-    const mesh = obj as THREE.Mesh;
-    if (mesh.geometry) {
-      mesh.geometry.dispose();
-    }
-    if (mesh.material) {
-      if (Array.isArray(mesh.material)) {
-        mesh.material.forEach((m) => m.dispose());
-      } else {
-        mesh.material.dispose();
-      }
-    }
-  });
 }
 
 function createSoftGlowTexture(innerHex: string, outerHex: string): THREE.CanvasTexture {
@@ -146,42 +136,27 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
 
     // --- 1. SCENE & CAMERA ---
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x0b031a, 0.024);
+    scene.fog = new THREE.FogExp2(0x1f103d, 0.014);
 
     const width = container.clientWidth || 320;
     const height = container.clientHeight || 350;
     const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 80);
     camera.position.set(0, 2.75, 7.35);
 
-    // --- 2. RENDERER & ENVIRONMENT ---
+    // --- 2. COZY RENDERER & ENVIRONMENT ---
+    const isSoftwareGl = detectSoftwareWebGL();
     const renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: !isSoftwareGl,
       alpha: true,
       preserveDrawingBuffer: true,
       powerPreference: 'high-performance',
     });
 
-    const gl = renderer.getContext();
-    const dbg = gl.getExtension('WEBGL_debug_renderer_info');
-    const rendererStr = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
-    const isSoftwareGl = /SwiftShader|llvmpipe|Software Rasterizer/i.test(rendererStr);
-
     renderer.setSize(width, height);
     renderer.setPixelRatio(isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 1.75));
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.18;
+    const disposeEnv = setupCozyStudioRenderer(renderer, scene, isSoftwareGl);
+    scene.environmentIntensity = 0.72;
     container.appendChild(renderer.domElement);
-
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    const roomEnv = new RoomEnvironment();
-    const envTarget = pmrem.fromScene(roomEnv, 0.04);
-    scene.environment = envTarget.texture;
-    scene.environmentIntensity = 0.62;
-    roomEnv.dispose();
-    pmrem.dispose();
 
     // Shared procedural glow textures (disposed cleanly on unmount)
     const auraTexPink = createSoftGlowTexture('rgba(255,220,245,0.9)', 'rgba(236,72,153,0.22)');
@@ -204,41 +179,38 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
     controls.minPolarAngle = Math.PI / 10;
     controls.target.set(0, 1.9, 0);
 
-    // --- 4. SACRED SAKURA / IRMINSUL CELESTIAL LIGHTING ---
-    const hemiLight = new THREE.HemisphereLight(0xfbcfe8, 0x1e0b36, 0.92);
-    scene.add(hemiLight);
+    // --- 4. COZY 3-POINT PASTEL LIGHTING ---
+    const rig = addCozyThreePointLights(scene, {
+      skyColor: 0xdbeafe,
+      groundColor: 0xfde68a,
+      hemiIntensity: 1.15,
+      keyColor: 0xfff7e6,
+      keyIntensity: 2.15,
+      keyPosition: [4.5, 9.5, 5.5],
+      rimColor: 0xf472b6,
+      rimIntensity: 1.55,
+      rimPosition: [-5.5, 4.8, -5.0],
+      fillColor: 0xc4b5fd,
+      fillIntensity: 0.72,
+      shadowMapSize: isSoftwareGl ? 512 : 1024,
+      shadowExtent: 4.5,
+      isSoftwareGl,
+    });
+    const sunLight = rig.keyLight;
 
-    const sunLight = new THREE.DirectionalLight(0xfff1db, 2.35);
-    sunLight.position.set(4.5, 9.5, 5.5);
-    sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = isSoftwareGl ? 512 : 1024;
-    sunLight.shadow.mapSize.height = isSoftwareGl ? 512 : 1024;
-    sunLight.shadow.bias = -0.0008;
-    sunLight.shadow.camera.near = 0.5;
-    sunLight.shadow.camera.far = 24;
-    sunLight.shadow.camera.left = -4.5;
-    sunLight.shadow.camera.right = 4.5;
-    sunLight.shadow.camera.top = 6.5;
-    sunLight.shadow.camera.bottom = -2;
-    scene.add(sunLight);
-
-    const rimLight = new THREE.DirectionalLight(0xc084fc, 1.45);
-    rimLight.position.set(-5.5, 4.8, -5.0);
-    scene.add(rimLight);
-
-    const canopyLight = new THREE.PointLight(0xf472b6, 1.85, 11);
-    canopyLight.position.set(0, 3.1, 1.4);
+    const canopyLight = new THREE.PointLight(0xf9a8d4, 1.75, 12);
+    canopyLight.position.set(0, 3.1, 1.5);
     scene.add(canopyLight);
 
-    const poolLight = new THREE.PointLight(0x38bdf8, 0.95, 7);
-    poolLight.position.set(0, 0.5, 1.6);
+    const poolLight = new THREE.PointLight(0x67e8f9, 1.05, 7);
+    poolLight.position.set(0, 0.55, 1.6);
     scene.add(poolLight);
 
-    // --- 5. FLOATING SANCTUARY ISLAND & RUNED LOTUS POOL ---
+    // --- 5. FLOATING COZY SANCTUARY ISLAND & RUNED LOTUS POOL ---
     const terrainGroup = new THREE.Group();
     scene.add(terrainGroup);
 
-    const islandTopGeo = new THREE.CylinderGeometry(2.95, 2.65, 0.44, 36, 2);
+    const islandTopGeo = new THREE.CylinderGeometry(2.98, 2.68, 0.44, 44, 3);
     const islandPos = islandTopGeo.attributes.position;
     for (let i = 0; i < islandPos.count; i++) {
       const y = islandPos.getY(i);
@@ -246,14 +218,14 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
       const z = islandPos.getZ(i);
       if (y > 0.1) {
         const dist = Math.sqrt(x * x + z * z);
-        islandPos.setY(i, y + Math.max(0, 0.24 - dist * 0.085) + Math.sin(x * 1.5 + z * 0.9) * 0.035);
+        islandPos.setY(i, y + Math.max(0, 0.25 - dist * 0.085) + Math.sin(x * 1.4 + z * 0.9) * 0.032);
       }
     }
     islandTopGeo.computeVertexNormals();
     const islandTopMat = new THREE.MeshStandardMaterial({
-      color: 0x203b3e,
-      roughness: 0.65,
-      metalness: 0.1,
+      color: 0x266f5d,
+      roughness: 0.68,
+      metalness: 0.04,
     });
     const islandTop = new THREE.Mesh(islandTopGeo, islandTopMat);
     islandTop.position.y = -0.18;
@@ -355,21 +327,21 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
       terrainGroup.add(lotus);
     });
 
-    // Sculpted mossy soil mound beneath main trunk
-    const moundGeo = new THREE.SphereGeometry(0.92, 24, 14);
-    moundGeo.scale(1.18, 0.24, 1.12);
+    // Sculpted mossy earth mound beneath main trunk
+    const moundGeo = new THREE.SphereGeometry(0.96, 28, 18);
+    moundGeo.scale(1.2, 0.26, 1.15);
     const moundMat = new THREE.MeshStandardMaterial({
-      color: 0x2a1438,
-      roughness: 0.78,
+      color: 0x2f6b56,
+      roughness: 0.72,
     });
     const mound = new THREE.Mesh(moundGeo, moundMat);
     mound.position.y = 0.04;
     mound.receiveShadow = true;
     terrainGroup.add(mound);
 
-    // Sanctuary rocks rimming the island
-    const pebbleGeo = new THREE.DodecahedronGeometry(0.22, 1);
-    const pebbleMat = new THREE.MeshStandardMaterial({ color: 0x3b2a54, roughness: 0.65, metalness: 0.1 });
+    // Smooth rounded river pebbles rimming the island (zero angular dodecahedrons)
+    const pebbleGeo = new THREE.SphereGeometry(0.22, 18, 14);
+    const pebbleMat = new THREE.MeshStandardMaterial({ color: 0x6b5b95, roughness: 0.62, metalness: 0.05 });
     [
       [1.95, 0.08, 0.95, 1.2],
       [-1.85, 0.08, 1.15, 1.05],
@@ -378,11 +350,46 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
     ].forEach(([px, py, pz, s], i) => {
       const pebble = new THREE.Mesh(pebbleGeo, pebbleMat);
       pebble.position.set(px, py, pz);
-      pebble.scale.set(s * 1.25, s * 0.68, s);
-      pebble.rotation.set(0.2, i * 1.1, 0.15);
+      pebble.scale.set(s * 1.28, s * 0.62, s);
+      pebble.rotation.set(0.12, i * 1.1, 0.08);
       pebble.castShadow = true;
       pebble.receiveShadow = true;
       terrainGroup.add(pebble);
+    });
+
+    // Cozy Stylized Glowing Pastel Mushrooms around the base
+    const mushStemMat = new THREE.MeshStandardMaterial({ color: 0xfff1f2, roughness: 0.65 });
+    const mushCapMatPink = new THREE.MeshStandardMaterial({
+      color: 0xf472b6,
+      emissive: 0xec4899,
+      emissiveIntensity: 0.45,
+      roughness: 0.55,
+    });
+    const mushCapMatMint = new THREE.MeshStandardMaterial({
+      color: 0x6ee7b7,
+      emissive: 0x10b981,
+      emissiveIntensity: 0.4,
+      roughness: 0.55,
+    });
+    [
+      [-1.45, 0.08, 0.55, 1.0, true],
+      [-1.62, 0.07, 0.35, 0.72, false],
+      [1.48, 0.08, 0.45, 0.92, false],
+      [0.95, 0.08, -1.25, 0.85, true],
+    ].forEach(([mx, my, mz, sc, isPink]) => {
+      const mg = new THREE.Group();
+      mg.position.set(mx as number, my as number, mz as number);
+      mg.scale.setScalar(sc as number);
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.048, 0.14, 12), mushStemMat);
+      stem.position.y = 0.07;
+      const cap = new THREE.Mesh(
+        new THREE.SphereGeometry(0.11, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
+        isPink ? mushCapMatPink : mushCapMatMint
+      );
+      cap.position.y = 0.12;
+      cap.castShadow = true;
+      mg.add(stem, cap);
+      terrainGroup.add(mg);
     });
 
     // --- 6. DYNAMIC TREE & ACCESSORY GROUP ---
@@ -438,7 +445,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
       return mesh;
     };
 
-    // Instanced blossom canopy clusters with GLSL wind sway (Genshin Sacred Sakura / Irminsul look)
+    // Instanced smooth volumetric blossom canopy clusters with GLSL wind sway (Cozy PK XD / Pixar look)
     const buildInstancedBlossomCanopy = (
       clusters: [number, number, number, number][],
       growth: number,
@@ -446,18 +453,18 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
       emissiveHex: number,
       emissiveStrength: number
     ) => {
-      const puffsPerCluster = isSoftwareGl ? 14 : 26;
+      const puffsPerCluster = isSoftwareGl ? 15 : 28;
       const totalInstances = clusters.length * puffsPerCluster;
 
-      const puffGeo = new THREE.DodecahedronGeometry(0.32, 1);
-      puffGeo.scale(1.22, 0.72, 1.15);
+      const puffGeo = new THREE.SphereGeometry(0.35, 16, 12);
+      puffGeo.scale(1.24, 0.78, 1.18);
 
       const puffMat = new THREE.MeshStandardMaterial({
         color: 0xffffff,
         emissive: emissiveHex,
         emissiveIntensity: emissiveStrength,
-        roughness: 0.36,
-        metalness: 0.04,
+        roughness: 0.58,
+        metalness: 0.02,
       });
 
       puffMat.onBeforeCompile = (shader) => {
@@ -573,11 +580,11 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
       butterflyWingR = null;
       songbirdGroup = null;
 
-      // Sacred Violet-Mahogany Bark with glowing Leyline Spirit Veins shader
+      // Smooth Cozy Stylized Cinnamon-Violet Bark with glowing Leyline Spirit Veins shader
       const barkMat = new THREE.MeshStandardMaterial({
-        color: 0x3b1947,
-        roughness: 0.55,
-        metalness: 0.08,
+        color: 0x5c374c,
+        roughness: 0.68,
+        metalness: 0.03,
       });
       barkMat.onBeforeCompile = (shader) => {
         shader.uniforms.uTime = shaderUniforms.uTime;
@@ -597,7 +604,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
           #include <emissivemap_fragment>
           float veinWave = sin(vWorldBarkPos.y * 7.5 - uTime * 1.9 + sin(vWorldBarkPos.x * 12.0) * 1.8);
           float veinMask = smoothstep(0.86, 0.99, veinWave);
-          totalEmissiveRadiance += vec3(0.92, 0.34, 0.72) * veinMask * 0.75;
+          totalEmissiveRadiance += vec3(0.94, 0.45, 0.76) * veinMask * 0.65;
           `
         );
       };
@@ -606,13 +613,13 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
       const showSakura = sakura || curLevel >= 5;
 
       const paletteHex = sakura || showSakura
-        ? [0xf472b6, 0xfbcfe8, 0xe879f9, 0xdb2777, 0xfdf2f8]
+        ? [0xf472b6, 0xfbcfe8, 0xf9a8d4, 0xe879f9, 0xfdf2f8]
         : isCelestialMax
-        ? [0x2dd4bf, 0x67e8f9, 0xa78bfa, 0x34d399]
-        : [0x34d399, 0x6ee7b7, 0xf472b6, 0x10b981];
+        ? [0x5eead4, 0x7dd3fc, 0xc4b5fd, 0x6ee7b7]
+        : [0x4ade80, 0x86efac, 0x34d399, 0xf9a8d4];
 
-      const canopyEmissiveHex = isCelestialMax ? 0x0d9488 : showSakura ? 0x9d174d : 0x065f46;
-      const canopyEmissiveStr = showSakura || isCelestialMax ? 0.42 : 0.24;
+      const canopyEmissiveHex = isCelestialMax ? 0x0f766e : showSakura ? 0xbe185d : 0x047857;
+      const canopyEmissiveStr = showSakura || isCelestialMax ? 0.34 : 0.22;
 
       if (curLevel <= 1) {
         // --- STAGE 1: LUMINOUS SACRED SPROUT ---
@@ -927,8 +934,8 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
             rope.position.set(rx, -0.71, 0);
             pivot.add(rope);
           });
-          const seatMat = new THREE.MeshStandardMaterial({ color: 0x5c2b21, roughness: 0.48 });
-          const seat = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.06, 0.24), seatMat);
+          const seatMat = new THREE.MeshStandardMaterial({ color: 0x7c432b, roughness: 0.62 });
+          const seat = new THREE.Mesh(new RoundedBoxGeometry(0.58, 0.08, 0.26, 4, 0.03), seatMat);
           seat.position.set(0, -1.42, 0);
           seat.castShadow = true;
           pivot.add(seat);
@@ -1328,14 +1335,14 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
 
       // Sunbathing / Pruning lighting feedback
       if (sun) {
-        sunLight.intensity = 3.6 + Math.sin(t * 6) * 0.45;
+        sunLight.intensity = 3.4 + Math.sin(t * 6) * 0.4;
         canopyLight.color.setHex(0xfde047);
       } else if (pruning) {
-        sunLight.intensity = 2.75;
-        canopyLight.color.setHex(0x34d399);
+        sunLight.intensity = 2.65;
+        canopyLight.color.setHex(0x6ee7b7);
       } else {
-        sunLight.intensity = 2.35;
-        canopyLight.color.setHex(0xf472b6);
+        sunLight.intensity = 2.15;
+        canopyLight.color.setHex(0xf9a8d4);
       }
 
       controls.update();
@@ -1378,7 +1385,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
       auraTexPink.dispose();
       auraTexViolet.dispose();
       petalTex.dispose();
-      envTarget.dispose();
+      disposeEnv();
 
       if (renderer.domElement.parentElement) {
         renderer.domElement.parentElement.removeChild(renderer.domElement);

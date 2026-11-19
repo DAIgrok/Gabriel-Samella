@@ -60,7 +60,7 @@ export const PhotosView: React.FC = () => {
     if (!selectedPhoto && photos.length > 0) {
       setSelectedPhoto(photos[0]);
     }
-    showToast('Modo Cinema Iniciado! ✨');
+    showToast('Modo Cinema Iniciado!');
   };
 
   const handleDeviceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,7 +87,7 @@ export const PhotosView: React.FC = () => {
       setPhotoCaption('');
       setIsAddModalOpen(false);
     } catch {
-      showToast('Não foi possível preparar esta foto.', '⚠️');
+      showToast('Não foi possível preparar esta foto.');
     } finally {
       setIsUploading(false);
       e.target.value = '';
@@ -97,7 +97,7 @@ export const PhotosView: React.FC = () => {
   const handleUrlSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!photoUrl.trim()) {
-      showToast('Cole o link da imagem primeiro.', '⚠️');
+      showToast('Cole o link da imagem primeiro.');
       return;
     }
     addPhoto({
@@ -133,7 +133,7 @@ export const PhotosView: React.FC = () => {
           Nossa História em Imagens ♡
         </h2>
         <p className="text-xs md:text-sm text-purple-200/70">
-          Fotos salvas na nuvem para Gabriel & Samella verem sempre ✨
+          Fotos salvas na nuvem para Gabriel & Samella verem sempre ♡
         </p>
       </div>
 
@@ -158,7 +158,7 @@ export const PhotosView: React.FC = () => {
                 : 'text-purple-300/70 hover:text-white'
             }`}
           >
-            Favoritas ⭐
+            Favoritas
           </button>
         </div>
 
