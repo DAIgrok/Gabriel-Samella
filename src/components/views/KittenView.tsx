@@ -40,8 +40,10 @@ import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { soundEngine } from '../../utils/audioSynth';
 import { PetCharacter } from '../pets/PetCharacter';
 import { PetWorldDesign } from '../pets/PetWorldDesign';
+import { ModelViewerPetStage } from '../pets/ModelViewerPetStage';
 import { PetCanvas3D, PetDanceMove } from '../3d/PetCanvas3D';
 import { PET_SPECIES_CATALOG, resolvePetGlbUrl } from '../../data/initialData';
+import { getPetDialogue } from '../../data/petPersonalities';
 import { PetType } from '../../types';
 import { DiamondGemIcon, VectorGlyphIcon } from '../icons/CustomIcons';
 
@@ -184,38 +186,49 @@ export const KittenView: React.FC = () => {
     soundEngine.playHeartPop();
   };
 
+  const petDialogueStats = {
+    hunger: kitten.hunger ?? 80,
+    energy: kitten.energy ?? 80,
+    hygiene: kitten.hygiene ?? 80,
+    isSleeping: Boolean(kitten.isSleeping),
+  };
+
+  useEffect(() => {
+    setPetReaction(getPetDialogue(currentPetType, displayName, 'idle', petDialogueStats));
+  }, [currentPetType]);
+
   const handleNoseClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     playSpeciesSound();
     triggerHeartExplosion();
     if (!isSpectator) triggerEasterEgg('egg-kitten-nose');
-    setPetReaction(`Bip! Focinho de ${displayName}!`);
+    setPetReaction(getPetDialogue(currentPetType, displayName, 'pet_nose', petDialogueStats));
   };
 
   const handleBodyClick = (part: 'head' | 'belly' | 'paw') => {
     if (isSpectator) {
       playSpeciesSound();
-      setPetReaction(`${displayName} abanou pra você ♡`);
+      setPetReaction(getPetDialogue(currentPetType, displayName, 'sound', petDialogueStats));
       return;
     }
     if (kitten.isSleeping) {
       soundEngine.playSleepSnore();
-      setPetReaction(`Zzz... ${displayName} está dormindo`);
+      setPetReaction(getPetDialogue(currentPetType, displayName, 'sleep', petDialogueStats));
       return;
     }
     if (currentRoom === 'banheiro' && spongeMode) return;
 
     if (part === 'head') {
       playSpeciesSound();
-      setPetReaction(`Amo cafuné na cabecinha ♡`);
+      setPetReaction(getPetDialogue(currentPetType, displayName, 'pet_head', petDialogueStats));
       petKitten('head');
     } else if (part === 'belly') {
       soundEngine.playPurr();
-      setPetReaction(`Cosquinha na barriguinha ♡`);
+      setPetReaction(getPetDialogue(currentPetType, displayName, 'pet_belly', petDialogueStats));
       petKitten('belly');
     } else {
       soundEngine.playToyBoing();
-      setPetReaction(`High-five com ${displayName}!`);
+      setPetReaction(getPetDialogue(currentPetType, displayName, 'pet_paw', petDialogueStats));
       petKitten('paw');
     }
   };
@@ -228,7 +241,7 @@ export const KittenView: React.FC = () => {
     }
     if (feedKitten(foodName, hungerBoost, happyBoost)) {
       setFlyingFood({ iconKey, key: Date.now() });
-      setPetReaction(`Nham nham! Delícia de ${foodName} ♡`);
+      setPetReaction(getPetDialogue(currentPetType, displayName, 'feed', petDialogueStats));
       setTimeout(() => setFlyingFood(null), 950);
     }
   };
@@ -241,7 +254,7 @@ export const KittenView: React.FC = () => {
     }
     if (giveWaterKitten()) {
       setFlyingFood({ iconKey: 'fish', key: Date.now() });
-      setPetReaction(`Glub glub... Água fresquinha!`);
+      setPetReaction(getPetDialogue(currentPetType, displayName, 'water', petDialogueStats));
       setTimeout(() => setFlyingFood(null), 950);
     }
   };
@@ -254,7 +267,7 @@ export const KittenView: React.FC = () => {
     }
     if (playWithKitten(toyName, 'toy')) {
       setActiveToyIcon(iconKey);
-      setPetReaction(`Ebaaa! Brincando com ${toyName}!`);
+      setPetReaction(getPetDialogue(currentPetType, displayName, 'play', petDialogueStats));
     }
   };
 
@@ -778,7 +791,7 @@ export const KittenView: React.FC = () => {
           onPetTap={() => handleBodyClick('head')}
           onPlaySound={() => {
             playSpeciesSound();
-            setPetReaction(`${displayName} mandou um som fofo ♡`);
+            setPetReaction(getPetDialogue(currentPetType, displayName, 'sound', petDialogueStats));
           }}
           onRenamePet={(newName) => {
             renamePet(newName);
@@ -794,6 +807,10 @@ export const KittenView: React.FC = () => {
           onChangePetColor={setPetColor}
           onChangeAccessoryColor={setAccessoryColor}
           onOpenWardrobeModal={() => setDrawerModal('armario')}
+          customModelUrl={
+            resolvePetGlbUrl(currentPetType, config) ||
+            (currentPetType === 'cat' ? 'https://skfb.ly/pQwNL' : undefined)
+          }
         />
 
         {typeof document !== 'undefined' && createPortal(drawersPortal, document.body)}
@@ -1146,15 +1163,48 @@ export const KittenView: React.FC = () => {
 
           {petViewMode === '3d' ? (
             <div ref={stageRef} className="w-full relative">
-              <PetCanvas3D
-                petType={currentPetType}
-                kitten={kitten}
-                danceMove={danceMove}
-                hasSoapFoam={soapFoamActive}
-                isShowering={isShowering}
-                customModelUrl={resolvePetGlbUrl(currentPetType, config)}
-                onPetTouch={handleBodyClick}
-              />
+              {currentPetType === 'cat' || resolvePetGlbUrl(currentPetType, config) ? (
+                <ModelViewerPetStage
+                  src={resolvePetGlbUrl(currentPetType, config) || 'https://skfb.ly/pQwNL'}
+                  alt={displayName}
+                  colorHex={currentFurHex}
+                  isSpectator={isSpectator}
+                  cdPet={cdPet}
+                  cdFeed={cdFeed}
+                  onColorChange={(hex) => setPetColor(currentPetType, hex)}
+                  onPetTap={() => handleBodyClick('head')}
+                  onFeedPet={() => {
+                    const primaryFood = getFoodMenu()[0];
+                    handleFeed(
+                      primaryFood.name,
+                      primaryFood.iconKey,
+                      primaryFood.hunger,
+                      primaryFood.happy
+                    );
+                  }}
+                  fallback={
+                    <PetCanvas3D
+                      petType={currentPetType}
+                      kitten={kitten}
+                      danceMove={danceMove}
+                      hasSoapFoam={soapFoamActive}
+                      isShowering={isShowering}
+                      customModelUrl={resolvePetGlbUrl(currentPetType, config)}
+                      onPetTouch={handleBodyClick}
+                    />
+                  }
+                />
+              ) : (
+                <PetCanvas3D
+                  petType={currentPetType}
+                  kitten={kitten}
+                  danceMove={danceMove}
+                  hasSoapFoam={soapFoamActive}
+                  isShowering={isShowering}
+                  customModelUrl={resolvePetGlbUrl(currentPetType, config)}
+                  onPetTouch={handleBodyClick}
+                />
+              )}
               <button
                 type="button"
                 onClick={(e) => {

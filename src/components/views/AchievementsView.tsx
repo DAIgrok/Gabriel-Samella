@@ -30,7 +30,7 @@ export const AchievementsView: React.FC = () => {
           Nossos Marcos & Selos ♡
         </h2>
         <p className="text-xs md:text-sm text-purple-200/70">
-          28 marcos reais celebrando cada memória, cuidado e descoberta juntos.
+          {achievements.length} marcos reais celebrando cada memória, cuidado e descoberta juntos.
         </p>
       </div>
 

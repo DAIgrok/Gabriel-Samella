@@ -246,7 +246,11 @@ interface AppContextType {
   setExtendedView: (view: ExtendedView) => void;
   setIsDrawerOpen: (open: boolean) => void;
   setIsSettingsOpen: (open: boolean) => void;
+  isPermissionsModalOpen: boolean;
+  setIsPermissionsModalOpen: (open: boolean) => void;
+  dismissPermissionsPrompt: () => void;
   setIsLoggedIn: (loggedIn: boolean) => void;
+  lockApp: () => void;
   unlockWithPasscode: (code: string) => { ok: boolean; role?: ViewerRole };
   setIsLoadingDone: (done: boolean) => void;
   addCoins: (amount: number, reason?: string) => void;
@@ -329,6 +333,12 @@ interface AppContextType {
   showToast: (text: string, icon?: string, reward?: number) => void;
   updateConfig: (newConfig: Partial<CoupleConfig>) => void;
   updateGameRecord: (partial: Partial<GameRecords>) => void;
+  claimGameReward: (
+    gameId: string,
+    baseDiamonds: number,
+    reason: string,
+    score?: number
+  ) => { rewarded: number; capped: boolean; cooldownSec?: number };
   addQuizQuestion: (q: Omit<QuizQuestion, 'id' | 'isCustom'>) => void;
   removeQuizQuestion: (id: string) => void;
   addTimeCapsule: (capsule: Omit<TimeCapsuleItem, 'id' | 'createdAt'>) => void;
@@ -388,11 +398,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return [...savedList, ...newItems];
   };
 
+  const DEVICE_AUTH_STORAGE_KEY = 'nosso-mundo-device-auth';
+  const DEVICE_PERM_PROMPT_KEY = 'nosso-mundo-perm-prompt-v1';
+
+  const readDeviceAuth = (): { unlocked: boolean; role: ViewerRole } => {
+    if (typeof window === 'undefined') return { unlocked: false, role: 'samella' };
+    try {
+      const raw = window.localStorage.getItem(DEVICE_AUTH_STORAGE_KEY);
+      if (!raw) return { unlocked: false, role: 'samella' };
+      const parsed = JSON.parse(raw);
+      const role: ViewerRole =
+        parsed?.role === 'gabriel_spectator' ? 'gabriel_spectator' : 'samella';
+      return { unlocked: Boolean(parsed?.unlocked), role };
+    } catch {
+      return { unlocked: false, role: 'samella' };
+    }
+  };
+
+  const initialDeviceAuth = readDeviceAuth();
+
   const [journeyStarted, setJourneyStarted] = useState<boolean>(
     Boolean(savedData?.journeyStarted)
   );
   const [isCloudSynced, setIsCloudSynced] = useState<boolean>(false);
-  const [viewerRole, setViewerRole] = useState<ViewerRole>('samella');
+  const [viewerRole, setViewerRole] = useState<ViewerRole>(initialDeviceAuth.role);
   const isSpectator = viewerRole === 'gabriel_spectator';
 
   const [config, setConfig] = useState<CoupleConfig>(
@@ -403,8 +432,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [extendedView, setExtendedViewState] = useState<ExtendedView>('inicio');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  // Always require passcode login when opening the site (prevents bypassing on reload)
-  const [isLoggedIn, setIsLoggedInState] = useState<boolean>(false);
+  const [isPermissionsModalOpen, setIsPermissionsModalOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedInState] = useState<boolean>(initialDeviceAuth.unlocked);
   const [isLoadingDone, setIsLoadingDone] = useState<boolean>(false);
   const [hasSeenIntro] = useState(false);
 
@@ -551,7 +580,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const toastTimeoutRef = useRef<number | null>(null);
   const chatPopupTimeoutRef = useRef<number | null>(null);
   const lastMysteryChestRef = useRef<number>(0);
-  const allowSpectatorLetterSaveRef = useRef<boolean>(false);
+  const allowSpectatorWorldSaveRef = useRef<boolean>(false);
   const invalidSkippedIdsRef = useRef<Set<string>>(new Set());
 
   // Synchronous idempotency guards against duplicate/spam diamond claims
@@ -603,19 +632,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const applyCloudPayload = (cloud: CloudWorldPayload, isLiveUpdate = false) => {
-    if (!cloud || !cloud.journeyStarted) return;
+    if (!cloud) return;
 
     if (isLiveUpdate) {
       isApplyingRemoteRef.current = true;
     }
 
-    setJourneyStarted(true);
+    setJourneyStarted(Boolean(cloud.journeyStarted));
     if (cloud.config) {
       const normalizedPasscode =
         !cloud.config.passcode || cloud.config.passcode === '1206'
           ? '120623'
           : cloud.config.passcode;
-      setConfig({ ...INITIAL_COUPLE_CONFIG, ...cloud.config, passcode: normalizedPasscode });
+      const normalizedCreator =
+        !cloud.config.creatorPasscode || cloud.config.creatorPasscode === '2023'
+          ? '2010'
+          : cloud.config.creatorPasscode;
+      setConfig({
+        ...INITIAL_COUPLE_CONFIG,
+        ...cloud.config,
+        passcode: normalizedPasscode,
+        creatorPasscode: normalizedCreator,
+      });
     }
     if (typeof cloud.coins === 'number') setCoins(cloud.coins);
     if (typeof cloud.treeWaterCount === 'number') setTreeWaterCount(cloud.treeWaterCount);
@@ -740,7 +778,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     if (cloud.customPhotos && cloud.customPhotos.length > 0) {
-      setPhotos((prev) => mergeInitialItems(cloud.customPhotos, prev));
+      const cleanCustomPhotos = cloud.customPhotos.filter((p) => p.sourceType !== 'drive');
+      if (cleanCustomPhotos.length > 0) {
+        setPhotos((prev) => mergeInitialItems(cleanCustomPhotos, prev));
+      }
     }
 
     if (cloud.customSongs && cloud.customSongs.length > 0) {
@@ -760,7 +801,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     if (cloud.calendarEvents && cloud.calendarEvents.length > 0) {
-      setCalendarEvents(cloud.calendarEvents);
+      setCalendarEvents(mergeInitialItems(cloud.calendarEvents, INITIAL_CALENDAR_EVENTS));
     }
 
     if (cloud.dailyWheelState) {
@@ -880,17 +921,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         ]);
         if (!active) return;
 
-        if (supaWorld && supaWorld.journeyStarted) {
+        if (supaWorld) {
           applyCloudPayload(supaWorld, true);
         } else {
           const legacyWorld = await loadCloudWorld().catch(() => null);
-          if (active && legacyWorld && legacyWorld.journeyStarted) {
+          if (active && legacyWorld) {
             applyCloudPayload(legacyWorld, false);
           }
         }
 
         if (supaPhotos && supaPhotos.length > 0) {
-          setPhotos((prev) => mergeInitialItems(supaPhotos, prev));
+          const cleanSupaPhotos = supaPhotos.filter((p) => p.sourceType !== 'drive');
+          if (cleanSupaPhotos.length > 0) {
+            setPhotos((prev) => mergeInitialItems(cleanSupaPhotos, prev));
+          }
         }
 
         if (supaSongs && supaSongs.length > 0) {
@@ -967,15 +1011,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
   }, [isLoggedIn, viewerRole]);
 
-  // Init Google Auth listener (Drive backup integration)
+  // Auto-open device permissions prompt once per device when Samella unlocks
+  useEffect(() => {
+    if (!isLoggedIn || isSpectator || typeof window === 'undefined') return;
+    try {
+      const dismissed = window.localStorage.getItem(DEVICE_PERM_PROMPT_KEY);
+      if (!dismissed) {
+        const timer = window.setTimeout(() => {
+          setIsPermissionsModalOpen(true);
+        }, 1200);
+        return () => window.clearTimeout(timer);
+      }
+    } catch {
+      // Ignore storage failures
+    }
+  }, [isLoggedIn, isSpectator]);
+
+  // Init Google Auth listener (Drive auto-sync intentionally disabled — gallery uses couple photos only)
   useEffect(() => {
     const unsubscribe = initAuth(
-      (user, token) => {
+      (user) => {
         setGoogleUser(user);
         setIsGoogleConnected(true);
-        if (token) {
-          syncDrivePhotosWithToken(token).catch(() => {});
-        }
       },
       () => {
         setGoogleUser(null);
@@ -1055,16 +1112,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await syncDrivePhotosWithToken(token);
   };
 
-  // Persist full world state directly to Supabase (zero localStorage)
+  // Persist full world state directly to Supabase (world data never uses localStorage)
   useEffect(() => {
-    if (!journeyStarted) return;
-    if (isSpectator && !allowSpectatorLetterSaveRef.current) return;
-    if (allowSpectatorLetterSaveRef.current) {
-      allowSpectatorLetterSaveRef.current = false;
+    if (!journeyStarted && !allowSpectatorWorldSaveRef.current) return;
+    if (isSpectator && !allowSpectatorWorldSaveRef.current) return;
+    if (allowSpectatorWorldSaveRef.current) {
+      allowSpectatorWorldSaveRef.current = false;
     }
 
     const saveInput = {
-      journeyStarted: true,
+      journeyStarted,
       coins,
       treeWaterCount,
       currentDailyIndex,
@@ -1316,32 +1373,70 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setHeartRainTriggerCount((prev) => prev + 1);
   };
 
+  const persistDeviceAuth = (unlocked: boolean, role: ViewerRole) => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (!unlocked) {
+        window.localStorage.removeItem(DEVICE_AUTH_STORAGE_KEY);
+      } else {
+        window.localStorage.setItem(DEVICE_AUTH_STORAGE_KEY, JSON.stringify({ unlocked, role }));
+      }
+    } catch {
+      // Ignore storage quota errors
+    }
+  };
+
+  const dismissPermissionsPrompt = () => {
+    setIsPermissionsModalOpen(false);
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(DEVICE_PERM_PROMPT_KEY, '1');
+      } catch {
+        // Ignore storage errors
+      }
+    }
+  };
+
   const setIsLoggedIn = (loggedIn: boolean) => {
     setIsLoggedInState(loggedIn);
     if (loggedIn) {
       setIsLoadingDone(true);
+      persistDeviceAuth(true, viewerRole);
       if (!journeyStarted && !isSpectator) {
         setJourneyStarted(true);
         setTimeout(() => {
           unlockAchievement('ach-welcome');
         }, 500);
       }
+    } else {
+      persistDeviceAuth(false, viewerRole);
     }
+  };
+
+  const lockApp = () => {
+    soundEngine.playHeartPop();
+    setIsDrawerOpen(false);
+    setIsSettingsOpen(false);
+    setIsLoggedInState(false);
+    persistDeviceAuth(false, viewerRole);
   };
 
   const unlockWithPasscode = (code: string): { ok: boolean; role?: ViewerRole } => {
     const clean = code.trim();
     const samellaExpected = config.passcode && config.passcode !== '1206' ? config.passcode : '120623';
-    if (clean === '2010') {
+    const creatorPin = config.creatorPasscode && config.creatorPasscode !== '2023' ? config.creatorPasscode : '2010';
+    if (clean === '2010' || clean === creatorPin) {
       setViewerRole('gabriel_spectator');
       setIsLoggedInState(true);
       setIsLoadingDone(true);
+      persistDeviceAuth(true, 'gabriel_spectator');
       return { ok: true, role: 'gabriel_spectator' };
     }
     if (clean === samellaExpected || clean === '120623') {
       setViewerRole('samella');
       setIsLoggedInState(true);
       setIsLoadingDone(true);
+      persistDeviceAuth(true, 'samella');
       if (!journeyStarted) {
         setJourneyStarted(true);
         setTimeout(() => {
@@ -1380,10 +1475,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const setExtendedView = (view: ExtendedView) => {
     soundEngine.playHeartPop();
     if (view === 'config') {
-      if (isSpectator) {
-        guardSpectator();
-        return;
-      }
       setIsDrawerOpen(false);
       setIsSettingsOpen(true);
       return;
@@ -1501,7 +1592,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!alreadyClaimed && target.rewardCoins > 0) {
       addCoins(Math.min(3, target.rewardCoins), `Carta lida: "${target.title}"`);
       unlockAchievement('ach-first-letter');
+      setAchievements((prev) =>
+        prev.map((a) =>
+          (a.id === 'ach-letters-5' || a.id === 'ach-letters-10') && !a.unlocked
+            ? { ...a, progress: Math.min(a.maxProgress, readLettersCount) }
+            : a
+        )
+      );
       if (readLettersCount >= 5) unlockAchievement('ach-letters-5');
+      if (readLettersCount >= 10) unlockAchievement('ach-letters-10');
     }
   };
 
@@ -1514,7 +1613,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addCustomLetter = (newLetterData: Omit<Letter, 'id' | 'read' | 'isFavorite'>) => {
-    allowSpectatorLetterSaveRef.current = true;
+    allowSpectatorWorldSaveRef.current = true;
     const newLetter: Letter = {
       ...newLetterData,
       id: `letter-${Date.now()}`,
@@ -1549,7 +1648,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const effectiveSender: CouplePerson = isSpectator ? 'Gabriel' : sender;
     const effectiveRecipient: CouplePerson = isSpectator ? 'Samella' : recipient;
-    allowSpectatorLetterSaveRef.current = true;
+    allowSpectatorWorldSaveRef.current = true;
 
     soundEngine.playSparkle();
     const now = new Date();
@@ -1584,15 +1683,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     const nextCount = (missionsState.twoWayLettersSent || 0) + 1;
+    const totalActivity = letters.filter((l) => l.read).length + nextCount;
     setLetters((prev) => [newLetter, ...prev]);
     if (!isSpectator) {
       setMissionsState((prev) => ({
         ...prev,
         twoWayLettersSent: nextCount,
       }));
-      if (letters.filter((l) => l.read).length + nextCount >= 5) {
-        unlockAchievement('ach-letters-5');
-      }
+      setAchievements((prev) =>
+        prev.map((a) =>
+          (a.id === 'ach-letters-5' || a.id === 'ach-letters-10') && !a.unlocked
+            ? { ...a, progress: Math.min(a.maxProgress, totalActivity) }
+            : a
+        )
+      );
+      if (totalActivity >= 5) unlockAchievement('ach-letters-5');
+      if (totalActivity >= 10) unlockAchievement('ach-letters-10');
     }
     triggerHeartExplosion(0.5, 0.45);
     showToast(`Carta de ${effectiveSender} enviada para ${effectiveRecipient}!`, 'letter');
@@ -1652,7 +1758,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const editPhoto = (id: string, updates: Partial<MemoryPhoto>) => {
-    if (guardSpectator()) return;
+    allowSpectatorWorldSaveRef.current = true;
     setPhotos((prev) =>
       prev.map((p) => {
         if (p.id !== id) return p;
@@ -1668,7 +1774,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const togglePhotoInLoop = (id: string) => {
-    if (guardSpectator()) return;
+    allowSpectatorWorldSaveRef.current = true;
     soundEngine.playHeartPop();
     setPhotos((prev) =>
       prev.map((p) => {
@@ -1684,6 +1790,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addPhoto = (newPhotoData: Omit<MemoryPhoto, 'id' | 'index'>) => {
+    allowSpectatorWorldSaveRef.current = true;
     soundEngine.playSparkle();
     const uniqueSuffix = Math.random().toString(36).slice(2, 6);
     const newPhoto: MemoryPhoto = {
@@ -1705,7 +1812,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const removePhoto = (id: string) => {
-    if (guardSpectator()) return;
+    allowSpectatorWorldSaveRef.current = true;
     soundEngine.playHeartPop();
     const target = photos.find((p) => p.id === id);
     if (target?.url.startsWith('idb://')) {
@@ -1806,6 +1913,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addSong = (newSongData: Omit<Song, 'id'>) => {
+    allowSpectatorWorldSaveRef.current = true;
     soundEngine.playSparkle();
     invalidSkippedIdsRef.current.clear();
     const newSong: Song = {
@@ -1833,7 +1941,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const editSong = (id: string, updates: Partial<Song>) => {
-    if (guardSpectator()) return;
+    allowSpectatorWorldSaveRef.current = true;
     setSongs((prev) =>
       prev.map((s) => {
         if (s.id !== id) return s;
@@ -1847,7 +1955,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const removeSong = (id: string) => {
-    if (guardSpectator()) return;
+    allowSpectatorWorldSaveRef.current = true;
     soundEngine.playHeartPop();
     const target = songs.find((s) => s.id === id);
     if (target?.audioUrl?.startsWith('idb://')) {
@@ -1926,25 +2034,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       // Handle accessory / hat / outfit custom color
       if (
-        chosenHex &&
-        (item.slotType === 'hat' ||
-          item.slotType === 'accessory' ||
-          item.slotType === 'outfit' ||
-          item.slotType === 'collar' ||
-          item.slotType === 'glasses')
+        item.slotType === 'hat' ||
+        item.slotType === 'accessory' ||
+        item.slotType === 'outfit' ||
+        item.slotType === 'collar' ||
+        item.slotType === 'glasses'
       ) {
         setKitten((prev) => ({
           ...prev,
-          accessoryColors: {
-            ...(prev.accessoryColors || {}),
-            [item.id]: chosenHex,
-          },
+          accessoryColors: chosenHex
+            ? { ...(prev.accessoryColors || {}), [item.id]: chosenHex }
+            : prev.accessoryColors,
           ...(item.slotType === 'hat' ? { equippedHat: item.id } : {}),
           ...(item.slotType === 'accessory' ? { equippedAccessory: item.id } : {}),
           ...(item.slotType === 'outfit' ? { equippedOutfit: item.id } : {}),
           ...(item.slotType === 'collar' ? { equippedCollar: item.id } : {}),
           ...(item.slotType === 'glasses' ? { equippedGlasses: item.id } : {}),
         }));
+        unlockAchievement('ach-pet-dress');
       }
 
       // Handle tree unlocks
@@ -2009,7 +2116,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setAchievements((prev) =>
           prev.map((a) => {
             if (a.unlocked) return a;
-            if (a.id === 'ach-house-architect' || a.id === 'ach-house-palace') {
+            if (
+              a.id === 'ach-house-architect' ||
+              a.id === 'ach-house-palace' ||
+              a.id === 'ach-house-full25'
+            ) {
               return { ...a, progress: Math.min(a.maxProgress, totalAfter) };
             }
             return a;
@@ -2018,6 +2129,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (totalAfter >= 1) unlockAchievement('ach-house-first');
         if (totalAfter >= 5) unlockAchievement('ach-house-architect');
         if (totalAfter >= 12) unlockAchievement('ach-house-palace');
+        if (totalAfter >= 25) unlockAchievement('ach-house-full25');
       }
 
       if (item.slotType === 'house-wall' && item.targetId) {
@@ -2027,6 +2139,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           wallTheme: wallId,
           customWallHex: chosenHex || prev.customWallHex,
         }));
+        unlockAchievement('ach-house-wall');
       }
 
       if (item.slotType === 'house-floor' && item.targetId) {
@@ -2050,6 +2163,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             ? prev.activeFishIds
             : [...prev.activeFishIds, fishId],
         }));
+        unlockAchievement('ach-aqua-decor');
       }
 
       if (item.slotType === 'aquarium-decor' && item.targetId) {
@@ -2063,6 +2177,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             ? prev.activeDecorIds
             : [...prev.activeDecorIds, decorId],
         }));
+        unlockAchievement('ach-aqua-decor');
       }
 
       soundEngine.playSparkle();
@@ -2078,6 +2193,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (guardSpectator()) return;
     soundEngine.playSparkle();
     triggerHeartExplosion();
+    const redeemedAfter = storeItems.filter(
+      (i) => i.category === 'vales' && (i.redeemed || i.id === id)
+    ).length;
+
     setStoreItems((prev) =>
       prev.map((item) =>
         item.id === id
@@ -2094,6 +2213,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           : item
       )
     );
+    setAchievements((prev) =>
+      prev.map((a) =>
+        a.id === 'ach-voucher-3' && !a.unlocked
+          ? { ...a, progress: Math.min(a.maxProgress, redeemedAfter) }
+          : a
+      )
+    );
+    unlockAchievement('ach-voucher-first');
+    if (redeemedAfter >= 3) unlockAchievement('ach-voucher-3');
     showToast('Vale Amoroso resgatado com sucesso! Gabriel já foi notificado.', 'gift');
   };
 
@@ -2128,6 +2256,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       soundEngine.playSparkle();
       triggerHeartExplosion();
       addCoins(5, `${displayPet} subiu para o Nível ${leveledUpTo}!`);
+      if (leveledUpTo >= 5) {
+        unlockAchievement('ach-pet-level5');
+      }
     }
   };
 
@@ -2576,6 +2707,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return false;
     }
     soundEngine.playSparkle();
+    const nextRibbonsCount = (treeState.promiseRibbons || []).length + 1;
     setTreeState((prev) => ({
       ...prev,
       promiseRibbons: [...(prev.promiseRibbons || []), promiseText.trim()],
@@ -2584,6 +2716,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         tree_ribbon: Date.now() + COOLDOWN_MS.tree_ribbon,
       },
     }));
+    setAchievements((prev) =>
+      prev.map((a) =>
+        a.id === 'ach-tree-ribbons5' && !a.unlocked
+          ? { ...a, progress: Math.min(a.maxProgress, nextRibbonsCount) }
+          : a
+      )
+    );
+    if (nextRibbonsCount >= 5) unlockAchievement('ach-tree-ribbons5');
     addCoins(2, 'Fita de Promessa amarrada nos galhos');
     triggerHeartExplosion(0.5, 0.4);
     return true;
@@ -2605,14 +2745,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     ];
     soundEngine.playFruitHarvest();
     triggerHeartExplosion(0.5, 0.45);
+    const nextFruits = (treeState.fruitsHarvested || 0) + 1;
     setTreeState((prev) => ({
       ...prev,
-      fruitsHarvested: (prev.fruitsHarvested || 0) + 1,
+      fruitsHarvested: nextFruits,
       cooldowns: {
         ...(prev.cooldowns || {}),
         tree_fruit: Date.now() + COOLDOWN_MS.tree_fruit,
       },
     }));
+    setAchievements((prev) =>
+      prev.map((a) =>
+        a.id === 'ach-tree-fruits5' && !a.unlocked
+          ? { ...a, progress: Math.min(a.maxProgress, nextFruits) }
+          : a
+      )
+    );
+    if (nextFruits >= 5) unlockAchievement('ach-tree-fruits5');
     addCoins(1, 'Colheu um Fruto do Amor');
     return fruitMessages[index % fruitMessages.length];
   };
@@ -2684,14 +2833,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       audioDuration: payload.audioDuration,
     };
 
+    const totalSentAfter = chatMessages.filter((m) => m.sender === 'partner').length + 1;
+
     setChatMessages((prev) =>
       prev.some((m) => m.id === msgId) ? prev : [...prev, optimisticMsg]
     );
 
     if (!isSpectator) {
       unlockAchievement('ach-chat-first');
+      setAchievements((prev) =>
+        prev.map((a) =>
+          a.id === 'ach-chat-10' && !a.unlocked
+            ? { ...a, progress: Math.min(a.maxProgress, totalSentAfter) }
+            : a
+        )
+      );
+      if (totalSentAfter >= 10) unlockAchievement('ach-chat-10');
       if (msgType === 'audio') {
         unlockAchievement('ach-chat-voice');
+      }
+      if (msgType === 'image') {
+        unlockAchievement('ach-chat-photo');
       }
     }
 
@@ -2767,7 +2929,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const updateConfig = (newConfig: Partial<CoupleConfig>) => {
-    if (guardSpectator()) return;
+    allowSpectatorWorldSaveRef.current = true;
     setConfig((prev) => ({ ...prev, ...newConfig }));
     showToast('Configurações atualizadas!', 'sparkles');
   };
@@ -2782,18 +2944,98 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }));
     setAchievements((prev) =>
       prev.map((a) =>
-        a.id === 'ach-arcade-10' && !a.unlocked
+        (a.id === 'ach-arcade-10' || a.id === 'ach-arcade-25') && !a.unlocked
           ? { ...a, progress: Math.min(a.maxProgress, nextGamesCount) }
           : a
       )
     );
-    if (nextGamesCount >= 10) {
-      unlockAchievement('ach-arcade-10');
+    if (nextGamesCount >= 1) unlockAchievement('ach-memory-game');
+    if (nextGamesCount >= 10) unlockAchievement('ach-arcade-10');
+    if (nextGamesCount >= 25) unlockAchievement('ach-arcade-25');
+  };
+
+  const claimGameReward = (
+    gameId: string,
+    baseDiamonds: number,
+    reason: string,
+    score?: number
+  ): { rewarded: number; capped: boolean; cooldownSec?: number } => {
+    if (isSpectator) {
+      return { rewarded: 0, capped: false };
     }
+
+    const now = Date.now();
+    const todayKey = new Date().toISOString().split('T')[0];
+    const sameDay = gameRecords.dailyPlayDate === todayKey;
+    const prevCounts = sameDay ? gameRecords.dailyRewardsCount || {} : {};
+    const prevTimestamps = sameDay ? gameRecords.lastRewardAt || {} : {};
+    const countToday = prevCounts[gameId] || 0;
+    const lastAt = prevTimestamps[gameId] || 0;
+    const cooldownMs = 60_000;
+    const maxDailyRewardsPerGame = 3;
+
+    const nextGamesCount = (gameRecords.gamesPlayed || 0) + 1;
+    const nextHighest = Math.max(gameRecords.highestScore || 0, score ?? 0);
+
+    if (countToday >= maxDailyRewardsPerGame) {
+      setGameRecords((prev) => ({
+        ...prev,
+        dailyPlayDate: todayKey,
+        dailyRewardsCount: prevCounts,
+        lastRewardAt: prevTimestamps,
+        gamesPlayed: nextGamesCount,
+        highestScore: nextHighest,
+      }));
+      showToast(
+        'Partida concluída! Limite diário de diamantes neste jogo atingido — continue jogando por diversão!',
+        'game'
+      );
+      return { rewarded: 0, capped: true };
+    }
+
+    if (lastAt > 0 && now - lastAt < cooldownMs) {
+      const remSec = Math.ceil((cooldownMs - (now - lastAt)) / 1000);
+      setGameRecords((prev) => ({
+        ...prev,
+        dailyPlayDate: todayKey,
+        dailyRewardsCount: prevCounts,
+        lastRewardAt: prevTimestamps,
+        gamesPlayed: nextGamesCount,
+        highestScore: nextHighest,
+      }));
+      showToast(
+        `Vitória registrada! Próxima recompensa neste jogo em ${remSec}s.`,
+        'clock'
+      );
+      return { rewarded: 0, capped: true, cooldownSec: remSec };
+    }
+
+    const granted = Math.max(1, Math.min(8, Math.round(baseDiamonds)));
+    setGameRecords((prev) => ({
+      ...prev,
+      dailyPlayDate: todayKey,
+      dailyRewardsCount: { ...prevCounts, [gameId]: countToday + 1 },
+      lastRewardAt: { ...prevTimestamps, [gameId]: now },
+      gamesPlayed: nextGamesCount,
+      highestScore: nextHighest,
+    }));
+
+    setAchievements((prev) =>
+      prev.map((a) =>
+        (a.id === 'ach-arcade-10' || a.id === 'ach-arcade-25') && !a.unlocked
+          ? { ...a, progress: Math.min(a.maxProgress, nextGamesCount) }
+          : a
+      )
+    );
+    unlockAchievement('ach-memory-game');
+    if (nextGamesCount >= 10) unlockAchievement('ach-arcade-10');
+    if (nextGamesCount >= 25) unlockAchievement('ach-arcade-25');
+    addCoins(granted, reason);
+    return { rewarded: granted, capped: false };
   };
 
   const addQuizQuestion = (q: Omit<QuizQuestion, 'id' | 'isCustom'>) => {
-    if (guardSpectator()) return;
+    allowSpectatorWorldSaveRef.current = true;
     soundEngine.playSparkle();
     const item: QuizQuestion = {
       ...q,
@@ -2805,13 +3047,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const removeQuizQuestion = (id: string) => {
-    if (guardSpectator()) return;
+    allowSpectatorWorldSaveRef.current = true;
     setCustomQuizQuestions((prev) => prev.filter((q) => q.id !== id));
     showToast('Pergunta removida do Quiz.', 'trophy');
   };
 
   const addTimeCapsule = (capsule: Omit<TimeCapsuleItem, 'id' | 'createdAt'>) => {
-    if (guardSpectator()) return;
+    allowSpectatorWorldSaveRef.current = true;
     soundEngine.playSparkle();
     const item: TimeCapsuleItem = {
       ...capsule,
@@ -2823,7 +3065,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const removeTimeCapsule = (id: string) => {
-    if (guardSpectator()) return;
+    allowSpectatorWorldSaveRef.current = true;
     setTimeCapsules((prev) => prev.filter((c) => c.id !== id));
     showToast('Cápsula removida.', 'clock');
   };
@@ -2838,6 +3080,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       rewardClaimed: false,
     };
     setCoupleGoals((prev) => [item, ...prev]);
+    unlockAchievement('ach-goal-first');
     showToast('Novo desejo adicionado à lista do casal!', 'sparkles');
   };
 
@@ -2864,6 +3107,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       claimedGoalIdsRef.current.add(id);
     }
 
+    const doneAfter = coupleGoals.filter((g) =>
+      g.id === id ? nextCompleted : g.completed
+    ).length;
+
     setCoupleGoals((prev) =>
       prev.map((g) => {
         if (g.id !== id) return g;
@@ -2875,6 +3122,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         };
       })
     );
+
+    if (nextCompleted) {
+      setAchievements((prev) =>
+        prev.map((a) =>
+          a.id === 'ach-goal-done3' && !a.unlocked
+            ? { ...a, progress: Math.min(a.maxProgress, doneAfter) }
+            : a
+        )
+      );
+      if (doneAfter >= 3) unlockAchievement('ach-goal-done3');
+    }
 
     if (canReward) {
       triggerHeartExplosion();
@@ -2899,6 +3157,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       createdAt: new Date().toISOString().split('T')[0],
     };
     setCalendarEvents((prev) => [newEvent, ...prev]);
+    unlockAchievement('ach-cal-first');
     triggerHeartExplosion();
     showToast(`Evento "${newEvent.title}" salvo no Calendário do Casal!`, 'calendar');
   };
@@ -2943,6 +3202,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       totalSpins: (prev.totalSpins || 0) + 1,
     }));
     const balancedReward = Math.min(8, Math.max(2, coinReward));
+    unlockAchievement('ach-wheel-first');
     if (balancedReward > 0) {
       addCoins(balancedReward, `Roleta Diária: ${prizeLabel}`);
     } else {
@@ -2975,6 +3235,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const rewards = [4, 5, 6, 8, 10];
     const roll = rewards[Math.floor(Math.random() * rewards.length)];
     const prizeText = `Tesouro diário de ${roll} diamantes para o casal!`;
+    unlockAchievement('ach-chest-first');
     addCoins(roll, 'Baú Misterioso (24h)');
     triggerHeartExplosion(0.5, 0.35);
     return { ok: true, coins: roll, prizeText };
@@ -2996,6 +3257,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
     soundEngine.playSparkle();
     setDreamHouse((prev) => ({ ...prev, wallTheme: theme, customWallHex: undefined }));
+    unlockAchievement('ach-house-wall');
   };
 
   const setHouseFloorTheme = (theme: HouseFloorTheme) => {
@@ -3014,6 +3276,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (guardSpectator()) return;
     soundEngine.playHeartPop();
     setDreamHouse((prev) => ({ ...prev, customWallHex: hex }));
+    unlockAchievement('ach-house-wall');
   };
 
   const setHouseCustomFloorHex = (hex: string) => {
@@ -3283,6 +3546,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const mission = INTEGRATED_MISSIONS_CATALOG.find((m) => m.id === missionId);
     if (!mission) return false;
 
+    const claimedAfter = missionsState.claimedIds.length + 1;
     setMissionsState((prev) => ({
       ...prev,
       claimedIds: [...prev.claimedIds, missionId],
@@ -3303,6 +3567,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         waterClarity: 100,
       }));
     }
+
+    setAchievements((prev) =>
+      prev.map((a) =>
+        (a.id === 'ach-mission-3' || a.id === 'ach-mission-all') && !a.unlocked
+          ? { ...a, progress: Math.min(a.maxProgress, claimedAfter) }
+          : a
+      )
+    );
+    if (claimedAfter >= 3) unlockAchievement('ach-mission-3');
+    if (claimedAfter >= 6) unlockAchievement('ach-mission-all');
 
     triggerHeartExplosion(0.5, 0.4);
     addCoins(mission.rewardCoins, `Missão: ${mission.title}`);
@@ -3340,7 +3614,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const resetAllData = async () => {
-    if (guardSpectator()) return;
     setJourneyStarted(false);
     try {
       await clearSupabaseWorld();
@@ -3424,7 +3697,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setExtendedView,
         setIsDrawerOpen,
         setIsSettingsOpen,
+        isPermissionsModalOpen,
+        setIsPermissionsModalOpen,
+        dismissPermissionsPrompt,
         setIsLoggedIn,
+        lockApp,
         unlockWithPasscode,
         setIsLoadingDone,
         addCoins,
@@ -3488,6 +3765,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         showToast,
         updateConfig,
         updateGameRecord,
+        claimGameReward,
         addQuizQuestion,
         removeQuizQuestion,
         addTimeCapsule,

@@ -21,9 +21,12 @@ import {
   GameCategory,
   GameId,
   MEMORY_THEMES,
-  QUIZ_QUESTIONS_BASE,
   pickRandomItems,
 } from '../../data/gamesCatalog';
+import {
+  TOTAL_CHALLENGE_UNIVERSE_COUNT,
+  drawQuizDeck,
+} from '../../data/massiveQuestionEngine';
 import {
   EmojiCharadeGame,
   HangmanGame,
@@ -55,7 +58,7 @@ import { GameVectorArt } from './games/GameVectorArt';
 
 export const GamesView: React.FC = () => {
   const {
-    addCoins,
+    claimGameReward,
     unlockAchievement,
     triggerHeartExplosion,
     gameRecords,
@@ -75,31 +78,24 @@ export const GamesView: React.FC = () => {
       triggerHeartExplosion();
       return;
     }
-    const nextPlayed = (gameRecords.gamesPlayed || 0) + 1;
-    const prevHigh = gameRecords.highestScore || 0;
-    updateGameRecord({
-      gamesPlayed: nextPlayed,
-      highestScore: score && score > prevHigh ? score : prevHigh,
-    });
-    addCoins(diamonds, reason);
+    const gameId = activeGame === 'menu' ? 'arcade' : activeGame;
+    claimGameReward(gameId, diamonds, reason, score);
     triggerHeartExplosion();
   };
 
   // =========================================================================
-  // 1. MEGA QUIZ STATE (Base 64 + Custom Creator Questions, 10 Random per Round)
+  // 1. MEGA QUIZ STATE (Massive Combinatorial + Custom Creator Questions, 10 per Round)
   // =========================================================================
-  const allQuizPool = useMemo(() => {
-    return [...customQuizQuestions, ...QUIZ_QUESTIONS_BASE];
-  }, [customQuizQuestions]);
-
-  const [quizDeck, setQuizDeck] = useState<QuizQuestion[]>(() => pickRandomItems(allQuizPool, 10));
+  const [quizDeck, setQuizDeck] = useState<QuizQuestion[]>(() =>
+    drawQuizDeck(10, customQuizQuestions)
+  );
   const [quizStep, setQuizStep] = useState(0);
   const [quizScore, setQuizScore] = useState(0);
   const [quizSelected, setQuizSelected] = useState<number | null>(null);
   const [quizFinished, setQuizFinished] = useState(false);
 
   const startQuiz = () => {
-    setQuizDeck(pickRandomItems(allQuizPool, 10));
+    setQuizDeck(drawQuizDeck(10, customQuizQuestions));
     setQuizStep(0);
     setQuizScore(0);
     setQuizSelected(null);
@@ -131,10 +127,18 @@ export const GamesView: React.FC = () => {
         if (!isSpectator) {
           updateGameRecord({
             bestQuizScore: Math.max(updatedScore, gameRecords.bestQuizScore || 0),
-            gamesPlayed: (gameRecords.gamesPlayed || 0) + 1,
+            gamesPlayed: gameRecords.gamesPlayed || 0,
           });
-          addCoins(reward, `Mega Quiz (${updatedScore}/${quizDeck.length})`);
+          claimGameReward(
+            'quiz',
+            reward,
+            `Mega Quiz (${updatedScore}/${quizDeck.length})`,
+            updatedScore
+          );
           unlockAchievement('ach-quiz-master');
+          if (updatedScore >= 8) {
+            unlockAchievement('ach-quiz-perfect');
+          }
         }
         triggerHeartExplosion();
       }
@@ -198,10 +202,14 @@ export const GamesView: React.FC = () => {
                 const bestNow = gameRecords.bestMemoryMoves || 0;
                 updateGameRecord({
                   bestMemoryMoves: bestNow === 0 || nextMoves < bestNow ? nextMoves : bestNow,
-                  gamesPlayed: (gameRecords.gamesPlayed || 0) + 1,
+                  gamesPlayed: gameRecords.gamesPlayed || 0,
                 });
-                addCoins(memoryPairsCount === 8 ? 5 : 3, `Memória (${memoryThemeName})`);
-                unlockAchievement('ach-memory-game');
+                claimGameReward(
+                  'memoria',
+                  memoryPairsCount === 8 ? 5 : 3,
+                  `Memória (${memoryThemeName})`,
+                  nextMoves
+                );
               }
               triggerHeartExplosion();
             }
@@ -253,9 +261,14 @@ export const GamesView: React.FC = () => {
           if (!isSpectator) {
             updateGameRecord({
               bestHearts: Math.max(finalScore, gameRecords.bestHearts || 0),
-              gamesPlayed: (gameRecords.gamesPlayed || 0) + 1,
+              gamesPlayed: gameRecords.gamesPlayed || 0,
             });
-            addCoins(reward, `Chuva de Corações (${finalScore} coletados)`);
+            claimGameReward(
+              'coracoes',
+              reward,
+              `Chuva de Corações (${finalScore} coletados)`,
+              finalScore
+            );
           }
           soundEngine.playSparkle();
           triggerHeartExplosion();
@@ -338,14 +351,16 @@ export const GamesView: React.FC = () => {
       samella: winner === 'heart' ? prev.samella + 1 : prev.samella,
       draws: winner === 'draw' ? prev.draws + 1 : prev.draws,
     }));
+    const playerWon = winner === 'rose' || (tictacMode === '2p' && winner !== 'draw');
     if (winner !== 'draw') {
       soundEngine.playSparkle();
-      if (!isSpectator) {
+      if (!isSpectator && playerWon) {
+        const nextWins = (gameRecords.ticTacToeWins || 0) + 1;
         updateGameRecord({
-          ticTacToeWins: (gameRecords.ticTacToeWins || 0) + 1,
-          gamesPlayed: (gameRecords.gamesPlayed || 0) + 1,
+          ticTacToeWins: nextWins,
+          gamesPlayed: gameRecords.gamesPlayed || 0,
         });
-        addCoins(3, 'Vitória no Jogo da Velha do Amor');
+        claimGameReward('velha', 3, 'Vitória no Jogo da Velha do Amor', nextWins);
         unlockAchievement('ach-tictac-win');
       }
     }
@@ -459,7 +474,9 @@ export const GamesView: React.FC = () => {
       <div className="text-center space-y-1.5">
         <p className="text-xs text-pink-300/90 font-medium inline-flex items-center gap-1.5">
           <Gamepad2 className="w-3.5 h-3.5" />
-          <span>Arcade do Casal · 25 Jogos & 900+ Variações</span>
+          <span>
+            Arcade do Casal · 25 Jogos & {TOTAL_CHALLENGE_UNIVERSE_COUNT.toLocaleString('pt-BR')}+ Desafios
+          </span>
         </p>
         <h2 className="text-2xl md:text-3xl font-bold text-white font-display">
           Momentos de Diversão ♡

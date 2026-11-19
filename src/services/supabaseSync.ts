@@ -345,7 +345,7 @@ export function subscribeSupabaseWorld(
       },
       (payload) => {
         const nextRow = payload.new as CoupleWorldRow | undefined;
-        if (!nextRow || !nextRow.journey_started) return;
+        if (!nextRow) return;
         const mapped = rowToCloudPayload(nextRow);
         onRemoteUpdate(mapped);
       }

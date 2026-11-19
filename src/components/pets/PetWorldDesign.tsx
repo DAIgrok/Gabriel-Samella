@@ -22,6 +22,8 @@ import { PET_SPECIES_CATALOG } from '../../data/initialData';
 import { formatCooldownMs } from '../../context/AppContext';
 import { DiamondGemIcon, VectorGlyphIcon } from '../icons/CustomIcons';
 import { PetCharacter } from './PetCharacter';
+import { ModelViewerPetStage } from './ModelViewerPetStage';
+import { PET_PERSONALITY_PROFILES } from '../../data/petPersonalities';
 
 export interface PetWorldDesignProps {
   isSpectator?: boolean;
@@ -67,6 +69,7 @@ export interface PetWorldDesignProps {
   onChangePetColor: (petType: PetType, hex: string) => void;
   onChangeAccessoryColor: (itemId: string, hex: string) => void;
   onOpenWardrobeModal: () => void;
+  customModelUrl?: string;
 }
 
 const RARITY_BADGE_MAP: Record<string, { label: string; cls: string }> = {
@@ -102,6 +105,7 @@ export const PetWorldDesign: React.FC<PetWorldDesignProps> = ({
   equippedAccessory,
   storeItems,
   petReaction,
+  cdPet,
   cdFeed,
   cdBath,
   cdSleep,
@@ -119,6 +123,7 @@ export const PetWorldDesign: React.FC<PetWorldDesignProps> = ({
   onChangePetColor,
   onChangeAccessoryColor,
   onOpenWardrobeModal,
+  customModelUrl,
 }) => {
   const prefersReducedMotion = useReducedMotion();
   const [tab, setTab] = useState<'pets' | 'outfits'>('pets');
@@ -206,13 +211,20 @@ export const PetWorldDesign: React.FC<PetWorldDesignProps> = ({
       >
         {/* Top Row */}
         <div className="flex items-center justify-between gap-2 mb-2 relative z-10">
-          <span
-            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-              (RARITY_BADGE_MAP[currentSpecies.rarity] || RARITY_BADGE_MAP.comum).cls
-            }`}
-          >
-            {(RARITY_BADGE_MAP[currentSpecies.rarity] || RARITY_BADGE_MAP.comum).label}
-          </span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span
+              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                (RARITY_BADGE_MAP[currentSpecies.rarity] || RARITY_BADGE_MAP.comum).cls
+              }`}
+            >
+              {(RARITY_BADGE_MAP[currentSpecies.rarity] || RARITY_BADGE_MAP.comum).label}
+            </span>
+            {PET_PERSONALITY_PROFILES[currentPetType]?.badgeLabel && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-purple-500/20 text-pink-200 border-pink-400/30">
+                {PET_PERSONALITY_PROFILES[currentPetType].badgeLabel}
+              </span>
+            )}
+          </div>
 
           <div className="flex items-center gap-1.5">
             {!isSpectator && (
@@ -263,7 +275,7 @@ export const PetWorldDesign: React.FC<PetWorldDesignProps> = ({
           </motion.div>
         </div>
 
-        {/* Floating Vector Character Hero */}
+        {/* Floating Pet Stage: <model-viewer> (./gatinho.glb / custom GLB) + 3D/Vector Fallback */}
         <div className="relative py-1 flex flex-col items-center justify-center min-h-[200px]">
           <AnimatePresence>
             {floatingLove.map((id) => (
@@ -280,17 +292,44 @@ export const PetWorldDesign: React.FC<PetWorldDesignProps> = ({
             ))}
           </AnimatePresence>
 
-          <div className="scale-90 sm:scale-95">
-            <PetCharacter
-              kitten={kittenState}
-              petType={currentPetType}
-              onPetPart={() => handleTapPet()}
-              onNoseClick={(e) => {
-                e.stopPropagation();
-                handleTapPet();
-              }}
+          {currentPetType === 'cat' || customModelUrl ? (
+            <ModelViewerPetStage
+              src={customModelUrl || 'https://skfb.ly/pQwNL'}
+              alt={displayName}
+              colorHex={currentFurHex}
+              isSpectator={isSpectator}
+              cdPet={cdPet}
+              cdFeed={cdFeed}
+              onColorChange={(hex) => onChangePetColor(currentPetType, hex)}
+              onPetTap={handleTapPet}
+              onFeedPet={onFeed}
+              fallback={
+                <div className="scale-90 sm:scale-95">
+                  <PetCharacter
+                    kitten={kittenState}
+                    petType={currentPetType}
+                    onPetPart={() => handleTapPet()}
+                    onNoseClick={(e) => {
+                      e.stopPropagation();
+                      handleTapPet();
+                    }}
+                  />
+                </div>
+              }
             />
-          </div>
+          ) : (
+            <div className="scale-90 sm:scale-95">
+              <PetCharacter
+                kitten={kittenState}
+                petType={currentPetType}
+                onPetPart={() => handleTapPet()}
+                onNoseClick={(e) => {
+                  e.stopPropagation();
+                  handleTapPet();
+                }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Pet Name & XP Mini Bar */}

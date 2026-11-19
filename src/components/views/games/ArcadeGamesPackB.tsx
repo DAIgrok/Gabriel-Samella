@@ -12,6 +12,7 @@ import { soundEngine } from '../../../utils/audioSynth';
 import type { MiniGameProps } from './ArcadeGamesPackA';
 import { DiamondGemIcon, VectorGlyphIcon } from '../../icons/CustomIcons';
 import { GameVectorArt } from './GameVectorArt';
+import { generateDynamicMathQuestion } from '../../../data/massiveQuestionEngine';
 
 const Bar: React.FC<{
   iconToken?: string;
@@ -153,30 +154,8 @@ export const RpsGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectator })
 };
 
 // 11. MATEMÁTICA RELÂMPAGO (25s)
-function genMathQuestion() {
-  const op = Math.random() > 0.35 ? (Math.random() > 0.5 ? '+' : '-') : '×';
-  let a = Math.floor(Math.random() * 18) + 2;
-  let b = Math.floor(Math.random() * 14) + 2;
-  if (op === '×') {
-    a = Math.floor(Math.random() * 9) + 2;
-    b = Math.floor(Math.random() * 9) + 2;
-  }
-  if (op === '-' && b > a) [a, b] = [b, a];
-  const ans = op === '+' ? a + b : op === '-' ? a - b : a * b;
-  const set = new Set<number>([ans]);
-  while (set.size < 4) {
-    const delta = Math.floor(Math.random() * 9) - 4;
-    if (ans + delta >= 0 && delta !== 0) set.add(ans + delta);
-  }
-  return {
-    text: `${a} ${op} ${b} = ?`,
-    ans,
-    options: Array.from(set).sort(() => Math.random() - 0.5),
-  };
-}
-
 export const MathSpeedGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
-  const [q, setQ] = useState(() => genMathQuestion());
+  const [q, setQ] = useState(() => generateDynamicMathQuestion());
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(25);
   const [done, setDone] = useState(false);
@@ -204,7 +183,7 @@ export const MathSpeedGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
     setScore(0);
     setTimeLeft(25);
     setDone(false);
-    setQ(genMathQuestion());
+    setQ(generateDynamicMathQuestion());
   };
 
   const answer = (val: number) => {
@@ -216,7 +195,7 @@ export const MathSpeedGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
     } else {
       soundEngine.playHeartPop();
     }
-    setQ(genMathQuestion());
+    setQ(generateDynamicMathQuestion());
   };
 
   return (

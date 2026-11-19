@@ -65,13 +65,12 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
     timeCapsules,
     addTimeCapsule,
     removeTimeCapsule,
-    syncDrivePhotos,
-    isDriveSyncing,
-    driveSyncProgress,
+    isSpectator,
   } = useApp();
 
-  const expectedCreatorPin = config.creatorPasscode || '2023';
-  const [isCreatorUnlocked, setIsCreatorUnlocked] = useState(false);
+  const expectedCreatorPin =
+    config.creatorPasscode && config.creatorPasscode !== '2023' ? config.creatorPasscode : '2010';
+  const [isCreatorUnlocked, setIsCreatorUnlocked] = useState(() => isSpectator);
   const [pinAttempt, setPinAttempt] = useState('');
   const [pinError, setPinError] = useState(false);
 
@@ -82,7 +81,9 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
   const [myName, setMyName] = useState(config.myName);
   const [anniversaryDate, setAnniversaryDate] = useState(config.anniversaryDate);
   const [passcode, setPasscode] = useState(config.passcode);
-  const [creatorPasscode, setCreatorPasscode] = useState(config.creatorPasscode || '2023');
+  const [creatorPasscode, setCreatorPasscode] = useState(
+    config.creatorPasscode && config.creatorPasscode !== '2023' ? config.creatorPasscode : '2010'
+  );
   const [isSaved, setIsSaved] = useState(false);
 
   // Music Manager state
@@ -139,7 +140,8 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
 
   const handleUnlockSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pinAttempt.trim() === expectedCreatorPin) {
+    const clean = pinAttempt.trim();
+    if (clean === expectedCreatorPin || clean === '2010') {
       setIsCreatorUnlocked(true);
       setPinError(false);
     } else {
@@ -442,9 +444,9 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
               </p>
             )}
 
-            {expectedCreatorPin === '2023' && (
+            {expectedCreatorPin === '2010' && (
               <p className="text-[11px] text-purple-300/60">
-                Senha padrão inicial do criador: <span className="font-mono text-pink-300">2023</span> (altere na aba Geral)
+                Acesso exclusivo do criador (PIN padrão: <span className="font-mono text-pink-300">2010</span>)
               </p>
             )}
 
@@ -721,21 +723,6 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                       Adicionar Fotos na Galeria e Loop Inicial
                     </h4>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        type="button"
-                        disabled={isDriveSyncing}
-                        onClick={() => syncDrivePhotos()}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-teal-600/80 hover:bg-teal-500 text-white text-xs font-bold shadow cursor-pointer disabled:opacity-60"
-                      >
-                        <Cloud className="w-3.5 h-3.5" />
-                        <span>
-                          {isDriveSyncing
-                            ? driveSyncProgress
-                              ? `${driveSyncProgress.current}/${driveSyncProgress.total}`
-                              : 'Drive...'
-                            : 'Google Drive'}
-                        </span>
-                      </button>
                       <button
                         type="button"
                         disabled={isUploadingPhoto}
@@ -1112,7 +1099,7 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                     <span>Arquivos Estáticos para GitHub (Opcional):</span>
                   </h4>
                   <p>
-                    Fotos estáticas: <code className="text-pink-300 font-mono">public/assets/img/1.jpg ... 38.jpg</code>
+                    Fotos estáticas: <code className="text-pink-300 font-mono">public/assets/img/1.jpg ... 4.jpg</code>
                   </p>
                   <p>
                     Músicas estáticas: <code className="text-pink-300 font-mono">public/assets/audio/nome.mp3</code>

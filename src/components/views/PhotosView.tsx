@@ -5,12 +5,10 @@ import {
   Heart,
   Play,
   Plus,
-  Cloud,
   Upload,
   Link as LinkIcon,
   X,
   Loader2,
-  RefreshCw,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { motion, AnimatePresence } from 'motion/react';
@@ -29,10 +27,6 @@ export const PhotosView: React.FC = () => {
     addPhoto,
     unlockAchievement,
     showToast,
-    isDriveSyncing,
-    driveSyncProgress,
-    isGoogleConnected,
-    syncDrivePhotos,
   } = useApp();
 
   const [filter, setFilter] = useState<'todas' | 'favoritas'>('todas');
@@ -169,28 +163,6 @@ export const PhotosView: React.FC = () => {
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Adicionar Foto</span>
-          </button>
-
-          <button
-            onClick={() => syncDrivePhotos()}
-            disabled={isDriveSyncing}
-            className="flex items-center gap-1.5 px-3.5 min-h-[40px] py-2 rounded-2xl glass-panel border border-teal-400/35 text-teal-200 text-xs font-bold hover:bg-teal-950/40 active:scale-95 transition-all cursor-pointer disabled:opacity-60"
-            title="Sincronizar fotos da pasta compartilhada do Google Drive"
-          >
-            {isDriveSyncing ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Cloud className="w-3.5 h-3.5" />
-            )}
-            <span>
-              {isDriveSyncing
-                ? driveSyncProgress
-                  ? `Drive ${driveSyncProgress.current}/${driveSyncProgress.total}`
-                  : 'Sincronizando...'
-                : isGoogleConnected
-                ? 'Atualizar Drive'
-                : 'Sincronizar Drive'}
-            </span>
           </button>
 
           <button

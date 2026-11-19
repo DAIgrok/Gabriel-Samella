@@ -13,16 +13,17 @@ import {
 } from 'lucide-react';
 import { soundEngine } from '../../../utils/audioSynth';
 import {
-  EMOJI_CHARADES_POOL,
-  HANGMAN_POOL,
-  LYRIC_POOL,
-  QUIZ_QUESTIONS_BASE,
-  RIDDLES_POOL,
-  TRUE_FALSE_POOL,
-  WHO_MOST_LIKELY_POOL,
-  WORDSEARCH_WORDS,
-  pickRandomItems,
-} from '../../../data/gamesCatalog';
+  drawCharadesDeck,
+  drawHangmanWord,
+  drawLyricsDeck,
+  drawQuizDeck,
+  drawRiddlesDeck,
+  drawScrambleWords,
+  drawTrueFalseDeck,
+  drawWhoMostLikelyDeck,
+  getExpandedWordSearchPool,
+  pickNonRepeating,
+} from '../../../data/massiveQuestionEngine';
 import { DiamondGemIcon, VectorGlyphIcon } from '../../icons/CustomIcons';
 import { GameVectorArt } from './GameVectorArt';
 
@@ -84,7 +85,7 @@ const RewardCallout: React.FC<{ amount: number; isSpectator?: boolean }> = ({ am
 
 // 1. FORCA ROMÂNTICA
 export const HangmanGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectator }) => {
-  const [entry, setEntry] = useState(() => pickRandomItems(HANGMAN_POOL, 1)[0]);
+  const [entry, setEntry] = useState(() => drawHangmanWord());
   const [guessed, setGuessed] = useState<string[]>([]);
   const [showHint, setShowHint] = useState(false);
   const awardedRef = useRef(false);
@@ -96,8 +97,7 @@ export const HangmanGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectato
   const lost = livesLeft === 0 && !won;
 
   const restart = () => {
-    const candidates = HANGMAN_POOL.filter((w) => w.word !== word);
-    setEntry(pickRandomItems(candidates.length ? candidates : HANGMAN_POOL, 1)[0]);
+    setEntry(drawHangmanWord(word));
     setGuessed([]);
     setShowHint(false);
     awardedRef.current = false;
@@ -224,8 +224,6 @@ export const HangmanGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectato
 
 // 2. PALAVRA EMBARALHADA (3 rodadas)
 export const ScrambleGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectator }) => {
-  const shortPool = useMemo(() => HANGMAN_POOL.filter((i) => i.word.length >= 4 && i.word.length <= 9), []);
-
   const buildRound = (item: { word: string; hint: string }) => {
     const chars = item.word.split('').map((c, idx) => ({ id: `${idx}-${c}`, char: c }));
     let shuffled = [...chars].sort(() => Math.random() - 0.5);
@@ -235,7 +233,7 @@ export const ScrambleGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectat
     return { item, shuffled };
   };
 
-  const [rounds, setRounds] = useState(() => pickRandomItems(shortPool, 3).map(buildRound));
+  const [rounds, setRounds] = useState(() => drawScrambleWords(3).map(buildRound));
   const [step, setStep] = useState(0);
   const [pickedIds, setPickedIds] = useState<string[]>([]);
   const [feedback, setFeedback] = useState<'none' | 'ok' | 'err'>('none');
@@ -247,7 +245,7 @@ export const ScrambleGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectat
     .join('');
 
   const restart = () => {
-    setRounds(pickRandomItems(shortPool, 3).map(buildRound));
+    setRounds(drawScrambleWords(3).map(buildRound));
     setStep(0);
     setPickedIds([]);
     setFeedback('none');
@@ -386,7 +384,7 @@ export const ScrambleGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectat
 
 // 3. VERDADEIRO OU FALSO
 export const TrueFalseGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
-  const [deck, setDeck] = useState(() => pickRandomItems(TRUE_FALSE_POOL, 8));
+  const [deck, setDeck] = useState(() => drawTrueFalseDeck(8));
   const [step, setStep] = useState(0);
   const [score, setScore] = useState(0);
   const [picked, setPicked] = useState<boolean | null>(null);
@@ -395,7 +393,7 @@ export const TrueFalseGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
   const current = deck[step];
 
   const restart = () => {
-    setDeck(pickRandomItems(TRUE_FALSE_POOL, 8));
+    setDeck(drawTrueFalseDeck(8));
     setStep(0);
     setScore(0);
     setPicked(null);
@@ -489,7 +487,7 @@ export const TrueFalseGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 
 // 4. COMPLETE A LETRA / POEMA
 export const LyricGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
-  const [deck, setDeck] = useState(() => pickRandomItems(LYRIC_POOL, 6));
+  const [deck, setDeck] = useState(() => drawLyricsDeck(6));
   const [step, setStep] = useState(0);
   const [score, setScore] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
@@ -498,7 +496,7 @@ export const LyricGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
   const current = deck[step];
 
   const restart = () => {
-    setDeck(pickRandomItems(LYRIC_POOL, 6));
+    setDeck(drawLyricsDeck(6));
     setStep(0);
     setScore(0);
     setPicked(null);
@@ -583,7 +581,7 @@ export const LyricGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 
 // 5. ENIGMA DOS SÍMBOLOS (Vector Art Charades)
 export const EmojiCharadeGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
-  const [deck, setDeck] = useState(() => pickRandomItems(EMOJI_CHARADES_POOL, 6));
+  const [deck, setDeck] = useState(() => drawCharadesDeck(6));
   const [step, setStep] = useState(0);
   const [score, setScore] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
@@ -592,7 +590,7 @@ export const EmojiCharadeGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => 
   const current = deck[step];
 
   const restart = () => {
-    setDeck(pickRandomItems(EMOJI_CHARADES_POOL, 6));
+    setDeck(drawCharadesDeck(6));
     setStep(0);
     setScore(0);
     setPicked(null);
@@ -686,12 +684,12 @@ export const EmojiCharadeGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => 
 
 // 6. QUEM É MAIS PROVÁVEL?
 export const WhoMostLikelyGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSpectator }) => {
-  const [cards, setCards] = useState(() => pickRandomItems(WHO_MOST_LIKELY_POOL, 6));
+  const [cards, setCards] = useState(() => drawWhoMostLikelyDeck(6));
   const [step, setStep] = useState(0);
   const [votes, setVotes] = useState<{ q: string; pick: string }[]>([]);
 
   const restart = () => {
-    setCards(pickRandomItems(WHO_MOST_LIKELY_POOL, 6));
+    setCards(drawWhoMostLikelyDeck(6));
     setStep(0);
     setVotes([]);
   };
@@ -769,7 +767,7 @@ export const WhoMostLikelyGame: React.FC<MiniGameProps> = ({ onWin, onExit, isSp
 
 // 7. CHARADAS DO CORAÇÃO
 export const RiddleGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
-  const [deck, setDeck] = useState(() => pickRandomItems(RIDDLES_POOL, 5));
+  const [deck, setDeck] = useState(() => drawRiddlesDeck(5));
   const [step, setStep] = useState(0);
   const [score, setScore] = useState(0);
   const [showHint, setShowHint] = useState(false);
@@ -779,7 +777,7 @@ export const RiddleGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
   const current = deck[step];
 
   const restart = () => {
-    setDeck(pickRandomItems(RIDDLES_POOL, 5));
+    setDeck(drawRiddlesDeck(5));
     setStep(0);
     setScore(0);
     setShowHint(false);
@@ -875,7 +873,12 @@ export const RiddleGame: React.FC<MiniGameProps> = ({ onWin, onExit }) => {
 function generateWordSearch() {
   const size = 7;
   const grid: string[][] = Array.from({ length: size }, () => Array(size).fill(''));
-  const candidates = pickRandomItems(WORDSEARCH_WORDS.filter((w) => w.length >= 3 && w.length <= 6), 12);
+  const candidates = pickNonRepeating(
+    'wordsearch',
+    getExpandedWordSearchPool(),
+    12,
+    (w) => w
+  );
   const placed: { word: string; cells: string[] }[] = [];
 
   for (const w of candidates) {
@@ -1076,11 +1079,11 @@ interface MixedQuestion {
 }
 
 function buildMarathonDeck(): MixedQuestion[] {
-  const q1 = pickRandomItems(QUIZ_QUESTIONS_BASE, 1)[0];
-  const q2 = pickRandomItems(TRUE_FALSE_POOL, 1)[0];
-  const q3 = pickRandomItems(EMOJI_CHARADES_POOL, 1)[0];
-  const q4 = pickRandomItems(LYRIC_POOL, 1)[0];
-  const q5 = pickRandomItems(RIDDLES_POOL, 1)[0];
+  const q1 = drawQuizDeck(1)[0];
+  const q2 = drawTrueFalseDeck(1)[0];
+  const q3 = drawCharadesDeck(1)[0];
+  const q4 = drawLyricsDeck(1)[0];
+  const q5 = drawRiddlesDeck(1)[0];
 
   return [
     { badge: 'Quiz do Casal', prompt: q1.question, options: q1.options, correctIndex: q1.correctIndex },

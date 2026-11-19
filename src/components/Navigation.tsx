@@ -18,6 +18,8 @@ import {
   ChevronRight,
   Target,
   CalendarDays,
+  Bell,
+  Lock,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { motion, AnimatePresence } from 'motion/react';
@@ -46,6 +48,8 @@ export const Navigation: React.FC = () => {
     photos,
     unreadChatCount,
     isSpectator,
+    setIsPermissionsModalOpen,
+    lockApp,
   } = useApp();
 
   const currentSpecies = PET_SPECIES_CATALOG.find((s) => s.type === (kitten.petType || 'cat')) || PET_SPECIES_CATALOG[0];
@@ -80,9 +84,7 @@ export const Navigation: React.FC = () => {
     { id: 'config', label: 'Configurações (Criador)', icon: Settings, color: 'text-slate-300' },
   ];
 
-  const drawerItems = isSpectator
-    ? allDrawerItems.filter((item) => item.id !== 'config')
-    : allDrawerItems;
+  const drawerItems = allDrawerItems;
 
   return (
     <>
@@ -265,6 +267,36 @@ export const Navigation: React.FC = () => {
                     </button>
                   );
                 })}
+                <div className="pt-2 space-y-1.5 border-t border-white/10 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDrawerOpen(false);
+                      setIsPermissionsModalOpen(true);
+                    }}
+                    className="w-full flex items-center justify-between p-3 rounded-2xl text-pink-200 hover:bg-white/5 hover:text-white transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Bell className="w-5 h-5 text-pink-300" />
+                      <span className="text-sm font-medium">Permissões do Aparelho</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-white/30" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={lockApp}
+                    className="w-full flex items-center justify-between p-3 rounded-2xl text-purple-200/80 hover:bg-rose-500/10 hover:text-rose-200 transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Lock className="w-5 h-5 text-purple-300" />
+                      <span className="text-sm font-medium">
+                        {isSpectator ? 'Trocar Conta / Bloquear' : 'Bloquear / Trocar Conta'}
+                      </span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-white/30" />
+                  </button>
+                </div>
               </div>
 
               {/* Drawer Footer with romantic quote */}

@@ -9,10 +9,10 @@ export const MemoriesHomeCard: React.FC = () => {
   const { setExtendedView, setSelectedPhoto, photos } = useApp();
 
   const previewPhotos = REAL_PHOTO_SLOTS.homeMemories.map((fallbackUrl, idx) => {
-    const existing = photos[idx + 4] || photos[idx];
+    const existing = photos.length > 0 ? photos[idx % photos.length] : undefined;
     return {
       id: existing?.id || `photo-${idx + 1}`,
-      url: getCouplePhotoUrl(photos, idx + 4, fallbackUrl),
+      url: getCouplePhotoUrl(photos, idx, fallbackUrl),
       title: existing?.title || `Nosso Momento #${idx + 1}`,
       date: existing?.date || '12 de Junho de 2023',
       memory: existing,
@@ -65,7 +65,7 @@ export const MemoriesHomeCard: React.FC = () => {
           >
             <SmartPhoto
               photo={item.memory}
-              photoIndex={idx + 5}
+              photoIndex={idx + 1}
               src={item.url}
               alt={item.title}
               hideDetails

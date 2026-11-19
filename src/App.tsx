@@ -29,6 +29,7 @@ import { AquariumView } from './components/views/AquariumView';
 import { MissionsView } from './components/views/MissionsView';
 import { AdminSettingsModal } from './components/views/AdminSettingsModal';
 import { PhotoVisualizerModal } from './components/PhotoVisualizerModal';
+import { PermissionsModal } from './components/PermissionsModal';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowLeft, MessageCircle, X } from 'lucide-react';
 import { DiamondGemIcon, VectorGlyphIcon } from './components/icons/CustomIcons';
@@ -37,7 +38,6 @@ const MainAppContent: React.FC = () => {
   const {
     isLoading,
     isLocked,
-    isSpectator,
     extendedView,
     setExtendedView,
     toastMessage,
@@ -134,12 +134,15 @@ const MainAppContent: React.FC = () => {
       {/* Global Easter Egg Modal */}
       <EasterEggModal />
 
-      {/* Global Settings Modal (Creator/Samella only) */}
+      {/* Global Settings Modal (Creator PIN 2010 or Gabriel Spectator) */}
       <AnimatePresence>
-        {isSettingsOpen && !isSpectator && (
+        {isSettingsOpen && (
           <AdminSettingsModal onClose={() => setIsSettingsOpen(false)} />
         )}
       </AnimatePresence>
+
+      {/* Global Device Permissions Modal */}
+      <PermissionsModal />
 
       {/* Global Photo Visualizer Modal */}
       <PhotoVisualizerModal

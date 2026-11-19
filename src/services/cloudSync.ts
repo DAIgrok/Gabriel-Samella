@@ -105,6 +105,9 @@ export interface GameRecords {
   ticTacToeWins: number;
   gamesPlayed?: number;
   highestScore?: number;
+  dailyPlayDate?: string;
+  dailyRewardsCount?: Record<string, number>;
+  lastRewardAt?: Record<string, number>;
 }
 
 export interface CloudWorldPayload {

@@ -110,14 +110,14 @@ export const MiniMusicPlayer: React.FC = () => {
           className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden flex-shrink-0 relative border border-purple-500/30 shadow-md bg-purple-950/60 cursor-pointer"
         >
           <img
-            src={resolvedCoverUrl || '/assets/img/12.jpg'}
+            src={resolvedCoverUrl || '/assets/img/1.jpg'}
             alt={currentSong.title}
             referrerPolicy="no-referrer"
             className={`w-full h-full object-cover transition-transform duration-500 ${
               audioState.isPlaying || isPlaying ? 'scale-105' : ''
             }`}
             onError={(e) => {
-              (e.target as HTMLImageElement).src = '/assets/img/12.jpg';
+              (e.target as HTMLImageElement).src = '/assets/img/1.jpg';
             }}
           />
         </div>
