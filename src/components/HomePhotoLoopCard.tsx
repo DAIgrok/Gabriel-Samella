@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Pause, Play, Maximize2, Image as ImageIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pause, Play, Maximize2, Image as ImageIcon, Plus } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { SmartPhoto } from './SmartPhoto';
 import { useReducedMotion } from 'motion/react';
@@ -9,11 +9,9 @@ export const HomePhotoLoopCard: React.FC = () => {
   const prefersReducedMotion = useReducedMotion();
 
   const loopPhotos = useMemo(() => {
-    const flagged = photos.filter((p) => p.inHomeLoop);
+    const flagged = photos.filter((p) => p.inHomeLoop !== false);
     if (flagged.length > 0) return flagged;
-    const favs = photos.filter((p) => p.isFavorite);
-    if (favs.length > 0) return favs;
-    return photos.slice(0, 12);
+    return photos;
   }, [photos]);
 
   const [index, setIndex] = useState(0);
@@ -30,7 +28,29 @@ export const HomePhotoLoopCard: React.FC = () => {
     return () => window.clearInterval(timer);
   }, [isPaused, prefersReducedMotion, loopPhotos.length]);
 
-  if (!activePhoto) return null;
+  if (!activePhoto) {
+    return (
+      <section className="rounded-3xl p-5 bg-gradient-to-br from-[#180932]/90 via-[#100424]/95 to-[#080214] border border-purple-500/25 shadow-lg flex flex-col items-center justify-center text-center gap-3 min-h-[210px]">
+        <div className="w-12 h-12 rounded-2xl bg-pink-500/20 border border-pink-400/35 flex items-center justify-center text-pink-300">
+          <ImageIcon className="w-6 h-6" />
+        </div>
+        <div className="space-y-1 max-w-sm">
+          <h3 className="text-sm sm:text-base font-bold text-white">Quadro de Fotos em Loop</h3>
+          <p className="text-xs text-purple-200/70">
+            Envie suas fotos reais ou um arquivo .zip na Galeria para elas aparecerem aqui e ao fundo do app ♡
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setExtendedView('fotos')}
+          className="inline-flex items-center gap-1.5 min-h-[40px] px-4 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-xs font-bold text-white shadow cursor-pointer"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Ir para Galeria</span>
+        </button>
+      </section>
+    );
+  }
 
   return (
     <section className="rounded-3xl p-4 sm:p-5 bg-gradient-to-br from-[#180932]/90 via-[#100424]/95 to-[#080214] border border-purple-500/25 shadow-lg space-y-3">
@@ -38,10 +58,10 @@ export const HomePhotoLoopCard: React.FC = () => {
         <div>
           <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-1.5">
             <ImageIcon className="w-4 h-4 text-pink-300" />
-            <span>Quadro de Memórias em Loop</span>
+            <span>Nossas Fotos em Loop</span>
           </h3>
-          <p className="text-[11px] text-purple-200/70">
-            {loopPhotos.length} {loopPhotos.length === 1 ? 'foto selecionada' : 'fotos em exibição'} · #{activePhoto.index}
+          <p className="text-[11px] text-purple-200/70 tabular-nums">
+            {safeIndex + 1} de {loopPhotos.length} {loopPhotos.length === 1 ? 'foto salva' : 'fotos salvas'}
           </p>
         </div>
 
@@ -75,17 +95,6 @@ export const HomePhotoLoopCard: React.FC = () => {
           hideDetails
         />
 
-        <div className="absolute inset-x-0 bottom-0 p-3.5 bg-gradient-to-t from-black/85 via-black/45 to-transparent pointer-events-none flex items-end justify-between gap-3">
-          <div className="min-w-0">
-            <h4 className="text-sm font-bold text-white truncate">{activePhoto.title}</h4>
-            <p className="text-xs text-pink-200/85 truncate">{activePhoto.subtitle || activePhoto.date}</p>
-          </div>
-          <span className="text-[11px] font-mono text-purple-200/80 shrink-0 tabular-nums">
-            {safeIndex + 1}/{loopPhotos.length}
-          </span>
-        </div>
-
-        {/* Left / Right Controls */}
         {loopPhotos.length > 1 && (
           <>
             <button
@@ -111,7 +120,7 @@ export const HomePhotoLoopCard: React.FC = () => {
           type="button"
           onClick={() => setSelectedPhoto(activePhoto)}
           aria-label="Ampliar foto"
-          className="absolute top-2.5 right-2.5 min-w-[36px] min-h-[36px] rounded-xl bg-black/55 hover:bg-black/75 border border-white/15 text-white flex items-center justify-center cursor-pointer backdrop-blur-sm"
+          className="absolute top-2.5 right-2.5 min-w-[40px] min-h-[40px] rounded-xl bg-black/55 hover:bg-black/75 border border-white/15 text-white flex items-center justify-center cursor-pointer backdrop-blur-sm"
         >
           <Maximize2 className="w-4 h-4" />
         </button>

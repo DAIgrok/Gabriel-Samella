@@ -27,9 +27,8 @@ import {
   Hand,
   Sofa,
   BedDouble,
-  Gamepad2,
-  Palette,
   Lock,
+  Home,
 } from 'lucide-react';
 import {
   useApp,
@@ -39,13 +38,18 @@ import {
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { soundEngine } from '../../utils/audioSynth';
 import { PetCharacter } from '../pets/PetCharacter';
-import { PetWorldDesign } from '../pets/PetWorldDesign';
 import { ModelViewerPetStage } from '../pets/ModelViewerPetStage';
+import { PetPaintBucketButton } from '../pets/PetPaintBucketButton';
 import { PetCanvas3D, PetDanceMove } from '../3d/PetCanvas3D';
 import { PET_SPECIES_CATALOG, resolvePetGlbUrl } from '../../data/initialData';
 import { getPetDialogue } from '../../data/petPersonalities';
 import { PetType } from '../../types';
 import { DiamondGemIcon, VectorGlyphIcon } from '../icons/CustomIcons';
+import {
+  formatPaintPartLabel,
+  type PetActionCueType,
+  type PetAnimationCue,
+} from '../../utils/petGlbAnimations';
 
 type PetRoom = 'sala' | 'cozinha' | 'banheiro' | 'quarto';
 
@@ -64,6 +68,7 @@ export const KittenView: React.FC = () => {
     config,
     coins,
     kitten,
+    dreamHouse,
     petKitten,
     feedKitten,
     giveWaterKitten,
@@ -73,13 +78,15 @@ export const KittenView: React.FC = () => {
     switchPet,
     renamePet,
     setPetColor,
+    setPetPartColor,
+    clearPetPartColors,
     setAccessoryColor,
     storeItems,
-    buyStoreItem,
     equipKittenItem,
     triggerEasterEgg,
     triggerHeartExplosion,
     setActiveTab: setNavTab,
+    setExtendedView,
     captureVirtualPhoto,
   } = useApp();
 
@@ -89,11 +96,15 @@ export const KittenView: React.FC = () => {
   const [drawerModal, setDrawerModal] = useState<'none' | 'armario' | 'mascotes'>('none');
   const [petViewMode, setPetViewMode] = useState<'design' | '3d' | '2d'>('design');
   const [danceMove, setDanceMove] = useState<PetDanceMove>('idle');
+  const [actionCue, setActionCue] = useState<PetAnimationCue>({ type: 'idle', tick: 0 });
   const danceTimerRef = useRef<number | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const [wardrobeSlotFilter, setWardrobeSlotFilter] = useState<
     'all' | 'hat' | 'glasses' | 'collar' | 'outfit' | 'accessory'
   >('all');
+
+  const [paintMode, setPaintMode] = useState(false);
+  const [paintHex, setPaintHex] = useState('#f472b6');
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [customNameInput, setCustomNameInput] = useState(kitten.name || '');
@@ -129,6 +140,12 @@ export const KittenView: React.FC = () => {
   const currentSpecies =
     PET_SPECIES_CATALOG.find((s) => s.type === currentPetType) || PET_SPECIES_CATALOG[0];
   const ownedPets: PetType[] = kitten.ownedPets || ['cat'];
+  const isPetDead = (kitten.deadPets || []).includes(currentPetType);
+  const unlockedHouseRooms = dreamHouse.unlockedRooms || ['sala'];
+  const hasKitchenAndBowl =
+    unlockedHouseRooms.includes('cozinha') &&
+    (dreamHouse.placedFurniture?.cozinha || []).includes('house-pet-bowl');
+  const hasBathroomUnlocked = unlockedHouseRooms.includes('banheiro');
   const displayName = kitten.name?.trim() || currentSpecies.name;
   const needsNaming = !kitten.name || !kitten.name.trim();
 
@@ -197,17 +214,36 @@ export const KittenView: React.FC = () => {
     setPetReaction(getPetDialogue(currentPetType, displayName, 'idle', petDialogueStats));
   }, [currentPetType]);
 
+  const triggerCue = (type: PetActionCueType) => {
+    setActionCue({ type, tick: Date.now() });
+  };
+
+  const handlePaintPart = (partKey: string, label?: string) => {
+    if (isSpectator || isPetDead) return;
+    setPetPartColor(currentPetType, partKey, paintHex);
+    const niceLabel = label || formatPaintPartLabel(partKey);
+    setPetReaction(`${niceLabel} com cor nova! ♡`);
+    triggerHeartExplosion(0.5, 0.45);
+  };
+
   const handleNoseClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (paintMode) {
+      handlePaintPart('nose', 'Narizinho');
+      return;
+    }
     playSpeciesSound();
     triggerHeartExplosion();
+    triggerCue('pet');
     if (!isSpectator) triggerEasterEgg('egg-kitten-nose');
     setPetReaction(getPetDialogue(currentPetType, displayName, 'pet_nose', petDialogueStats));
   };
 
   const handleBodyClick = (part: 'head' | 'belly' | 'paw') => {
+    if (paintMode) return;
     if (isSpectator) {
       playSpeciesSound();
+      triggerCue('pet');
       setPetReaction(getPetDialogue(currentPetType, displayName, 'sound', petDialogueStats));
       return;
     }
@@ -218,6 +254,7 @@ export const KittenView: React.FC = () => {
     }
     if (currentRoom === 'banheiro' && spongeMode) return;
 
+    triggerCue('pet');
     if (part === 'head') {
       playSpeciesSound();
       setPetReaction(getPetDialogue(currentPetType, displayName, 'pet_head', petDialogueStats));
@@ -240,6 +277,7 @@ export const KittenView: React.FC = () => {
       return;
     }
     if (feedKitten(foodName, hungerBoost, happyBoost)) {
+      triggerCue('feed');
       setFlyingFood({ iconKey, key: Date.now() });
       setPetReaction(getPetDialogue(currentPetType, displayName, 'feed', petDialogueStats));
       setTimeout(() => setFlyingFood(null), 950);
@@ -253,6 +291,7 @@ export const KittenView: React.FC = () => {
       return;
     }
     if (giveWaterKitten()) {
+      triggerCue('water');
       setFlyingFood({ iconKey: 'fish', key: Date.now() });
       setPetReaction(getPetDialogue(currentPetType, displayName, 'water', petDialogueStats));
       setTimeout(() => setFlyingFood(null), 950);
@@ -266,6 +305,7 @@ export const KittenView: React.FC = () => {
       return;
     }
     if (playWithKitten(toyName, 'toy')) {
+      triggerCue('play');
       setActiveToyIcon(iconKey);
       setPetReaction(getPetDialogue(currentPetType, displayName, 'play', petDialogueStats));
     }
@@ -280,6 +320,7 @@ export const KittenView: React.FC = () => {
       window.clearTimeout(danceTimerRef.current);
     }
     setDanceMove(move);
+    triggerCue(move);
     if (!isSpectator) playWithKitten(label, 'dance');
     if (move === 'kiss' || move === 'dance') {
       triggerHeartExplosion(0.5, 0.45);
@@ -294,7 +335,7 @@ export const KittenView: React.FC = () => {
   };
 
   const handleStageSoapInteract = (clientX: number, clientY: number, currentTarget: HTMLDivElement) => {
-    if (isSpectator || currentRoom !== 'banheiro' || !spongeMode) return;
+    if (isSpectator || paintMode || currentRoom !== 'banheiro' || !spongeMode) return;
     const now = Date.now();
     if (now - lastScrubTimeRef.current < 260) return;
     lastScrubTimeRef.current = now;
@@ -315,6 +356,7 @@ export const KittenView: React.FC = () => {
       return;
     }
     if (batheKitten(100)) {
+      triggerCue('bath');
       setSpongeMode(false);
       setIsShowering(true);
       setSoapFoamActive(false);
@@ -428,7 +470,12 @@ export const KittenView: React.FC = () => {
   const hygieneVal = kitten.hygiene ?? 80;
   const energyVal = kitten.energy ?? 80;
   const funVal = kitten.fun ?? 80;
-  const currentFurHex = kitten.petColors?.[currentPetType] || '#f7b2c9';
+  const resolvedGlbUrl = resolvePetGlbUrl(currentPetType, config);
+  const currentWholeColor = kitten.petColors?.[currentPetType];
+  const currentPartColors = kitten.petPartColors?.[currentPetType] || {};
+  const hasCustomColors = Boolean(
+    currentWholeColor || Object.keys(currentPartColors).length > 0
+  );
 
   const drawersPortal = (
     <AnimatePresence>
@@ -714,110 +761,6 @@ export const KittenView: React.FC = () => {
     </AnimatePresence>
   );
 
-  if (petViewMode === 'design') {
-    const primaryFood = getFoodMenu()[0];
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-        className="space-y-3 pb-32 sm:pb-24 max-w-xl mx-auto"
-      >
-        <div className="flex justify-end">
-          <div className="flex items-center bg-black/50 border border-pink-400/30 rounded-full p-0.5 text-[10px] font-bold">
-            <button
-              type="button"
-              onClick={() => setPetViewMode('design')}
-              className="px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow cursor-pointer"
-            >
-              Novo ♡
-            </button>
-            <button
-              type="button"
-              onClick={() => setPetViewMode('3d')}
-              className="px-2.5 py-1 rounded-full flex items-center gap-1 text-purple-200/75 hover:text-white transition cursor-pointer"
-            >
-              <Orbit className="w-3 h-3" />
-              <span>3D</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setPetViewMode('2d')}
-              className="px-2.5 py-1 rounded-full text-purple-200/75 hover:text-white transition cursor-pointer"
-            >
-              2D
-            </button>
-          </div>
-        </div>
-
-        <PetWorldDesign
-          isSpectator={isSpectator}
-          coins={coins}
-          displayName={displayName}
-          needsNaming={needsNaming}
-          currentPetType={currentPetType}
-          currentSpecies={currentSpecies}
-          kittenState={kitten}
-          ownedPets={ownedPets}
-          customNames={kitten.customNames}
-          level={kitten.level || 1}
-          xp={kitten.xp || 0}
-          maxXp={kitten.maxXp || 100}
-          happiness={kitten.happiness ?? funVal}
-          energy={energyVal}
-          hunger={hungerVal}
-          thirst={thirstVal}
-          hygiene={hygieneVal}
-          isSleeping={Boolean(kitten.isSleeping)}
-          equippedHat={kitten.equippedHat}
-          equippedGlasses={kitten.equippedGlasses}
-          equippedCollar={kitten.equippedCollar}
-          equippedOutfit={kitten.equippedOutfit}
-          equippedAccessory={kitten.equippedAccessory}
-          storeItems={storeItems}
-          petReaction={petReaction}
-          cdPet={cdPet}
-          cdFeed={cdFeed}
-          cdBath={cdBath}
-          cdSleep={cdSleep}
-          cdPlay={cdPlay}
-          onFeed={() =>
-            handleFeed(primaryFood.name, primaryFood.iconKey, primaryFood.hunger, primaryFood.happy)
-          }
-          onPlay={() => handlePlayToy('Novelo de Lã', 'game')}
-          onBath={handleShower}
-          onToggleSleep={() => toggleSleepKitten()}
-          onPetTap={() => handleBodyClick('head')}
-          onPlaySound={() => {
-            playSpeciesSound();
-            setPetReaction(getPetDialogue(currentPetType, displayName, 'sound', petDialogueStats));
-          }}
-          onRenamePet={(newName) => {
-            renamePet(newName);
-            setPetReaction(`Amei meu novo nome: ${newName}! ♡`);
-          }}
-          onSwitchPet={(species) => {
-            const savedCustom = kitten.customNames?.[species.type] || '';
-            setFarewellPetTarget(species);
-            setSwitchPetName(savedCustom);
-          }}
-          onBuyStoreItem={(itemId, customColor) => buyStoreItem(itemId, customColor)}
-          onEquipItem={(itemId, slot) => equipKittenItem(itemId, slot)}
-          onChangePetColor={setPetColor}
-          onChangeAccessoryColor={setAccessoryColor}
-          onOpenWardrobeModal={() => setDrawerModal('armario')}
-          customModelUrl={
-            resolvePetGlbUrl(currentPetType, config) ||
-            (currentPetType === 'cat' ? 'https://skfb.ly/pQwNL' : undefined)
-          }
-        />
-
-        {typeof document !== 'undefined' && createPortal(drawersPortal, document.body)}
-      </motion.div>
-    );
-  }
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -826,7 +769,7 @@ export const KittenView: React.FC = () => {
       transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
       className="space-y-3 pb-32 sm:pb-24 max-w-xl mx-auto"
     >
-      {/* Compact Header */}
+      {/* Compact Unified Talking Tom Header */}
       <div className="glass-panel px-3.5 py-2.5 rounded-2xl border border-pink-500/20 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-white shadow relative shrink-0">
@@ -888,21 +831,10 @@ export const KittenView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          {!isSpectator && (
-            <label
-              className="min-w-[40px] min-h-[40px] px-2 rounded-xl glass-panel border border-pink-500/25 text-pink-200 flex items-center justify-center gap-1 cursor-pointer"
-              title="Escolher cor do pet"
-            >
-              <Palette className="w-3.5 h-3.5" />
-              <input
-                type="color"
-                value={currentFurHex}
-                onChange={(e) => setPetColor(currentPetType, e.target.value)}
-                className="w-4 h-4 rounded border-0 bg-transparent cursor-pointer"
-                aria-label="Cor do mascote"
-              />
-            </label>
-          )}
+          <div className="hidden xs:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-black/35 border border-amber-400/25 text-amber-200 text-[11px] font-bold">
+            <DiamondGemIcon className="w-3.5 h-3.5" />
+            <span>{coins}</span>
+          </div>
           <button
             onClick={() => setDrawerModal('armario')}
             className="min-w-[40px] min-h-[40px] px-2.5 rounded-xl glass-panel border border-pink-500/25 text-pink-200 hover:text-white flex items-center justify-center gap-1 text-xs font-bold cursor-pointer"
@@ -921,6 +853,7 @@ export const KittenView: React.FC = () => {
           <button
             onClick={() => {
               playSpeciesSound();
+              triggerCue('pet');
               setPetReaction(`${displayName} mandou um som fofo ♡`);
             }}
             className="min-w-[40px] min-h-[40px] rounded-xl glass-panel border border-pink-500/25 text-pink-300 hover:text-white flex items-center justify-center cursor-pointer"
@@ -935,6 +868,24 @@ export const KittenView: React.FC = () => {
         <div className="px-3.5 py-2 rounded-2xl bg-purple-950/60 border border-amber-400/30 text-amber-200 text-xs font-semibold flex items-center gap-2">
           <Lock className="w-4 h-4 shrink-0 text-amber-300" />
           <span>Modo Espectador: você pode girar o pet 3D e tirar fotos virtuais.</span>
+        </div>
+      )}
+
+      {isPetDead && (
+        <div className="p-4 rounded-2xl bg-rose-950/60 border border-rose-400/40 text-center space-y-2">
+          <p className="text-sm font-bold text-white">{displayName} virou uma estrelinha ♡</p>
+          <p className="text-xs text-purple-200/80">
+            Adote um novo mascote na Loja para cuidar novamente com a Cozinha e o Pote!
+          </p>
+          {!isSpectator && (
+            <button
+              type="button"
+              onClick={() => setExtendedView('loja')}
+              className="min-h-[38px] px-4 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold cursor-pointer"
+            >
+              Ir para a Loja ♡
+            </button>
+          )}
         </div>
       )}
 
@@ -1036,7 +987,11 @@ export const KittenView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setPetViewMode('design')}
-                className="px-2 py-0.5 rounded-full text-purple-200/75 hover:text-white transition cursor-pointer"
+                className={`px-2 py-0.5 rounded-full transition cursor-pointer ${
+                  petViewMode === 'design'
+                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow'
+                    : 'text-purple-200/75 hover:text-white'
+                }`}
               >
                 Novo ♡
               </button>
@@ -1078,8 +1033,9 @@ export const KittenView: React.FC = () => {
           </div>
         </div>
 
-        {/* Speech Bubble */}
-        <div className="relative z-20 flex justify-center mt-2">
+        {/* Speech Bubble + Corner Paint Bucket */}
+        <div className="relative z-30 flex items-start justify-between gap-2 mt-2">
+          <div className="w-10 shrink-0" />
           <motion.div
             key={petReaction}
             initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.92 }}
@@ -1088,10 +1044,34 @@ export const KittenView: React.FC = () => {
           >
             {petReaction}
           </motion.div>
+          <PetPaintBucketButton
+            paintMode={paintMode}
+            selectedHex={paintHex}
+            hasCustomColors={hasCustomColors}
+            disabled={isSpectator || isPetDead}
+            onTogglePaintMode={() => {
+              setPaintMode((prev) => {
+                const next = !prev;
+                if (next) setSpongeMode(false);
+                return next;
+              });
+            }}
+            onSelectHex={setPaintHex}
+            onFillAll={(hex) => {
+              if (isSpectator) return;
+              setPetColor(currentPetType, hex);
+              setPetReaction(`Visual novo inteiro para ${displayName}! ♡`);
+            }}
+            onClearColors={() => {
+              if (isSpectator) return;
+              clearPetPartColors(currentPetType);
+              setPetReaction(`Cores originais de ${displayName} restauradas! ♡`);
+            }}
+          />
         </div>
 
-        {/* Center Pet Stage */}
-        <div className="relative z-20 flex items-center justify-center my-1 min-h-[220px]">
+        {/* Center Pet Stage (Unified across Novo ♡, 3D, and 2D) */}
+        <div ref={stageRef} className="relative z-20 flex items-center justify-center my-1 min-h-[245px]">
           <AnimatePresence>
             {floatingBubbles.map((bubble) => (
               <motion.button
@@ -1143,8 +1123,9 @@ export const KittenView: React.FC = () => {
               onClick={(e) => {
                 e.stopPropagation();
                 toggleSleepKitten();
+                triggerCue(kitten.isSleeping ? 'idle' : 'sleep');
               }}
-              className={`absolute right-2 bottom-6 z-30 min-w-[52px] min-h-[52px] p-2 rounded-2xl border flex flex-col items-center gap-0.5 transition-all cursor-pointer shadow-lg ${
+              className={`absolute left-2 bottom-2 z-30 min-w-[52px] min-h-[52px] p-2 rounded-2xl border flex flex-col items-center gap-0.5 transition-all cursor-pointer shadow-lg ${
                 kitten.isSleeping
                   ? 'bg-slate-900/90 border-indigo-400/60 text-indigo-300'
                   : 'bg-amber-400/25 border-amber-300/60 text-amber-200'
@@ -1161,78 +1142,90 @@ export const KittenView: React.FC = () => {
             </button>
           )}
 
-          {petViewMode === '3d' ? (
-            <div ref={stageRef} className="w-full relative">
-              {currentPetType === 'cat' || resolvePetGlbUrl(currentPetType, config) ? (
-                <ModelViewerPetStage
-                  src={resolvePetGlbUrl(currentPetType, config) || 'https://skfb.ly/pQwNL'}
-                  alt={displayName}
-                  colorHex={currentFurHex}
-                  isSpectator={isSpectator}
-                  cdPet={cdPet}
-                  cdFeed={cdFeed}
-                  onColorChange={(hex) => setPetColor(currentPetType, hex)}
-                  onPetTap={() => handleBodyClick('head')}
-                  onFeedPet={() => {
-                    const primaryFood = getFoodMenu()[0];
-                    handleFeed(
-                      primaryFood.name,
-                      primaryFood.iconKey,
-                      primaryFood.hunger,
-                      primaryFood.happy
-                    );
-                  }}
-                  fallback={
-                    <PetCanvas3D
-                      petType={currentPetType}
-                      kitten={kitten}
-                      danceMove={danceMove}
-                      hasSoapFoam={soapFoamActive}
-                      isShowering={isShowering}
-                      customModelUrl={resolvePetGlbUrl(currentPetType, config)}
-                      onPetTouch={handleBodyClick}
-                    />
-                  }
-                />
-              ) : (
-                <PetCanvas3D
-                  petType={currentPetType}
-                  kitten={kitten}
-                  danceMove={danceMove}
-                  hasSoapFoam={soapFoamActive}
-                  isShowering={isShowering}
-                  customModelUrl={resolvePetGlbUrl(currentPetType, config)}
-                  onPetTouch={handleBodyClick}
-                />
-              )}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  captureVirtualPhoto(
-                    stageRef.current,
-                    `Mascote: ${displayName}`,
-                    `${currentSpecies.name} · Nível ${kitten.level || 1}`
-                  );
-                }}
-                className="absolute bottom-2 right-2 z-30 min-h-[38px] px-3 rounded-full bg-black/70 border border-pink-400/40 text-pink-200 hover:text-white text-[11px] font-bold flex items-center gap-1.5 shadow-lg cursor-pointer"
-                title="Fotografar Mascote 3D para Galeria"
-              >
-                <Camera className="w-3.5 h-3.5 text-pink-400" />
-                <span>Foto Virtual</span>
-              </button>
+          {petViewMode === 'design' ? (
+            <div className="w-full relative">
+              <ModelViewerPetStage
+                embedded
+                src={resolvedGlbUrl}
+                alt={displayName}
+                colorHex={currentWholeColor}
+                hasWholeColor={Boolean(currentWholeColor)}
+                partColors={currentPartColors}
+                paintMode={paintMode}
+                isSpectator={isSpectator}
+                isDead={isPetDead}
+                isSleeping={Boolean(kitten.isSleeping)}
+                isEating={Boolean(kitten.isEating)}
+                isDrinking={Boolean(kitten.isDrinking)}
+                isBathing={Boolean(kitten.isBathing)}
+                isPlayMode={Boolean(kitten.isPlayMode)}
+                hasSoapFoam={soapFoamActive}
+                isShowering={isShowering}
+                danceMove={danceMove}
+                actionCue={actionCue}
+                onPaintPart={handlePaintPart}
+                onPetTap={() => handleBodyClick('head')}
+                fallback={
+                  <PetCanvas3D
+                    petType={currentPetType}
+                    kitten={kitten}
+                    danceMove={danceMove}
+                    hasSoapFoam={soapFoamActive}
+                    isShowering={isShowering}
+                    customModelUrl={resolvedGlbUrl}
+                    paintMode={paintMode}
+                    actionCue={actionCue}
+                    onPetTouch={handleBodyClick}
+                    onPaintPart={handlePaintPart}
+                  />
+                }
+              />
+            </div>
+          ) : petViewMode === '3d' ? (
+            <div className="w-full relative">
+              <PetCanvas3D
+                petType={currentPetType}
+                kitten={kitten}
+                danceMove={danceMove}
+                hasSoapFoam={soapFoamActive}
+                isShowering={isShowering}
+                customModelUrl={resolvedGlbUrl}
+                paintMode={paintMode}
+                actionCue={actionCue}
+                onPetTouch={handleBodyClick}
+                onPaintPart={handlePaintPart}
+              />
             </div>
           ) : (
             <PetCharacter
               kitten={kitten}
               petType={currentPetType}
               danceMove={danceMove}
+              paintMode={paintMode}
+              onPaintPart={handlePaintPart}
               onPetPart={handleBodyClick}
               onNoseClick={handleNoseClick}
               hasSoapFoam={soapFoamActive}
               isShowering={isShowering}
             />
           )}
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              captureVirtualPhoto(
+                stageRef.current,
+                `Mascote: ${displayName}`,
+                `${currentSpecies.name} · Nível ${kitten.level || 1}`
+              );
+            }}
+            className="absolute bottom-2 right-2 z-30 min-h-[36px] px-3 rounded-full bg-black/70 border border-pink-400/40 text-pink-200 hover:text-white text-[11px] font-bold flex items-center gap-1.5 shadow-lg cursor-pointer"
+            title="Fotografar Mascote para Galeria"
+          >
+            <Camera className="w-3.5 h-3.5 text-pink-400" />
+            <span>Foto Virtual</span>
+          </button>
         </div>
 
         {/* Compact Dance Strip */}
@@ -1303,65 +1296,96 @@ export const KittenView: React.FC = () => {
           )}
 
           {currentRoom === 'cozinha' && (
-            <div className="grid grid-cols-4 gap-2">
-              {getFoodMenu().map((food) => (
+            <div className="space-y-2">
+              {!hasKitchenAndBowl && !isSpectator && (
+                <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-2xl bg-amber-500/15 border border-amber-400/35 text-[11px] text-amber-100">
+                  <span>Compre a Cozinha e coloque o Pote de Ração na Casa dos Sonhos para alimentar!</span>
+                  <button
+                    type="button"
+                    onClick={() => setExtendedView('casa')}
+                    className="px-2.5 py-1 rounded-xl bg-amber-500/30 hover:bg-amber-500/45 text-white font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+                  >
+                    <Home className="w-3 h-3" />
+                    <span>Casa</span>
+                  </button>
+                </div>
+              )}
+              <div className="grid grid-cols-4 gap-2">
+                {getFoodMenu().map((food) => (
+                  <button
+                    key={food.name}
+                    onClick={() => handleFeed(food.name, food.iconKey, food.hunger, food.happy)}
+                    disabled={isSpectator || cdFeed > 0}
+                    className="min-h-[60px] p-2 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/30 flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition disabled:opacity-50"
+                  >
+                    <VectorGlyphIcon name={food.iconKey} className="w-5 h-5 text-amber-300" />
+                    <span className="text-[10px] font-bold text-white leading-tight line-clamp-1">
+                      {cdFeed > 0 ? formatCooldownMs(cdFeed) : food.name}
+                    </span>
+                  </button>
+                ))}
                 <button
-                  key={food.name}
-                  onClick={() => handleFeed(food.name, food.iconKey, food.hunger, food.happy)}
-                  disabled={isSpectator || cdFeed > 0}
-                  className="min-h-[60px] p-2 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/30 flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition disabled:opacity-50"
+                  onClick={handleDrinkWater}
+                  disabled={isSpectator || cdWater > 0}
+                  className="min-h-[60px] p-2 rounded-2xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/35 flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition disabled:opacity-50"
                 >
-                  <VectorGlyphIcon name={food.iconKey} className="w-5 h-5 text-amber-300" />
-                  <span className="text-[10px] font-bold text-white leading-tight line-clamp-1">
-                    {cdFeed > 0 ? formatCooldownMs(cdFeed) : food.name}
+                  <Droplets className="w-5 h-5 text-cyan-300" />
+                  <span className="text-[10px] font-bold text-white leading-tight">
+                    {cdWater > 0 ? formatCooldownMs(cdWater) : 'Água'}
                   </span>
                 </button>
-              ))}
-              <button
-                onClick={handleDrinkWater}
-                disabled={isSpectator || cdWater > 0}
-                className="min-h-[60px] p-2 rounded-2xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/35 flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition disabled:opacity-50"
-              >
-                <Droplets className="w-5 h-5 text-cyan-300" />
-                <span className="text-[10px] font-bold text-white leading-tight">
-                  {cdWater > 0 ? formatCooldownMs(cdWater) : 'Água'}
-                </span>
-              </button>
+              </div>
             </div>
           )}
 
           {currentRoom === 'banheiro' && (
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                disabled={isSpectator}
-                onClick={() => {
-                  const next = !spongeMode;
-                  setSpongeMode(next);
-                  if (next) {
-                    setSoapFoamActive(true);
-                    setPetReaction('Passe a esponja no pet para ensaboar!');
-                  }
-                }}
-                className={`min-h-[56px] px-3 py-2 rounded-2xl border flex items-center justify-center gap-2 cursor-pointer transition active:scale-95 disabled:opacity-50 ${
-                  spongeMode
-                    ? 'bg-cyan-500/35 border-cyan-300 text-white'
-                    : 'bg-teal-500/20 border-teal-400/30 text-teal-100'
-                }`}
-              >
-                <Sparkles className="w-5 h-5 text-cyan-300" />
-                <span className="text-xs font-bold">{spongeMode ? 'Ensaboando' : 'Esponja'}</span>
-              </button>
+            <div className="space-y-2">
+              {!hasBathroomUnlocked && !isSpectator && (
+                <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-2xl bg-cyan-500/15 border border-cyan-400/35 text-[11px] text-cyan-100">
+                  <span>Construa o Banheiro na Casa dos Sonhos para liberar o chuveiro!</span>
+                  <button
+                    type="button"
+                    onClick={() => setExtendedView('casa')}
+                    className="px-2.5 py-1 rounded-xl bg-cyan-500/30 hover:bg-cyan-500/45 text-white font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+                  >
+                    <Home className="w-3 h-3" />
+                    <span>Casa</span>
+                  </button>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  disabled={isSpectator}
+                  onClick={() => {
+                    const next = !spongeMode;
+                    setSpongeMode(next);
+                    if (next) {
+                      setPaintMode(false);
+                      setSoapFoamActive(true);
+                      setPetReaction('Passe a esponja no pet para ensaboar!');
+                    }
+                  }}
+                  className={`min-h-[56px] px-3 py-2 rounded-2xl border flex items-center justify-center gap-2 cursor-pointer transition active:scale-95 disabled:opacity-50 ${
+                    spongeMode
+                      ? 'bg-cyan-500/35 border-cyan-300 text-white'
+                      : 'bg-teal-500/20 border-teal-400/30 text-teal-100'
+                  }`}
+                >
+                  <Sparkles className="w-5 h-5 text-cyan-300" />
+                  <span className="text-xs font-bold">{spongeMode ? 'Ensaboando' : 'Esponja'}</span>
+                </button>
 
-              <button
-                onClick={handleShower}
-                disabled={isSpectator || cdBath > 0}
-                className="min-h-[56px] px-3 py-2 rounded-2xl bg-sky-500/25 hover:bg-sky-500/35 border border-sky-400/40 text-white flex items-center justify-center gap-2 cursor-pointer transition active:scale-95 disabled:opacity-50"
-              >
-                <ShowerHead className="w-5 h-5 text-sky-300" />
-                <span className="text-xs font-bold">
-                  {cdBath > 0 ? formatCooldownMs(cdBath) : 'Chuveiro'}
-                </span>
-              </button>
+                <button
+                  onClick={handleShower}
+                  disabled={isSpectator || cdBath > 0}
+                  className="min-h-[56px] px-3 py-2 rounded-2xl bg-sky-500/25 hover:bg-sky-500/35 border border-sky-400/40 text-white flex items-center justify-center gap-2 cursor-pointer transition active:scale-95 disabled:opacity-50"
+                >
+                  <ShowerHead className="w-5 h-5 text-sky-300" />
+                  <span className="text-xs font-bold">
+                    {cdBath > 0 ? formatCooldownMs(cdBath) : 'Chuveiro'}
+                  </span>
+                </button>
+              </div>
             </div>
           )}
 
@@ -1377,7 +1401,10 @@ export const KittenView: React.FC = () => {
               </div>
 
               <button
-                onClick={toggleSleepKitten}
+                onClick={() => {
+                  toggleSleepKitten();
+                  triggerCue(kitten.isSleeping ? 'idle' : 'sleep');
+                }}
                 disabled={isSpectator || (!kitten.isSleeping && cdSleep > 0)}
                 className={`min-h-[42px] px-4 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer transition disabled:opacity-50 ${
                   kitten.isSleeping

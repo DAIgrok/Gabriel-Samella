@@ -9,17 +9,17 @@ import {
   Link as LinkIcon,
   X,
   Loader2,
+  FolderArchive,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { MemoryPhoto } from '../../types';
 import { soundEngine } from '../../utils/audioSynth';
 import { SmartPhoto } from '../SmartPhoto';
-import { compressImageToDataUrl } from '../../services/googleDrive';
+import { compressPhotoSafe, extractPhotosFromZipFile } from '../../utils/zipPhotoExtractor';
 
 export const PhotosView: React.FC = () => {
   const {
-    config,
     photos,
     selectedPhoto,
     setSelectedPhoto,
@@ -31,11 +31,10 @@ export const PhotosView: React.FC = () => {
 
   const [filter, setFilter] = useState<'todas' | 'favoritas'>('todas');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [photoTitle, setPhotoTitle] = useState('');
-  const [photoCaption, setPhotoCaption] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [photoInLoop, setPhotoInLoop] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filteredPhotos = photos.filter((p) => {
@@ -62,28 +61,66 @@ export const PhotosView: React.FC = () => {
     if (files.length === 0) return;
 
     setIsUploading(true);
+    setUploadProgress(null);
+    let addedCount = 0;
+
     try {
       for (const file of files) {
-        const { dataUrl, aspect } = await compressImageToDataUrl(file, 1100, 0.78);
-        const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ').trim();
-        addPhoto({
-          title: photoTitle.trim() || (cleanName.length <= 32 ? cleanName : 'Nosso Momento ♡'),
-          subtitle: photoCaption.trim() || `${config.myName} & ${config.partnerName}`,
-          date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }),
-          url: dataUrl,
-          sourceType: 'upload',
-          aspect,
-          inHomeLoop: photoInLoop,
-          caption: photoCaption.trim(),
-        });
+        const lowerName = file.name.toLowerCase();
+        const isZip =
+          lowerName.endsWith('.zip') ||
+          file.type === 'application/zip' ||
+          file.type === 'application/x-zip-compressed';
+
+        if (isZip) {
+          const extracted = await extractPhotosFromZipFile(file, (cur, tot) => {
+            setUploadProgress({ current: cur, total: tot });
+          });
+          for (const item of extracted) {
+            addPhoto({
+              title: '',
+              subtitle: '',
+              date: '',
+              url: item.dataUrl,
+              sourceType: 'upload',
+              aspect: item.aspect,
+              inHomeLoop: photoInLoop,
+              caption: '',
+            });
+            addedCount++;
+          }
+        } else {
+          const { dataUrl, aspect } = await compressPhotoSafe(file);
+          addPhoto({
+            title: '',
+            subtitle: '',
+            date: '',
+            url: dataUrl,
+            sourceType: 'upload',
+            aspect,
+            inHomeLoop: photoInLoop,
+            caption: '',
+          });
+          addedCount++;
+        }
       }
-      setPhotoTitle('');
-      setPhotoCaption('');
-      setIsAddModalOpen(false);
+
+      if (addedCount > 0) {
+        showToast(
+          addedCount === 1
+            ? 'Foto salva para sempre na galeria e no fundo ♡'
+            : `${addedCount} fotos salvas para sempre na galeria e no fundo ♡`,
+          'camera'
+        );
+        setIsAddModalOpen(false);
+      } else {
+        showToast('Nenhuma imagem válida encontrada no arquivo selecionado.', 'image');
+      }
     } catch {
-      showToast('Não foi possível preparar esta foto.');
+      showToast('Não foi possível preparar este arquivo ou .zip.');
     } finally {
       setIsUploading(false);
+      setUploadProgress(null);
       e.target.value = '';
     }
   };
@@ -95,16 +132,14 @@ export const PhotosView: React.FC = () => {
       return;
     }
     addPhoto({
-      title: photoTitle.trim() || 'Nosso Momento Especial ♡',
-      subtitle: photoCaption.trim() || `${config.myName} & ${config.partnerName}`,
-      date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }),
+      title: '',
+      subtitle: '',
+      date: '',
       url: photoUrl.trim(),
       sourceType: 'url',
       inHomeLoop: photoInLoop,
-      caption: photoCaption.trim(),
+      caption: '',
     });
-    setPhotoTitle('');
-    setPhotoCaption('');
     setPhotoUrl('');
     setIsAddModalOpen(false);
   };
@@ -117,21 +152,21 @@ export const PhotosView: React.FC = () => {
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       className="space-y-6 pb-32 sm:pb-24 max-w-5xl mx-auto"
     >
-      {/* Header */}
+      {/* Cabeçalho */}
       <div className="text-center space-y-1">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-400/30 text-xs font-semibold text-purple-300 mb-1">
           <ImageIcon className="w-3.5 h-3.5" />
-          <span>Álbum de Memórias do Casal</span>
+          <span>Galeria do Casal</span>
         </div>
         <h2 className="text-2xl md:text-3xl font-bold text-white font-display">
-          Nossa História em Imagens ♡
+          Nossas Fotos Reais ♡
         </h2>
         <p className="text-xs md:text-sm text-purple-200/70">
-          Fotos salvas na nuvem para Gabriel & Samella verem sempre ♡
+          Fotos salvas permanentemente na nuvem — também giram ao fundo do app ♡
         </p>
       </div>
 
-      {/* Filter, Upload, Drive Sync and Cinema Mode Controls */}
+      {/* Filtros & Ações */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-1.5 p-1 rounded-2xl glass-panel border border-purple-500/20">
           <button
@@ -159,75 +194,97 @@ export const PhotosView: React.FC = () => {
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 min-h-[40px] py-2 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-4 min-h-[42px] py-2 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Adicionar Foto</span>
+            <Plus className="w-4 h-4" />
+            <span>Adicionar Foto / .ZIP</span>
           </button>
 
-          <button
-            onClick={handleStartSlideshow}
-            className="flex items-center gap-1.5 px-4 min-h-[40px] py-2 rounded-2xl bg-white text-purple-900 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>Slideshow</span>
-          </button>
+          {photos.length > 0 && (
+            <button
+              onClick={handleStartSlideshow}
+              className="flex items-center gap-1.5 px-4 min-h-[42px] py-2 rounded-2xl bg-white text-purple-900 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            >
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>Slideshow</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Photos Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-3">
-        {filteredPhotos.map((photo, i) => (
-          <motion.div
-            key={photo.id}
-            layout
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: (i % 6) * 0.05 }}
-            className="group relative overflow-hidden bg-slate-900/50 aspect-square cursor-pointer rounded-[24px] shadow-sm border border-white/5"
-            onClick={() => handleOpenPhoto(photo)}
-          >
-            <SmartPhoto
-              photo={photo}
-              alt={photo.title}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
+      {/* Grade de Fotos Limpa (Zero Descrições / Títulos / Datas) */}
+      {filteredPhotos.length > 0 ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-3">
+          {filteredPhotos.map((photo, i) => (
+            <motion.div
+              key={photo.id}
+              layout
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: (i % 6) * 0.04 }}
+              className="group relative overflow-hidden bg-slate-900/50 aspect-square cursor-pointer rounded-[24px] shadow-sm border border-white/10"
+              onClick={() => handleOpenPhoto(photo)}
+            >
+              <SmartPhoto
+                photo={photo}
+                alt="Foto do casal"
+                hideDetails
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
 
-            {/* Favorite Button Overlay */}
-            <div className="absolute top-3 right-3 z-10">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleFavoritePhoto(photo.id);
-                }}
-                className="p-2 rounded-full bg-black/40 backdrop-blur-md text-white/90 hover:text-pink-400 transition-colors cursor-pointer"
-                title="Favoritar"
-              >
-                <Heart
-                  className={`w-4 h-4 ${
-                    photo.isFavorite ? 'text-pink-400 fill-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.8)]' : ''
-                  }`}
-                />
-              </button>
-            </div>
+              <div className="absolute top-3 right-3 z-10">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleFavoritePhoto(photo.id);
+                  }}
+                  className="p-2 rounded-full bg-black/45 backdrop-blur-md text-white/90 hover:text-pink-400 transition-colors cursor-pointer"
+                  title="Favoritar"
+                >
+                  <Heart
+                    className={`w-4 h-4 ${
+                      photo.isFavorite ? 'text-pink-400 fill-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.8)]' : ''
+                    }`}
+                  />
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-3xl p-8 text-center glass-card-glow border border-purple-500/25 space-y-4">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-pink-500/20 border border-pink-400/35 flex items-center justify-center text-pink-300">
+            <ImageIcon className="w-8 h-8" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base sm:text-lg font-bold text-white">
+              {filter === 'favoritas' ? 'Nenhuma foto favoritada ainda' : 'Nenhuma foto adicionada ainda ♡'}
+            </h3>
+            <p className="text-xs text-purple-200/75 max-w-md mx-auto">
+              Adicione suas fotos reais do celular ou envie um arquivo <span className="text-pink-300 font-semibold">.zip</span> com várias fotos de uma vez. Tudo fica salvo permanentemente mesmo após zerar o app para entrega.
+            </p>
+          </div>
+          {filter === 'todas' && (
+            <button
+              type="button"
+              onClick={() => setIsAddModalOpen(true)}
+              className="inline-flex items-center gap-2 px-5 min-h-[44px] rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow-lg hover:scale-105 transition-transform cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Adicionar Foto ou .ZIP</span>
+            </button>
+          )}
+        </div>
+      )}
 
-            {/* Title Scrim */}
-            <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-              <p className="text-xs font-bold text-white truncate">{photo.title}</p>
-              <p className="text-[10px] text-purple-200/80 truncate">{photo.date}</p>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Add Photo Modal (Portaled for both Samella & Gabriel) */}
+      {/* Modal Adicionar Foto / .ZIP (sem campos de descrição) */}
       {typeof document !== 'undefined' &&
         createPortal(
           <AnimatePresence>
             {isAddModalOpen && (
               <div
                 className="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
-                onClick={() => setIsAddModalOpen(false)}
+                onClick={() => !isUploading && setIsAddModalOpen(false)}
               >
                 <motion.div
                   initial={{ scale: 0.94, opacity: 0, y: 12 }}
@@ -240,11 +297,12 @@ export const PhotosView: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <ImageIcon className="w-5 h-5 text-pink-400" />
                       <h3 className="text-base font-bold text-white font-display">
-                        Adicionar Foto ao Nosso Álbum ♡
+                        Adicionar Fotos ao Álbum ♡
                       </h3>
                     </div>
                     <button
                       type="button"
+                      disabled={isUploading}
                       onClick={() => setIsAddModalOpen(false)}
                       className="p-1.5 rounded-full text-purple-300 hover:text-white cursor-pointer"
                     >
@@ -255,28 +313,11 @@ export const PhotosView: React.FC = () => {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/*,.zip,application/zip,application/x-zip-compressed"
                     multiple
                     className="hidden"
                     onChange={handleDeviceUpload}
                   />
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <input
-                      type="text"
-                      value={photoTitle}
-                      onChange={(e) => setPhotoTitle(e.target.value)}
-                      placeholder="Título do momento (opcional)"
-                      className="px-3 py-2 rounded-xl bg-purple-950/70 border border-purple-500/30 text-white text-xs focus:outline-none focus:border-pink-400"
-                    />
-                    <input
-                      type="text"
-                      value={photoCaption}
-                      onChange={(e) => setPhotoCaption(e.target.value)}
-                      placeholder="Legenda fofa (opcional)"
-                      className="px-3 py-2 rounded-xl bg-purple-950/70 border border-purple-500/30 text-white text-xs focus:outline-none focus:border-pink-400"
-                    />
-                  </div>
 
                   <label className="flex items-center gap-2 text-xs text-purple-200 cursor-pointer">
                     <input
@@ -285,28 +326,38 @@ export const PhotosView: React.FC = () => {
                       onChange={(e) => setPhotoInLoop(e.target.checked)}
                       className="accent-pink-500"
                     />
-                    <span>Mostrar no quadro de fotos em loop da tela inicial</span>
+                    <span>Exibir também no fundo animado e no quadro da tela inicial</span>
                   </label>
 
-                  {/* Upload from device gallery */}
                   <button
                     type="button"
                     disabled={isUploading}
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow-lg flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-60"
+                    className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow-lg flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-60"
                   >
                     {isUploading ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Salvando e sincronizando na nuvem...</span>
+                        <span>
+                          {uploadProgress
+                            ? `Extraindo e salvando ${uploadProgress.current} de ${uploadProgress.total} fotos...`
+                            : 'Comprimindo e salvando na nuvem...'}
+                        </span>
                       </>
                     ) : (
                       <>
                         <Upload className="w-4 h-4" />
-                        <span>Escolher Foto(s) da Galeria do Celular</span>
+                        <span>Escolher Foto(s) ou Arquivo .ZIP</span>
                       </>
                     )}
                   </button>
+
+                  <div className="p-3 rounded-2xl bg-purple-950/50 border border-purple-500/20 flex items-start gap-2.5 text-[11px] text-purple-200/80">
+                    <FolderArchive className="w-4 h-4 text-pink-300 shrink-0 mt-0.5" />
+                    <span>
+                      Suporte completo para múltiplas fotos ou pacotes <strong className="text-white">.zip</strong>. Todas as fotos ficam salvas permanentemente na nuvem mesmo se você zerar o progresso para entrega.
+                    </span>
+                  </div>
 
                   <div className="relative flex py-1 items-center">
                     <div className="flex-grow border-t border-purple-500/25" />

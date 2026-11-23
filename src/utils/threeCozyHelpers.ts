@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { resolveMediaUrl } from '../services/localMediaStore';
 
 export function detectSoftwareWebGL(): boolean {
   if (typeof navigator === 'undefined') return false;
@@ -183,17 +185,20 @@ export async function loadCachedGlbInstance(
   let promise = gltfCache.get(cleanUrl);
   if (!promise) {
     const loader = getSharedGltfLoader();
-    promise = new Promise<GLTF>((resolve, reject) => {
-      loader.load(cleanUrl, resolve, undefined, (err) => {
-        gltfCache.delete(cleanUrl);
-        reject(err);
-      });
-    });
+    promise = resolveMediaUrl(cleanUrl).then(
+      (resolvedUrl) =>
+        new Promise<GLTF>((resolve, reject) => {
+          loader.load(resolvedUrl, resolve, undefined, (err) => {
+            gltfCache.delete(cleanUrl);
+            reject(err);
+          });
+        })
+    );
     gltfCache.set(cleanUrl, promise);
   }
 
   const gltf = await promise;
-  const clone = gltf.scene.clone(true);
+  const clone = SkeletonUtils.clone(gltf.scene) as THREE.Group;
   clone.updateMatrixWorld(true);
 
   const box = new THREE.Box3().setFromObject(clone);

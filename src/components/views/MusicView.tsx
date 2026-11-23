@@ -38,6 +38,7 @@ export const MusicView: React.FC = () => {
   const {
     config,
     songs,
+    photos,
     currentSong,
     isPlaying,
     isShuffle,
@@ -59,7 +60,7 @@ export const MusicView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'player' | 'letras' | 'playlist'>('player');
   const [audioState, setAudioState] = useState(realAudio.getState());
   const [visualizerBars, setVisualizerBars] = useState<number[]>(new Array(16).fill(12));
-  const resolvedCover = useResolvedMediaUrl(currentSong?.coverUrl || '/assets/img/1.jpg');
+  const resolvedCover = useResolvedMediaUrl(currentSong?.coverUrl || photos[0]?.url || '');
 
   // Add Song Modal State (open to both Gabriel & Samella!)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -176,7 +177,7 @@ export const MusicView: React.FC = () => {
       audioUrl: rawUrl,
       youtubeId: ytId || undefined,
       sourceType: ytId ? 'youtube' : 'audio',
-      coverUrl: songCoverPreview || (ytId ? getYouTubeThumbnailUrl(ytId) : REAL_PHOTO_SLOTS.musicCovers[0]),
+      coverUrl: songCoverPreview || (ytId ? getYouTubeThumbnailUrl(ytId) : photos[0]?.url || ''),
       lyrics: songLyricsInput.trim()
         ? songLyricsInput.split('\n').map((l) => l.trim())
         : ['Trilha guardada com amor para o Nosso Mundo ♡'],
@@ -316,15 +317,18 @@ export const MusicView: React.FC = () => {
                 transition={{ duration: 16, repeat: Infinity, ease: 'linear' }}
                 className="w-48 h-48 md:w-56 md:h-56 rounded-full p-2 bg-gradient-to-tr from-purple-600 via-pink-500 to-rose-400 shadow-[0_0_40px_rgba(244,114,182,0.4)] flex items-center justify-center relative group-hover:scale-105 transition-transform"
               >
-                <img
-                  src={resolvedCover || '/assets/img/1.jpg'}
-                  alt={currentSong.title}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover rounded-full border-4 border-black/80"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/assets/img/1.jpg';
-                  }}
-                />
+                {resolvedCover ? (
+                  <img
+                    src={resolvedCover}
+                    alt={currentSong.title}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover rounded-full border-4 border-black/80"
+                  />
+                ) : (
+                  <div className="w-full h-full rounded-full border-4 border-black/80 bg-gradient-to-br from-[#2a0c4e] via-[#17062d] to-[#080214] flex items-center justify-center">
+                    <Music className="w-16 h-16 text-pink-300/40" />
+                  </div>
+                )}
                 <div className="absolute w-12 h-12 rounded-full bg-[#080214] border-2 border-white/60 flex items-center justify-center shadow-lg">
                   <Heart className="w-5 h-5 text-pink-400 fill-pink-400 animate-pulse" />
                 </div>

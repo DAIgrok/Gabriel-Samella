@@ -17,6 +17,7 @@ import { HouseFurnitureCategory, StoreItem } from '../../types';
 import { HOUSE_CATEGORY_META } from '../../data/houseFurnitureCatalog';
 import { soundEngine } from '../../utils/audioSynth';
 import { DiamondGemIcon, VectorGlyphIcon } from '../icons/CustomIcons';
+import { StoreItemArtwork } from '../store/StoreItemArtwork';
 
 const COLOR_PRESETS = [
   '#f472b6',
@@ -89,7 +90,7 @@ export const StoreView: React.FC = () => {
       return dreamHouse.customFloorHex || item.defaultColor || '#a855f7';
     }
     if (item.targetId) {
-      return dreamHouse.furnitureColors?.[item.targetId] || item.defaultColor || '#c084fc';
+      return dreamHouse.customColors?.[item.targetId] || item.defaultColor || '#c084fc';
     }
     return item.defaultColor || '#f472b6';
   };
@@ -306,6 +307,11 @@ export const StoreView: React.FC = () => {
           {filteredItems.map((item) => {
             const isVoucher = item.category === 'vales' || Boolean(item.voucherCode);
             const activeColor = getActiveItemColor(item);
+            const isDeadPet =
+              item.category === 'pets' &&
+              Boolean(item.petTypeTarget) &&
+              (kitten.deadPets || []).includes(item.petTypeTarget!);
+            const effectivelyPurchased = item.purchased && !isDeadPet;
             const isWearable = ['hat', 'outfit', 'collar', 'glasses', 'accessory'].includes(
               item.slotType || ''
             );
@@ -323,63 +329,55 @@ export const StoreView: React.FC = () => {
                 layout
                 whileHover={{ y: -2 }}
                 onClick={() => handleOpenItemModal(item)}
-                className={`glass-panel rounded-3xl p-5 border flex flex-col justify-between transition-all cursor-pointer relative overflow-hidden ${
-                  item.purchased
+                className={`glass-panel rounded-3xl p-4 border flex flex-col justify-between transition-all cursor-pointer relative overflow-hidden ${
+                  effectivelyPurchased
                     ? item.redeemed
                       ? 'border-indigo-500/30 bg-purple-950/30'
                       : 'border-emerald-500/40 bg-purple-950/40 shadow-[0_0_20px_rgba(16,185,129,0.12)]'
+                    : isDeadPet
+                    ? 'border-rose-400/45 bg-rose-950/20'
                     : 'border-purple-500/25 hover:border-pink-400/50 bg-purple-950/25'
                 }`}
               >
-                {item.redeemed && (
-                  <div className="absolute top-3 right-3 bg-indigo-500/30 border border-indigo-400/40 px-2.5 py-0.5 rounded-full text-[10px] font-bold text-indigo-200 flex items-center gap-1">
-                    <Check className="w-3 h-3 text-indigo-300" />
-                    <span>Resgatado</span>
-                  </div>
-                )}
-
-                {item.purchased && !item.redeemed && (
-                  <div className="absolute top-3 right-3 bg-emerald-500/30 border border-emerald-400/40 px-2.5 py-0.5 rounded-full text-[10px] font-bold text-emerald-200 flex items-center gap-1">
-                    <Check className="w-3 h-3 text-emerald-300" />
-                    <span>{isVoucher ? 'Disponível' : 'Adquirido'}</span>
-                  </div>
-                )}
-
-                <div>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div
-                      className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-900 to-pink-900 border border-purple-400/35 flex items-center justify-center text-pink-200 shadow-md shrink-0 relative"
-                    >
-                      <VectorGlyphIcon name={item.icon} className="w-5 h-5" />
-                      {item.supportsCustomColor && (
-                        <span
-                          className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-[#120526] shadow"
-                          style={{ backgroundColor: activeColor }}
-                          title="Cor personalizável"
-                        />
-                      )}
-                    </div>
-                    <div className="min-w-0 pr-16">
-                      <h4 className="text-sm font-bold text-white leading-tight truncate font-display">
-                        {item.title}
-                      </h4>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px] text-purple-300/75 capitalize">
-                          {item.houseCategory || item.category}
-                        </span>
-                        {item.supportsCustomColor && (
-                          <span className="inline-flex items-center gap-1 text-[10px] text-pink-300/85 font-semibold">
-                            <Palette className="w-2.5 h-2.5" />
-                            <span>Cor livre</span>
-                          </span>
-                        )}
+                <div className="space-y-3">
+                  <div className="relative">
+                    <StoreItemArtwork item={item} colorHex={activeColor} compact />
+                    {item.redeemed && (
+                      <div className="absolute top-2.5 right-2.5 z-20 bg-indigo-500/85 border border-indigo-300/50 px-2.5 py-0.5 rounded-full text-[10px] font-bold text-white flex items-center gap-1 shadow">
+                        <Check className="w-3 h-3" />
+                        <span>Resgatado</span>
                       </div>
-                    </div>
+                    )}
+                    {effectivelyPurchased && !item.redeemed && (
+                      <div className="absolute top-2.5 right-2.5 z-20 bg-emerald-500/85 border border-emerald-300/50 px-2.5 py-0.5 rounded-full text-[10px] font-bold text-white flex items-center gap-1 shadow">
+                        <Check className="w-3 h-3" />
+                        <span>{isVoucher ? 'Disponível' : 'Adquirido'}</span>
+                      </div>
+                    )}
+                    {item.supportsCustomColor && (
+                      <span
+                        className="absolute bottom-2 right-2 z-20 px-2 py-0.5 rounded-full bg-black/65 border border-white/20 text-[10px] font-semibold text-pink-100 flex items-center gap-1.5"
+                      >
+                        <span
+                          className="w-3 h-3 rounded-full border border-white/50"
+                          style={{ backgroundColor: activeColor }}
+                        />
+                        <span>Cor livre</span>
+                      </span>
+                    )}
                   </div>
 
-                  <p className="text-xs text-purple-200/80 line-clamp-2 leading-relaxed mb-4">
-                    {item.description}
-                  </p>
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-bold text-white leading-tight truncate font-display">
+                      {item.title}
+                    </h4>
+                    <span className="text-[10px] text-purple-300/75 capitalize block mt-0.5">
+                      {item.houseCategory || item.category}
+                    </span>
+                    <p className="text-xs text-purple-200/80 line-clamp-2 leading-relaxed mt-1.5 mb-3">
+                      {item.description}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="pt-3 border-t border-purple-500/20 flex items-center justify-between gap-2">
@@ -392,14 +390,14 @@ export const StoreView: React.FC = () => {
 
                   <button
                     type="button"
-                    disabled={isSpectator && !item.purchased}
+                    disabled={isSpectator && !effectivelyPurchased}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (isSpectator) {
                         handleOpenItemModal(item);
                         return;
                       }
-                      if (!item.purchased) {
+                      if (!effectivelyPurchased) {
                         if (item.category === 'pets' || item.supportsCustomColor) {
                           handleOpenItemModal(item);
                         } else {
@@ -417,7 +415,7 @@ export const StoreView: React.FC = () => {
                     className={`px-4 min-h-[38px] rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer ${
                       isSpectator
                         ? 'bg-purple-950/70 text-purple-300/75 border border-purple-500/25'
-                        : item.purchased
+                        : effectivelyPurchased
                         ? item.redeemed
                           ? 'bg-purple-900/60 text-purple-300 border border-purple-500/20'
                           : isVoucher
@@ -432,7 +430,7 @@ export const StoreView: React.FC = () => {
                   >
                     {isSpectator
                       ? 'Visualizar'
-                      : item.purchased
+                      : effectivelyPurchased
                       ? item.redeemed
                         ? 'Ver Comprovante'
                         : isVoucher
@@ -442,6 +440,8 @@ export const StoreView: React.FC = () => {
                           ? 'Equipado'
                           : 'Equipar'
                         : 'Personalizar'
+                      : isDeadPet
+                      ? 'Re-adotar'
                       : item.supportsCustomColor
                       ? 'Escolher Cor & Comprar'
                       : 'Adquirir'}
@@ -498,6 +498,8 @@ export const StoreView: React.FC = () => {
                       <X className="w-5 h-5" />
                     </button>
                   </div>
+
+                  <StoreItemArtwork item={activeModalItem} colorHex={selectedHexColor} />
 
                   <p className="text-xs text-purple-200/90 leading-relaxed">
                     {activeModalItem.longDescription || activeModalItem.description}
@@ -646,7 +648,14 @@ export const StoreView: React.FC = () => {
                         <Lock className="w-3.5 h-3.5 text-pink-300" />
                         <span>Somente Samella</span>
                       </div>
-                    ) : !activeModalItem.purchased ? (
+                    ) : !(
+                        activeModalItem.purchased &&
+                        !(
+                          activeModalItem.category === 'pets' &&
+                          activeModalItem.petTypeTarget &&
+                          (kitten.deadPets || []).includes(activeModalItem.petTypeTarget)
+                        )
+                      ) ? (
                       <button
                         type="button"
                         onClick={() => {

@@ -9,6 +9,13 @@ import {
   loadCachedGlbInstance,
   setupCozyStudioRenderer,
 } from '../../utils/threeCozyHelpers';
+import {
+  findBestAnimationClip,
+  formatPaintPartLabel,
+  getDesiredGlbClipCandidates,
+  type PetActionCueType,
+  type PetAnimationCue,
+} from '../../utils/petGlbAnimations';
 
 export type PetDanceMove = 'idle' | 'dance' | 'spin' | 'jump' | 'wave' | 'kiss';
 
@@ -19,7 +26,10 @@ interface PetCanvas3DProps {
   hasSoapFoam?: boolean;
   isShowering?: boolean;
   customModelUrl?: string;
+  paintMode?: boolean;
+  actionCue?: PetAnimationCue;
   onPetTouch?: (part: 'head' | 'belly' | 'paw') => void;
+  onPaintPart?: (partKey: string, label?: string) => void;
 }
 
 interface SpeciesVisualSpec {
@@ -313,7 +323,10 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
   hasSoapFoam = false,
   isShowering = false,
   customModelUrl,
+  paintMode = false,
+  actionCue,
   onPetTouch,
+  onPaintPart,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -324,7 +337,10 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
     hasSoapFoam,
     isShowering,
     customModelUrl,
+    paintMode,
+    actionCue,
     onPetTouch,
+    onPaintPart,
   });
   propsRef.current = {
     petType,
@@ -333,10 +349,17 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
     hasSoapFoam,
     isShowering,
     customModelUrl,
+    paintMode,
+    actionCue,
     onPetTouch,
+    onPaintPart,
   };
 
   const rebuildFnRef = useRef<(() => void) | null>(null);
+  const applyGlbColorsFnRef = useRef<(() => void) | null>(null);
+  const syncGlbAnimFnRef = useRef<((forceCue?: PetActionCueType) => void) | null>(null);
+  const isGlbActiveRef = useRef<boolean>(false);
+  const loadedGlbKeyRef = useRef<string>('');
 
   useEffect(() => {
     const container = containerRef.current;
@@ -562,9 +585,97 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
     let angelWingsObj: THREE.Group | null = null;
     let capeObj: THREE.Object3D | null = null;
     let glbMixer: THREE.AnimationMixer | null = null;
+    let glbActions: Map<string, THREE.AnimationAction> = new Map();
+    let activeGlbAction: THREE.AnimationAction | null = null;
+    let activeGlbClipName = '';
+    let glbMeshes: { mesh: THREE.Mesh; partKey: string; origHexes: string[] }[] = [];
+    let pauseGlbBrainUntil = 0;
+    let nextGlbBrainTick = 0;
     const blinkLids: THREE.Mesh[] = [];
     const snakeSegs: THREE.Object3D[] = [];
     let buildToken = 0;
+
+    const tagPart = <T extends THREE.Object3D>(obj: T, partKey: string): T => {
+      obj.traverse((child) => {
+        child.userData.paintPart = partKey;
+      });
+      return obj;
+    };
+
+    const sanitizeToken = (raw: string) =>
+      raw
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 28);
+
+    const applyGlbPartColors = () => {
+      if (!isGlbActiveRef.current || glbMeshes.length === 0) return;
+      const { petType: type, kitten: st } = propsRef.current;
+      const partMap = st.petPartColors?.[type] || {};
+      const wholeHex = st.petColors?.[type];
+      glbMeshes.forEach(({ mesh, partKey, origHexes }) => {
+        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        const chosenHex = partMap[partKey] || wholeHex;
+        mats.forEach((m, idx) => {
+          const std = m as THREE.MeshStandardMaterial;
+          if (!std?.color) return;
+          std.color.set(chosenHex || origHexes[idx] || '#ffffff');
+          std.needsUpdate = true;
+        });
+      });
+    };
+    applyGlbColorsFnRef.current = applyGlbPartColors;
+
+    const playGlbClipByCandidates = (candidates: string[], pauseMs = 0) => {
+      if (!glbMixer || glbActions.size === 0) return;
+      const avail = Array.from(glbActions.keys());
+      const matched = findBestAnimationClip(avail, candidates) || avail[0];
+      if (!matched) return;
+      if (pauseMs > 0) {
+        pauseGlbBrainUntil = performance.now() + pauseMs;
+      }
+      if (activeGlbClipName === matched && activeGlbAction?.isRunning()) return;
+      const nextAction = glbActions.get(matched);
+      if (!nextAction) return;
+      nextAction.reset();
+      nextAction.setEffectiveTimeScale(1);
+      nextAction.setEffectiveWeight(1);
+      nextAction.play();
+      if (activeGlbAction && activeGlbAction !== nextAction) {
+        activeGlbAction.crossFadeTo(nextAction, 0.24, true);
+      }
+      activeGlbAction = nextAction;
+      activeGlbClipName = matched;
+    };
+
+    const syncGlbAnimation = (overrideCue?: PetActionCueType) => {
+      if (!isGlbActiveRef.current || !glbMixer) return;
+      const { kitten: st, danceMove: move, actionCue: cue } = propsRef.current;
+      const activeCue = overrideCue || cue?.type;
+      const desired = getDesiredGlbClipCandidates({
+        isSleeping: st.isSleeping,
+        isBathing: st.isBathing,
+        isPlayMode: st.isPlayMode,
+        danceMove: move,
+        cueType: activeCue,
+      });
+      const isTransient =
+        move !== 'idle' ||
+        st.isBathing ||
+        (activeCue && activeCue !== 'idle' && activeCue !== 'sleep');
+      playGlbClipByCandidates(desired.candidates, isTransient ? 2800 : 0);
+    };
+    syncGlbAnimFnRef.current = syncGlbAnimation;
+
+    const isDirectGlbUrl = (u?: string): boolean => {
+      if (!u) return false;
+      const clean = u.trim().toLowerCase();
+      if (!clean) return false;
+      if (clean === 'https://supabase.co' || clean === 'https://supabase.co/') return false;
+      if (clean.includes('skfb.ly/') || clean.includes('sketchfab.com/')) return false;
+      return true;
+    };
 
     const rebuildPet = () => {
       const myToken = ++buildToken;
@@ -575,6 +686,12 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         glbMixer.stopAllAction();
         glbMixer = null;
       }
+      glbActions = new Map();
+      activeGlbAction = null;
+      activeGlbClipName = '';
+      glbMeshes = [];
+      isGlbActiveRef.current = false;
+      loadedGlbKeyRef.current = '';
 
       while (petRoot.children.length > 0) {
         const ch = petRoot.children[0];
@@ -595,10 +712,11 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
       snakeSegs.length = 0;
 
       // Progressive external .glb loader (falls back seamlessly to enhanced procedural pet)
-      if (glbUrl && glbUrl.trim()) {
+      if (isDirectGlbUrl(glbUrl)) {
+        const cleanGlb = glbUrl!.trim();
         const placeholderGroup = new THREE.Group();
         petRoot.add(placeholderGroup);
-        loadCachedGlbInstance(glbUrl.trim(), 1.42, true)
+        loadCachedGlbInstance(cleanGlb, 1.42, true)
           .then(({ group, animations }) => {
             if (myToken !== buildToken) {
               disposeObject3D(group);
@@ -611,10 +729,45 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
             }
             petRoot.add(group);
             bodyGroup = group;
+            isGlbActiveRef.current = true;
+            loadedGlbKeyRef.current = `${type}::${cleanGlb}`;
+
+            const collected: { mesh: THREE.Mesh; partKey: string; origHexes: string[] }[] = [];
+            group.traverse((obj) => {
+              const mesh = obj as THREE.Mesh;
+              if (!mesh.isMesh || !mesh.material) return;
+              const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+              const cloned = mats.map((m) => {
+                const c = m.clone();
+                const std = c as THREE.MeshStandardMaterial;
+                if (std && typeof std.metalness === 'number' && std.metalness > 0.85 && !std.metalnessMap) {
+                  std.metalness = 0.15;
+                }
+                return c;
+              });
+              mesh.material = Array.isArray(mesh.material) ? cloned : cloned[0];
+              const origHexes = cloned.map((m) => {
+                const std = m as THREE.MeshStandardMaterial;
+                return std?.color && typeof std.color.getHexString === 'function'
+                  ? `#${std.color.getHexString()}`
+                  : '#ffffff';
+              });
+              const rawName = mesh.name || mats[0]?.name || `parte_${collected.length}`;
+              const token = sanitizeToken(rawName) || `parte_${collected.length}`;
+              const partKey = `glb_${token}_${collected.length}`;
+              mesh.userData.paintPart = partKey;
+              collected.push({ mesh, partKey, origHexes });
+            });
+            glbMeshes = collected;
+            applyGlbPartColors();
+
             if (animations.length > 0) {
               glbMixer = new THREE.AnimationMixer(group);
-              const action = glbMixer.clipAction(animations[0]);
-              action.play();
+              animations.forEach((clip) => {
+                if (!glbMixer) return;
+                glbActions.set(clip.name, glbMixer.clipAction(clip));
+              });
+              syncGlbAnimation();
             }
           })
           .catch(() => {
@@ -622,34 +775,50 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
           });
       }
 
-      // Cozy Stylized Vinyl / Soft Plush PBR Materials (roughness 0.55–0.75, zero flatShading)
+      // Cozy Stylized Vinyl / Soft Plush PBR Materials (per-part colorable!)
       const customFurHex = st.petColors?.[type];
+      const partColors = st.petPartColors?.[type] || {};
       const baseFurColor = customFurHex ? new THREE.Color(customFurHex) : new THREE.Color(spec.main);
       const earShadeColor = customFurHex
         ? baseFurColor.clone().multiplyScalar(0.76)
         : new THREE.Color(spec.earOuter);
 
       const mainMat = new THREE.MeshStandardMaterial({
-        color: baseFurColor,
+        color: partColors.body ? new THREE.Color(partColors.body) : baseFurColor,
+        roughness: 0.62,
+        metalness: 0.02,
+      });
+      const headMat = new THREE.MeshStandardMaterial({
+        color: partColors.head ? new THREE.Color(partColors.head) : baseFurColor,
+        roughness: 0.62,
+        metalness: 0.02,
+      });
+      const pawsMat = new THREE.MeshStandardMaterial({
+        color: partColors.paws ? new THREE.Color(partColors.paws) : baseFurColor,
+        roughness: 0.62,
+        metalness: 0.02,
+      });
+      const tailMat = new THREE.MeshStandardMaterial({
+        color: partColors.tail ? new THREE.Color(partColors.tail) : baseFurColor,
         roughness: 0.62,
         metalness: 0.02,
       });
       const secMat = new THREE.MeshStandardMaterial({
-        color: spec.secondary,
+        color: partColors.belly ? new THREE.Color(partColors.belly) : new THREE.Color(spec.secondary),
         roughness: 0.66,
         metalness: 0.02,
       });
       const earOuterMat = new THREE.MeshStandardMaterial({
-        color: earShadeColor,
+        color: partColors.ears ? new THREE.Color(partColors.ears) : earShadeColor,
         roughness: 0.64,
         metalness: 0.02,
       });
       const earInnerMat = new THREE.MeshStandardMaterial({
-        color: spec.earInner,
+        color: partColors.earInner ? new THREE.Color(partColors.earInner) : new THREE.Color(spec.earInner),
         roughness: 0.6,
       });
       const noseMat = new THREE.MeshStandardMaterial({
-        color: spec.nose,
+        color: partColors.nose ? new THREE.Color(partColors.nose) : new THREE.Color(spec.nose),
         roughness: 0.18,
         metalness: 0.08,
       });
@@ -660,13 +829,13 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
       });
       const whiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
       const blushMat = new THREE.MeshStandardMaterial({
-        color: 0xfb7185,
+        color: partColors.cheeks ? new THREE.Color(partColors.cheeks) : new THREE.Color(0xfb7185),
         roughness: 0.65,
         transparent: true,
-        opacity: 0.62,
+        opacity: partColors.cheeks ? 0.85 : 0.62,
       });
       const pawPadMat = new THREE.MeshStandardMaterial({
-        color: 0xf9a8d4,
+        color: partColors.paws ? new THREE.Color(partColors.paws) : new THREE.Color(0xf9a8d4),
         roughness: 0.58,
       });
 
@@ -686,9 +855,12 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         for (let i = 0; i < 10; i++) {
           const t = i / 9;
           const r = 0.17 * (1 - t * 0.5);
-          const seg = new THREE.Mesh(
-            new THREE.SphereGeometry(r, 18, 16),
-            i % 2 === 0 ? mainMat : secMat
+          const seg = tagPart(
+            new THREE.Mesh(
+              new THREE.SphereGeometry(r, 18, 16),
+              i % 2 === 0 ? mainMat : secMat
+            ),
+            i % 2 === 0 ? 'body' : 'belly'
           );
           seg.castShadow = true;
           seg.position.set(Math.sin(t * 2.2) * 0.25, r + 0.02, 0.1 - t * 0.7);
@@ -696,14 +868,14 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
           snakeSegs.push(seg);
         }
       } else if (spec.bodyLayout === 'aquatic') {
-        const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 26, 20), mainMat);
+        const body = tagPart(new THREE.Mesh(new THREE.SphereGeometry(0.42, 26, 20), mainMat), 'body');
         body.scale.set(0.95, 0.85, 1.32);
         body.position.set(0, 0.56, 0);
         body.castShadow = true;
         body.receiveShadow = true;
         torsoGroup.add(body);
 
-        const belly = new THREE.Mesh(new THREE.SphereGeometry(0.36, 22, 18), secMat);
+        const belly = tagPart(new THREE.Mesh(new THREE.SphereGeometry(0.36, 22, 18), secMat), 'belly');
         belly.scale.set(0.88, 0.65, 1.25);
         belly.position.set(0, 0.45, 0.04);
         torsoGroup.add(belly);
@@ -711,20 +883,20 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         // Pectoral Flippers
         const flipGeo = new THREE.SphereGeometry(0.16, 14, 12);
         flipGeo.scale(1.4, 0.28, 0.72);
-        const lFlip = new THREE.Mesh(flipGeo, earOuterMat);
+        const lFlip = tagPart(new THREE.Mesh(flipGeo, earOuterMat), 'paws');
         lFlip.position.set(-0.42, 0.48, 0.12);
         lFlip.rotation.set(0.1, -0.35, -0.3);
         torsoGroup.add(lFlip);
         leftArmObj = lFlip;
 
-        const rFlip = new THREE.Mesh(flipGeo, earOuterMat);
+        const rFlip = tagPart(new THREE.Mesh(flipGeo, earOuterMat), 'paws');
         rFlip.position.set(0.42, 0.48, 0.12);
         rFlip.rotation.set(0.1, 0.35, 0.3);
         torsoGroup.add(rFlip);
         rightArmObj = rFlip;
       } else {
-        // Upright adorable seated clay plush (matches reference puppy!)
-        const torsoMesh = new THREE.Mesh(new THREE.SphereGeometry(0.36, 26, 22), mainMat);
+        // Upright adorable seated clay plush
+        const torsoMesh = tagPart(new THREE.Mesh(new THREE.SphereGeometry(0.36, 26, 22), mainMat), 'body');
         torsoMesh.scale.set(0.95, 1.12, 0.9);
         torsoMesh.position.set(0, 0.44, 0);
         torsoMesh.castShadow = true;
@@ -732,7 +904,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         torsoGroup.add(torsoMesh);
 
         // Soft chest patch
-        const chest = new THREE.Mesh(new THREE.SphereGeometry(0.24, 20, 16), secMat);
+        const chest = tagPart(new THREE.Mesh(new THREE.SphereGeometry(0.24, 20, 16), secMat), 'belly');
         chest.scale.set(0.92, 1.15, 0.55);
         chest.position.set(0, 0.44, 0.22);
         torsoGroup.add(chest);
@@ -741,7 +913,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         if (spec.hasBeeStripes) {
           const stripeMat = new THREE.MeshStandardMaterial({ color: 0x1c1917, roughness: 0.4 });
           [-0.08, 0.08].forEach((sy) => {
-            const stRing = new THREE.Mesh(new THREE.TorusGeometry(0.33, 0.042, 10, 28), stripeMat);
+            const stRing = tagPart(new THREE.Mesh(new THREE.TorusGeometry(0.33, 0.042, 10, 28), stripeMat), 'body');
             stRing.rotation.x = Math.PI / 2;
             stRing.position.set(0, 0.44 + sy, 0);
             torsoGroup.add(stRing);
@@ -751,7 +923,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         // Turtle shell on back
         if (spec.hasShell) {
           const shellMat = new THREE.MeshStandardMaterial({ color: 0x854d0e, roughness: 0.45 });
-          const shell = new THREE.Mesh(new THREE.SphereGeometry(0.38, 22, 16), shellMat);
+          const shell = tagPart(new THREE.Mesh(new THREE.SphereGeometry(0.38, 22, 16), shellMat), 'body');
           shell.scale.set(1.05, 1.15, 0.65);
           shell.position.set(0, 0.48, -0.2);
           shell.castShadow = true;
@@ -760,14 +932,14 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
 
         // Front arms & seated chubby legs/paws
         const armGeo = new THREE.CapsuleGeometry(0.085, 0.2, 8, 14);
-        const lArm = new THREE.Mesh(armGeo, mainMat);
+        const lArm = tagPart(new THREE.Mesh(armGeo, pawsMat), 'paws');
         lArm.position.set(-0.3, 0.46, 0.14);
         lArm.rotation.set(-0.35, 0, 0.35);
         lArm.castShadow = true;
         torsoGroup.add(lArm);
         leftArmObj = lArm;
 
-        const rArm = new THREE.Mesh(armGeo, mainMat);
+        const rArm = tagPart(new THREE.Mesh(armGeo, pawsMat), 'paws');
         rArm.position.set(0.3, 0.46, 0.14);
         rArm.rotation.set(-0.35, 0, -0.35);
         rArm.castShadow = true;
@@ -779,10 +951,10 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         const padGeo = new THREE.SphereGeometry(0.055, 12, 10);
         padGeo.scale(1.1, 0.35, 0.9);
         [-0.2, 0.2].forEach((px) => {
-          const paw = new THREE.Mesh(pawGeo, secMat);
+          const paw = tagPart(new THREE.Mesh(pawGeo, secMat), 'paws');
           paw.position.set(px, 0.085, 0.22);
           paw.castShadow = true;
-          const pad = new THREE.Mesh(padGeo, pawPadMat);
+          const pad = tagPart(new THREE.Mesh(padGeo, pawPadMat), 'paws');
           pad.position.set(0, -0.02, 0.11);
           paw.add(pad);
           torsoGroup.add(paw);
@@ -814,7 +986,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
       petRoot.add(head);
       headGroup = head;
 
-      const headBall = new THREE.Mesh(new THREE.SphereGeometry(0.445, 32, 26), mainMat);
+      const headBall = tagPart(new THREE.Mesh(new THREE.SphereGeometry(0.445, 32, 26), headMat), 'head');
       headBall.scale.set(1.07, 0.96, 1.02);
       headBall.castShadow = true;
       headBall.receiveShadow = true;
@@ -822,14 +994,14 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
 
       // Soft blaze stripe & cute brow dots (dog/fox)
       if (spec.hasBlaze) {
-        const blaze = new THREE.Mesh(new THREE.CapsuleGeometry(0.048, 0.25, 8, 14), secMat);
+        const blaze = tagPart(new THREE.Mesh(new THREE.CapsuleGeometry(0.048, 0.25, 8, 14), secMat), 'head');
         blaze.position.set(0, 0.16, 0.39);
         blaze.rotation.x = -0.38;
         blaze.scale.set(1.0, 1.0, 0.35);
         head.add(blaze);
 
         [-0.145, 0.145].forEach((bx) => {
-          const brow = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), secMat);
+          const brow = tagPart(new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 10), secMat), 'head');
           brow.scale.set(1.15, 0.65, 0.45);
           brow.position.set(bx, 0.175, 0.375);
           head.add(brow);
@@ -841,7 +1013,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         const maneMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.65 });
         for (let i = 0; i < 12; i++) {
           const ang = (i / 12) * Math.PI * 2;
-          const puff = new THREE.Mesh(new THREE.SphereGeometry(0.165, 16, 14), maneMat);
+          const puff = tagPart(new THREE.Mesh(new THREE.SphereGeometry(0.165, 16, 14), maneMat), 'head');
           puff.position.set(Math.cos(ang) * 0.42, Math.sin(ang) * 0.4, -0.06);
           puff.castShadow = true;
           head.add(puff);
@@ -851,7 +1023,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         const spineMat = new THREE.MeshStandardMaterial({ color: 0x57534e, roughness: 0.68 });
         for (let i = 0; i < 9; i++) {
           const ang = -1.1 + (i / 8) * 2.2;
-          const sp = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.22, 12), spineMat);
+          const sp = tagPart(new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.22, 12), spineMat), 'head');
           sp.position.set(Math.sin(ang) * 0.38, 0.18 + Math.cos(ang) * 0.2, -0.22);
           sp.rotation.z = -ang;
           sp.rotation.x = -0.5;
@@ -863,7 +1035,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
       if (spec.hasPandaMask) {
         const patchMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6 });
         [-0.16, 0.16].forEach((px) => {
-          const patch = new THREE.Mesh(new THREE.SphereGeometry(0.12, 18, 14), patchMat);
+          const patch = tagPart(new THREE.Mesh(new THREE.SphereGeometry(0.12, 18, 14), patchMat), 'head');
           patch.scale.set(1.1, 1.22, 0.35);
           patch.position.set(px, 0.045, 0.39);
           patch.rotation.y = px > 0 ? 0.25 : -0.25;
@@ -875,7 +1047,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
       if (st.isSleeping) {
         const lidMat = new THREE.MeshStandardMaterial({ color: 0x1e1b4b, roughness: 0.55 });
         [-0.16, 0.16].forEach((ex) => {
-          const lid = new THREE.Mesh(new THREE.TorusGeometry(0.058, 0.015, 8, 18, Math.PI), lidMat);
+          const lid = tagPart(new THREE.Mesh(new THREE.TorusGeometry(0.058, 0.015, 8, 18, Math.PI), lidMat), 'head');
           lid.position.set(ex, 0.04, 0.415);
           lid.rotation.z = Math.PI;
           head.add(lid);
@@ -888,11 +1060,11 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         const lidGeo = new THREE.SphereGeometry(0.084, 16, 12);
 
         [-0.16, 0.16].forEach((ex) => {
-          const eye = new THREE.Mesh(eyeGeo, eyeMat);
+          const eye = tagPart(new THREE.Mesh(eyeGeo, eyeMat), 'head');
           eye.position.set(ex, 0.045, 0.39);
           eye.scale.set(1.0, 1.1, 0.68);
 
-          const outerRim = new THREE.Mesh(rimRingGeo, secMat);
+          const outerRim = tagPart(new THREE.Mesh(rimRingGeo, secMat), 'head');
           outerRim.position.set(0, 0, -0.012);
           outerRim.scale.set(1.0, 1.06, 0.5);
           eye.add(outerRim);
@@ -904,7 +1076,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
           eye.add(hl1, hl2);
 
           // Upper eyelid mesh for natural blinking
-          const eyelid = new THREE.Mesh(lidGeo, mainMat);
+          const eyelid = tagPart(new THREE.Mesh(lidGeo, headMat), 'head');
           eyelid.position.set(0, 0.03, 0.022);
           eyelid.scale.set(1.12, 0.06, 0.9);
           eye.add(eyelid);
@@ -916,51 +1088,49 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
 
       // Rosy blush cheeks
       [-0.25, 0.25].forEach((cx) => {
-        const blush = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), blushMat);
+        const blush = tagPart(new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), blushMat), 'cheeks');
         blush.scale.set(1.25, 0.72, 0.25);
         blush.position.set(cx, -0.06, 0.35);
         blush.rotation.y = cx > 0 ? 0.5 : -0.5;
         head.add(blush);
       });
 
-      // --- SOFT CLAY MUZZLE / BEAK / SNOUT (NO blocky cubes!) ---
+      // --- SOFT CLAY MUZZLE / BEAK / SNOUT ---
       if (spec.snoutStyle === 'beak') {
-        const beak = new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.14, 12), noseMat);
+        const beak = tagPart(new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.14, 12), noseMat), 'nose');
         beak.rotation.x = Math.PI / 2;
         beak.position.set(0, -0.05, 0.44);
         head.add(beak);
       } else if (spec.snoutStyle === 'pig') {
-        const snoutDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.14, 0.09, 20), noseMat);
+        const snoutDisc = tagPart(new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.14, 0.09, 20), noseMat), 'nose');
         snoutDisc.rotation.x = Math.PI / 2;
         snoutDisc.position.set(0, -0.06, 0.41);
         head.add(snoutDisc);
         const holeMat = new THREE.MeshBasicMaterial({ color: 0x831843 });
         [-0.045, 0.045].forEach((nx) => {
-          const hole = new THREE.Mesh(new THREE.SphereGeometry(0.024, 10, 10), holeMat);
+          const hole = tagPart(new THREE.Mesh(new THREE.SphereGeometry(0.024, 10, 10), holeMat), 'nose');
           hole.position.set(nx, 0.045, 0);
           snoutDisc.add(hole);
         });
       } else if (spec.snoutStyle === 'koala') {
-        const koalaNose = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.06, 8, 12), noseMat);
+        const koalaNose = tagPart(new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.06, 8, 12), noseMat), 'nose');
         koalaNose.position.set(0, -0.03, 0.42);
         koalaNose.scale.set(1, 1.15, 0.7);
         head.add(koalaNose);
       } else {
-        // Twin soft puffy muzzle cheeks like the reference puppy
         const puffScale = spec.snoutStyle === 'long' ? 1.15 : 1.0;
         [-0.062, 0.062].forEach((mx) => {
-          const puff = new THREE.Mesh(new THREE.SphereGeometry(0.11, 18, 14), secMat);
+          const puff = tagPart(new THREE.Mesh(new THREE.SphereGeometry(0.11, 18, 14), secMat), 'head');
           puff.scale.set(1.1, 0.9, puffScale);
           puff.position.set(mx, -0.1, 0.36);
           head.add(puff);
         });
-        const chin = new THREE.Mesh(new THREE.SphereGeometry(0.09, 14, 12), secMat);
+        const chin = tagPart(new THREE.Mesh(new THREE.SphereGeometry(0.09, 14, 12), secMat), 'head');
         chin.scale.set(1.2, 0.65, 0.9);
         chin.position.set(0, -0.15, 0.34);
         head.add(chin);
 
-        // Smooth rounded glossy nose
-        const nose = new THREE.Mesh(new THREE.SphereGeometry(0.056, 16, 14), noseMat);
+        const nose = tagPart(new THREE.Mesh(new THREE.SphereGeometry(0.056, 16, 14), noseMat), 'nose');
         nose.scale.set(1.2, 0.85, 0.85);
         nose.position.set(0, -0.035, 0.44);
         head.add(nose);
@@ -968,7 +1138,6 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
 
       // --- EARS ---
       if (spec.earStyle === 'floppy') {
-        // Organic sculpted droopy puppy ears that hug cheeks softly
         const earGroupGeo = new THREE.SphereGeometry(0.145, 22, 18);
         earGroupGeo.scale(0.68, 1.65, 0.42);
         const earInPadGeo = new THREE.SphereGeometry(0.095, 16, 12);
@@ -978,10 +1147,10 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
           const earPivot = new THREE.Group();
           earPivot.position.set(side * 0.38, 0.16, 0.04);
           earPivot.rotation.set(0.12, side * 0.2, side * 0.24);
-          const outer = new THREE.Mesh(earGroupGeo, earOuterMat);
+          const outer = tagPart(new THREE.Mesh(earGroupGeo, earOuterMat), 'ears');
           outer.position.set(side * 0.05, -0.18, 0.02);
           outer.castShadow = true;
-          const inner = new THREE.Mesh(earInPadGeo, earInnerMat);
+          const inner = tagPart(new THREE.Mesh(earInPadGeo, earInnerMat), 'earInner');
           inner.position.set(side * 0.03, -0.18, 0.045);
           earPivot.add(outer, inner);
           return earPivot;
@@ -997,19 +1166,19 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
       } else if (spec.earStyle === 'cat') {
         const earGeo = new THREE.ConeGeometry(0.145, 0.28, 16);
         const earInGeo = new THREE.ConeGeometry(0.085, 0.18, 12);
-        const lEar = new THREE.Mesh(earGeo, earOuterMat);
+        const lEar = tagPart(new THREE.Mesh(earGeo, earOuterMat), 'ears');
         lEar.position.set(-0.26, 0.35, 0.02);
         lEar.rotation.set(0.1, 0, 0.36);
-        const lIn = new THREE.Mesh(earInGeo, earInnerMat);
+        const lIn = tagPart(new THREE.Mesh(earInGeo, earInnerMat), 'earInner');
         lIn.position.set(0, -0.02, 0.045);
         lEar.add(lIn);
         head.add(lEar);
         leftEarObj = lEar;
 
-        const rEar = new THREE.Mesh(earGeo, earOuterMat);
+        const rEar = tagPart(new THREE.Mesh(earGeo, earOuterMat), 'ears');
         rEar.position.set(0.26, 0.35, 0.02);
         rEar.rotation.set(0.1, 0, -0.36);
-        const rIn = new THREE.Mesh(earInGeo, earInnerMat);
+        const rIn = tagPart(new THREE.Mesh(earInGeo, earInnerMat), 'earInner');
         rIn.position.set(0, -0.02, 0.045);
         rEar.add(rIn);
         head.add(rEar);
@@ -1020,19 +1189,19 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         const earInGeo = new THREE.CapsuleGeometry(0.048, 0.3, 8, 12);
         earInGeo.scale(0.9, 1.0, 0.35);
 
-        const lEar = new THREE.Mesh(earGeo, mainMat);
+        const lEar = tagPart(new THREE.Mesh(earGeo, earOuterMat), 'ears');
         lEar.position.set(-0.18, 0.48, 0);
         lEar.rotation.set(-0.08, 0, 0.18);
-        const lIn = new THREE.Mesh(earInGeo, earInnerMat);
+        const lIn = tagPart(new THREE.Mesh(earInGeo, earInnerMat), 'earInner');
         lIn.position.z = 0.025;
         lEar.add(lIn);
         head.add(lEar);
         leftEarObj = lEar;
 
-        const rEar = new THREE.Mesh(earGeo, mainMat);
+        const rEar = tagPart(new THREE.Mesh(earGeo, earOuterMat), 'ears');
         rEar.position.set(0.18, 0.48, 0);
         rEar.rotation.set(-0.08, 0, -0.18);
-        const rIn = new THREE.Mesh(earInGeo, earInnerMat);
+        const rIn = tagPart(new THREE.Mesh(earInGeo, earInnerMat), 'earInner');
         rIn.position.z = 0.025;
         rEar.add(rIn);
         head.add(rEar);
@@ -1046,23 +1215,23 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         const xOff = spec.earStyle === 'bigRound' ? 0.38 : 0.3;
         const yOff = spec.earStyle === 'bigRound' ? 0.24 : 0.31;
 
-        const lEar = new THREE.Mesh(earGeo, earOuterMat);
+        const lEar = tagPart(new THREE.Mesh(earGeo, earOuterMat), 'ears');
         lEar.position.set(-xOff, yOff, 0);
-        const lIn = new THREE.Mesh(inGeo, earInnerMat);
+        const lIn = tagPart(new THREE.Mesh(inGeo, earInnerMat), 'earInner');
         lIn.position.z = 0.02;
         lEar.add(lIn);
         head.add(lEar);
         leftEarObj = lEar;
 
-        const rEar = new THREE.Mesh(earGeo, earOuterMat);
+        const rEar = tagPart(new THREE.Mesh(earGeo, earOuterMat), 'ears');
         rEar.position.set(xOff, yOff, 0);
-        const rIn = new THREE.Mesh(inGeo, earInnerMat);
+        const rIn = tagPart(new THREE.Mesh(inGeo, earInnerMat), 'earInner');
         rIn.position.z = 0.02;
         rEar.add(rIn);
         head.add(rEar);
         rightEarObj = rEar;
       } else if (spec.earStyle === 'fin') {
-        const fin = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.34, 12), earOuterMat);
+        const fin = tagPart(new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.34, 12), earOuterMat), 'ears');
         fin.scale.set(0.32, 1.0, 1.1);
         fin.position.set(0, 0.42, -0.05);
         fin.rotation.x = -0.35;
@@ -1071,16 +1240,16 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         const stemGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.22, 8);
         const tipGeo = new THREE.SphereGeometry(0.04, 10, 10);
         [-0.14, 0.14].forEach((ax) => {
-          const ant = new THREE.Mesh(stemGeo, earOuterMat);
+          const ant = tagPart(new THREE.Mesh(stemGeo, earOuterMat), 'ears');
           ant.position.set(ax, 0.44, 0.06);
           ant.rotation.z = ax > 0 ? -0.25 : 0.25;
-          const tip = new THREE.Mesh(tipGeo, mainMat);
+          const tip = tagPart(new THREE.Mesh(tipGeo, earInnerMat), 'earInner');
           tip.position.y = 0.12;
           ant.add(tip);
           head.add(ant);
         });
       } else if (spec.earStyle === 'tuft') {
-        const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.22, 10), earInnerMat);
+        const tuft = tagPart(new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.22, 10), earInnerMat), 'ears');
         tuft.position.set(0, 0.42, 0.04);
         head.add(tuft);
       }
@@ -1092,26 +1261,26 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
           new THREE.Vector3(0.08, 0.46, -0.46),
           new THREE.Vector3(0.02, 0.68, -0.52),
         ]);
-        const tail = new THREE.Mesh(new THREE.TubeGeometry(tCurve, 14, 0.055, 10, false), mainMat);
-        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.062, 12, 10), secMat);
+        const tail = tagPart(new THREE.Mesh(new THREE.TubeGeometry(tCurve, 14, 0.055, 10, false), tailMat), 'tail');
+        const tip = tagPart(new THREE.Mesh(new THREE.SphereGeometry(0.062, 12, 10), secMat), 'tail');
         tip.position.set(0.02, 0.68, -0.52);
         tail.add(tip);
         torsoGroup.add(tail);
         tailObj = tail;
       } else if (spec.tailStyle === 'fluffy') {
-        const fTail = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 14), mainMat);
+        const fTail = tagPart(new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 14), tailMat), 'tail');
         fTail.scale.set(0.85, 1.4, 0.85);
         fTail.position.set(0, 0.38, -0.42);
         fTail.rotation.x = 0.6;
         torsoGroup.add(fTail);
         tailObj = fTail;
       } else if (spec.tailStyle === 'pompom') {
-        const pom = new THREE.Mesh(new THREE.SphereGeometry(0.11, 14, 12), secMat);
+        const pom = tagPart(new THREE.Mesh(new THREE.SphereGeometry(0.11, 14, 12), tailMat), 'tail');
         pom.position.set(0, 0.28, -0.38);
         torsoGroup.add(pom);
         tailObj = pom;
       } else if (spec.tailStyle === 'aquatic') {
-        const cTail = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.32, 10), earOuterMat);
+        const cTail = tagPart(new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.32, 10), tailMat), 'tail');
         cTail.scale.set(0.25, 1.0, 1.1);
         cTail.position.set(0, 0.56, -0.62);
         cTail.rotation.x = -Math.PI / 2;
@@ -1548,11 +1717,25 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
       raycaster.setFromCamera(mouse, camera);
 
       const hits = raycaster.intersectObjects(petRoot.children, true);
-      if (hits.length > 0 && propsRef.current.onPetTouch) {
-        const y = hits[0].point.y;
-        if (y > 0.72) propsRef.current.onPetTouch('head');
-        else if (y > 0.3) propsRef.current.onPetTouch('belly');
-        else propsRef.current.onPetTouch('paw');
+      if (hits.length > 0) {
+        if (propsRef.current.paintMode && propsRef.current.onPaintPart) {
+          let obj: THREE.Object3D | null = hits[0].object;
+          while (obj && !obj.userData?.paintPart) {
+            obj = obj.parent;
+          }
+          const partKey = obj?.userData?.paintPart ? String(obj.userData.paintPart) : 'body';
+          propsRef.current.onPaintPart(partKey, formatPaintPartLabel(partKey));
+          return;
+        }
+        if (propsRef.current.onPetTouch) {
+          if (isGlbActiveRef.current) {
+            playGlbClipByCandidates(['Happy', 'Jump', 'Stand'], 2400);
+          }
+          const y = hits[0].point.y;
+          if (y > 0.72) propsRef.current.onPetTouch('head');
+          else if (y > 0.3) propsRef.current.onPetTouch('belly');
+          else propsRef.current.onPetTouch('paw');
+        }
       }
     };
     renderer.domElement.addEventListener('pointerdown', handlePointerDown);
@@ -1572,12 +1755,52 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         glbMixer.update(delta);
       }
 
+      // Autonomous GLB animation cycle when awake & idle
+      if (isGlbActiveRef.current && glbMixer && !st.isSleeping && !prefersReducedMotion) {
+        const nowPerf = performance.now();
+        if (
+          nowPerf > pauseGlbBrainUntil &&
+          nowPerf > nextGlbBrainTick &&
+          move === 'idle' &&
+          !st.isBathing &&
+          !st.isPlayMode
+        ) {
+          nextGlbBrainTick = nowPerf + 4600;
+          const avail = Array.from(glbActions.keys());
+          if (avail.length > 0) {
+            const roll = Math.random();
+            if (/^sitidle$/i.test(activeGlbClipName)) {
+              playGlbClipByCandidates(['SitStandUp', 'Stand', 'Idle']);
+            } else if (roll < 0.25 && findBestAnimationClip(avail, ['Sit'])) {
+              playGlbClipByCandidates(['Sit', 'SitIdle']);
+            } else {
+              const pool = ['Idle', 'Walk', 'Walk_2', 'Stand', 'Dig']
+                .map((c) => findBestAnimationClip(avail, [c]))
+                .filter((v): v is string => Boolean(v));
+              const chosen = pool[Math.floor(Math.random() * pool.length)] || avail[0];
+              playGlbClipByCandidates([chosen]);
+            }
+          }
+        }
+      }
+
       // Reset default root transform cleanly before applying active kinematics
       petRoot.position.set(0, 0, 0);
       petRoot.rotation.set(0, 0, 0);
       petRoot.scale.set(1, 1, 1);
 
-      if (st.isSleeping) {
+      if (isGlbActiveRef.current) {
+        // Keep rigged .glb proportions undistorted while supporting spin/jump/kiss emphasis
+        if (!prefersReducedMotion) {
+          if (move === 'spin') {
+            petRoot.rotation.y = t * 6.5;
+          } else if (move === 'kiss') {
+            petRoot.position.z = Math.sin(t * 5) * 0.08 + 0.06;
+          } else if (move === 'jump') {
+            petRoot.position.y = Math.abs(Math.sin(t * 5.8)) * 0.16;
+          }
+        }
+      } else if (st.isSleeping) {
         const b = Math.sin(t * 1.6) * 0.025;
         petRoot.scale.set(1.04, 0.92 + b, 1.04);
         if (headGroup) {
@@ -1749,8 +1972,15 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
 
   // Rebuild pet mesh/wardrobe cleanly when appearance state changes (without destroying WebGLRenderer!)
   const petColorsKey = JSON.stringify(kitten.petColors || {});
+  const petPartColorsKey = JSON.stringify(kitten.petPartColors || {});
   const accColorsKey = JSON.stringify(kitten.accessoryColors || {});
   useEffect(() => {
+    const cleanGlb = (customModelUrl || '').trim();
+    const targetKey = `${petType}::${cleanGlb}`;
+    if (isGlbActiveRef.current && loadedGlbKeyRef.current === targetKey) {
+      applyGlbColorsFnRef.current?.();
+      return;
+    }
     rebuildFnRef.current?.();
   }, [
     petType,
@@ -1762,13 +1992,29 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
     kitten.equippedGlasses,
     kitten.equippedAccessory,
     petColorsKey,
+    petPartColorsKey,
     accColorsKey,
     hasSoapFoam,
     customModelUrl,
   ]);
 
+  // Sync GLB animation clip whenever Talking Tom state, danceMove or actionCue updates
+  useEffect(() => {
+    syncGlbAnimFnRef.current?.();
+  }, [
+    kitten.isSleeping,
+    kitten.isBathing,
+    kitten.isPlayMode,
+    danceMove,
+    actionCue?.tick,
+  ]);
+
   return (
-    <div className="relative w-full h-64 sm:h-76 rounded-3xl overflow-hidden cursor-grab active:cursor-grabbing select-none touch-none flex items-center justify-center">
+    <div
+      className={`relative w-full h-64 sm:h-76 rounded-3xl overflow-hidden select-none touch-none flex items-center justify-center ${
+        paintMode ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'
+      }`}
+    >
       <div ref={containerRef} className="w-full h-full" />
     </div>
   );

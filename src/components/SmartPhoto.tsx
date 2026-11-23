@@ -21,35 +21,26 @@ export const SmartPhoto: React.FC<SmartPhotoProps> = ({
   photo,
   photoIndex,
   src,
-  alt = 'Memória Romântica',
+  alt = 'Foto do Casal',
   className = '',
   imgClassName = '',
   aspect = 'auto',
-  showOverlay = false,
   onClick,
-  hideDetails = false,
 }) => {
   const index = photoIndex || photo?.index || 1;
-  const title = photo?.title || `Memória #${index}`;
-  const date = photo?.date || 'Nosso Momento';
 
-  // Build candidate paths in order of preference
+  // Apenas URLs reais adicionadas pelo casal (sem caminhos estáticos /assets/img/)
   const candidateUrls = React.useMemo(() => {
     const list: string[] = [];
-    if (src) list.push(src);
-    if (photo?.url && photo.url !== src) list.push(photo.url);
-    if (photo?.driveUrl && !list.includes(photo.driveUrl)) list.push(photo.driveUrl);
-    if (photo?.localPath && !list.includes(photo.localPath)) list.push(photo.localPath);
-
-    // Fallback to local couple photos under /assets/img/ and /assets/photos/
-    const extensions = ['jpg', 'jpeg', 'png', 'webp'];
-    for (const ext of extensions) {
-      list.push(`/assets/img/${index}.${ext}`);
-      list.push(`/assets/photos/${index}.${ext}`);
+    if (src && !src.startsWith('/assets/img/')) list.push(src);
+    if (photo?.url && photo.url !== src && !photo.url.startsWith('/assets/img/')) {
+      list.push(photo.url);
     }
-
+    if (photo?.driveUrl && !list.includes(photo.driveUrl)) {
+      list.push(photo.driveUrl);
+    }
     return Array.from(new Set(list));
-  }, [src, photo?.url, photo?.driveUrl, photo?.localPath, index]);
+  }, [src, photo?.url, photo?.driveUrl]);
 
   const [candidateIdx, setCandidateIdx] = useState<number>(0);
   const [hasFailedAll, setHasFailedAll] = useState<boolean>(false);
@@ -64,7 +55,6 @@ export const SmartPhoto: React.FC<SmartPhotoProps> = ({
     setIsLoaded(false);
   }, [index, src, photo?.url]);
 
-  // Resolve current candidate URL cleanly; advance immediately if an idb:// key is missing on this device
   useEffect(() => {
     let active = true;
     if (!rawCurrentSrc) {
@@ -83,13 +73,10 @@ export const SmartPhoto: React.FC<SmartPhotoProps> = ({
       if (!active) return;
       if (res) {
         setResolvedSrc(res);
+      } else if (candidateIdx + 1 < candidateUrls.length) {
+        setCandidateIdx((prev) => prev + 1);
       } else {
-        // Missing local IndexedDB entry on this device -> immediately advance to next candidate
-        if (candidateIdx + 1 < candidateUrls.length) {
-          setCandidateIdx((prev) => prev + 1);
-        } else {
-          setHasFailedAll(true);
-        }
+        setHasFailedAll(true);
       }
     });
 
@@ -141,40 +128,17 @@ export const SmartPhoto: React.FC<SmartPhotoProps> = ({
             />
           )}
 
-          {/* Shimmer loading placeholder while loading */}
           {!isLoaded && (
             <div className="absolute inset-0 bg-gradient-to-tr from-purple-950/70 via-pink-950/40 to-indigo-950/70 animate-pulse flex items-center justify-center">
-              <div className="flex flex-col items-center gap-2 text-pink-300/60">
-                <Sparkles className="w-5 h-5 animate-spin" />
-                <span className="text-[11px] font-mono">Carregando...</span>
-              </div>
+              <Sparkles className="w-5 h-5 text-pink-300/60 animate-spin" />
             </div>
           )}
         </>
       ) : (
-        /* Graceful romantic placeholder card when photo is unavailable */
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-950/90 via-pink-950/60 to-slate-950/95 border border-pink-500/30 p-4 flex flex-col items-center justify-center text-center backdrop-blur-md group-hover:border-pink-400/50 transition-colors">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-500/20 to-purple-600/30 border border-pink-400/30 flex items-center justify-center text-pink-300 mb-2 shadow-inner group-hover:scale-110 transition-transform">
-            <Heart className="w-6 h-6 fill-pink-400/30 text-pink-300 animate-pulse" />
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-950/90 via-pink-950/55 to-slate-950/95 border border-pink-500/25 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-500/20 to-purple-600/30 border border-pink-400/30 flex items-center justify-center shadow-inner">
+            <Heart className="w-6 h-6 fill-pink-400/30 text-pink-300" />
           </div>
-          <span className="text-xs font-bold text-pink-100 line-clamp-1 font-display">{title}</span>
-          <span className="text-[10px] text-pink-300/70 mt-0.5">{date}</span>
-          {!hideDetails && (
-            <span className="mt-2 text-[10px] text-pink-300/75">Nosso Momento ♡</span>
-          )}
-        </div>
-      )}
-
-      {/* Optional Gradient Vignette Overlay on Hover or Active */}
-      {showOverlay && (
-        <div className="absolute inset-0 bg-gradient-to-t from-purple-950/90 via-purple-950/20 to-transparent opacity-80 group-hover:opacity-95 transition-opacity flex flex-col justify-end p-3 pointer-events-none">
-          <div className="flex items-center justify-between text-white text-xs">
-            <span className="font-bold line-clamp-1 text-pink-100">{title}</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-pink-500/30 text-pink-200 border border-pink-400/30 font-mono">
-              #{index}
-            </span>
-          </div>
-          <span className="text-[11px] text-pink-200/80 line-clamp-1">{photo?.subtitle || date}</span>
         </div>
       )}
     </div>

@@ -11,12 +11,7 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCw,
-  Sparkles,
-  Download,
-  Share2,
   Music,
-  Info,
-  Check,
 } from 'lucide-react';
 import { MemoryPhoto } from '../types';
 import { SmartPhoto } from './SmartPhoto';
@@ -36,18 +31,15 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
   onClose,
   onSelectPhoto,
 }) => {
-  const { toggleFavoritePhoto, triggerHeartExplosion, isPlaying, togglePlay, currentSong, showToast } = useApp();
+  const { toggleFavoritePhoto, triggerHeartExplosion, isPlaying, togglePlay, currentSong } = useApp();
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [isSlideshow, setIsSlideshow] = useState(false);
-  const [showInfo, setShowInfo] = useState(false);
-  const [copied, setCopied] = useState(false);
   const thumbnailsRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const currentIndex = photo ? photos.findIndex((p) => p.id === photo.id) : -1;
 
-  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!photo) return;
@@ -66,10 +58,9 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [photo, photos, currentIndex]);
 
-  // Slideshow auto-advance
   useEffect(() => {
     let timer: number;
-    if (isSlideshow && photo) {
+    if (isSlideshow && photo && photos.length > 1) {
       timer = window.setInterval(() => {
         handleNext();
       }, 4000);
@@ -77,7 +68,6 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
     return () => clearInterval(timer);
   }, [isSlideshow, photo, photos, currentIndex]);
 
-  // Auto scroll thumbnail bar to active photo
   useEffect(() => {
     if (thumbnailsRef.current && currentIndex >= 0) {
       const activeThumb = thumbnailsRef.current.children[currentIndex] as HTMLElement;
@@ -91,6 +81,7 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
 
   const handleNext = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    if (photos.length === 0) return;
     soundEngine.playHeartPop();
     const nextIdx = (currentIndex + 1) % photos.length;
     onSelectPhoto(photos[nextIdx]);
@@ -100,6 +91,7 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
 
   const handlePrev = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    if (photos.length === 0) return;
     soundEngine.playHeartPop();
     const prevIdx = (currentIndex - 1 + photos.length) % photos.length;
     onSelectPhoto(photos[prevIdx]);
@@ -122,14 +114,6 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
     setRotation((r) => (r + 90) % 360);
   };
 
-  const handleShare = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    navigator.clipboard?.writeText(window.location.href);
-    setCopied(true);
-    showToast('Link do nosso álbum copiado com amor! ♡', 'heart');
-    setTimeout(() => setCopied(false), 2500);
-  };
-
   const handleToggleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
     toggleFavoritePhoto(photo.id);
@@ -147,49 +131,41 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
           if (!isSlideshow) onClose();
         }}
       >
-        {/* Ambient Blurred Glow Backdrop */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
           <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-600/30 rounded-full blur-3xl animate-pulse" />
           <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-pink-600/30 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-3xl" />
         </div>
 
-        {/* --- TOP BAR --- */}
+        {/* Barra Superior Limpa (sem título, subtítulo, data ou descrição) */}
         <header
           className="relative z-30 px-4 py-3 flex items-center justify-between bg-gradient-to-b from-black/80 via-black/40 to-transparent backdrop-blur-md"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Left: Index badge & Slideshow pill */}
           <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs font-mono font-medium text-purple-200 backdrop-blur-md">
-              Foto {currentIndex + 1} de {photos.length}
+            <span className="px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs font-mono font-medium text-purple-200 backdrop-blur-md tabular-nums">
+              {currentIndex + 1} / {photos.length}
             </span>
 
-            <button
-              onClick={() => setIsSlideshow((prev) => !prev)}
-              className={`flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-medium transition-all ${
-                isSlideshow
-                  ? 'bg-pink-600 text-white shadow-[0_0_15px_rgba(236,72,153,0.6)]'
-                  : 'bg-white/10 text-white hover:bg-white/20 border border-white/15'
-              }`}
-            >
-              {isSlideshow ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-              <span>{isSlideshow ? 'Pausar' : 'Cinema'}</span>
-            </button>
+            {photos.length > 1 && (
+              <button
+                onClick={() => setIsSlideshow((prev) => !prev)}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                  isSlideshow
+                    ? 'bg-pink-600 text-white shadow-[0_0_15px_rgba(236,72,153,0.6)]'
+                    : 'bg-white/10 text-white hover:bg-white/20 border border-white/15'
+                }`}
+              >
+                {isSlideshow ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+                <span>{isSlideshow ? 'Pausar' : 'Cinema'}</span>
+              </button>
+            )}
           </div>
 
-          {/* Center Title (Desktop) */}
-          <div className="hidden md:flex flex-col items-center text-center">
-            <h3 className="text-sm font-bold text-white tracking-wide font-display">{photo.title}</h3>
-            <span className="text-[11px] text-purple-300/80">{photo.date}</span>
-          </div>
-
-          {/* Right Action Tools */}
           <div className="flex items-center gap-1.5">
             <button
               onClick={handleZoomOut}
               disabled={zoom <= 1}
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-purple-200 hover:text-white transition-all disabled:opacity-30"
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-purple-200 hover:text-white transition-all disabled:opacity-30 cursor-pointer"
               title="Diminuir Zoom"
             >
               <ZoomOut className="w-4 h-4" />
@@ -198,7 +174,7 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
             <button
               onClick={handleZoomIn}
               disabled={zoom >= 2.5}
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-purple-200 hover:text-white transition-all disabled:opacity-30"
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-purple-200 hover:text-white transition-all disabled:opacity-30 cursor-pointer"
               title="Aumentar Zoom"
             >
               <ZoomIn className="w-4 h-4" />
@@ -206,7 +182,7 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
 
             <button
               onClick={handleRotate}
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-purple-200 hover:text-white transition-all"
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-purple-200 hover:text-white transition-all cursor-pointer"
               title="Girar 90°"
             >
               <RotateCw className="w-4 h-4" />
@@ -214,7 +190,7 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
 
             <button
               onClick={handleToggleFavorite}
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-purple-200 hover:text-pink-400 transition-all"
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-purple-200 hover:text-pink-400 transition-all cursor-pointer"
               title="Favoritar"
             >
               <Heart
@@ -222,16 +198,6 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
                   photo.isFavorite ? 'text-pink-500 fill-pink-500 neon-glow-pink' : ''
                 }`}
               />
-            </button>
-
-            <button
-              onClick={() => setShowInfo((prev) => !prev)}
-              className={`p-2 rounded-xl transition-all ${
-                showInfo ? 'bg-purple-600 text-white' : 'bg-white/10 text-purple-200 hover:bg-white/20'
-              }`}
-              title="Detalhes da Memória"
-            >
-              <Info className="w-4 h-4" />
             </button>
 
             <button
@@ -244,7 +210,7 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
           </div>
         </header>
 
-        {/* --- MAIN STAGE & NAVIGATION ARROWS --- */}
+        {/* Palco Principal */}
         <main
           className="relative flex-1 flex items-center justify-center p-2 sm:p-6 overflow-hidden touch-pan-y"
           onClick={(e) => e.stopPropagation()}
@@ -268,32 +234,33 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
             }
           }}
         >
-          {/* Previous Arrow Button */}
-          <button
-            onClick={handlePrev}
-            className="absolute left-2 sm:left-6 z-30 p-3 sm:p-4 rounded-full bg-black/60 hover:bg-pink-600 text-white/90 hover:text-white border border-white/15 backdrop-blur-xl transition-all duration-200 shadow-2xl active:scale-90 cursor-pointer"
-            aria-label="Foto Anterior"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
+          {photos.length > 1 && (
+            <>
+              <button
+                onClick={handlePrev}
+                className="absolute left-2 sm:left-6 z-30 p-3 sm:p-4 rounded-full bg-black/60 hover:bg-pink-600 text-white/90 hover:text-white border border-white/15 backdrop-blur-xl transition-all duration-200 shadow-2xl active:scale-90 cursor-pointer"
+                aria-label="Foto Anterior"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
 
-          {/* Next Arrow Button */}
-          <button
-            onClick={handleNext}
-            className="absolute right-2 sm:right-6 z-30 p-3 sm:p-4 rounded-full bg-black/60 hover:bg-pink-600 text-white/90 hover:text-white border border-white/15 backdrop-blur-xl transition-all duration-200 shadow-2xl active:scale-90 cursor-pointer"
-            aria-label="Próxima Foto"
-          >
-            <ChevronRight className="w-6 h-6" />
-          </button>
+              <button
+                onClick={handleNext}
+                className="absolute right-2 sm:right-6 z-30 p-3 sm:p-4 rounded-full bg-black/60 hover:bg-pink-600 text-white/90 hover:text-white border border-white/15 backdrop-blur-xl transition-all duration-200 shadow-2xl active:scale-90 cursor-pointer"
+                aria-label="Próxima Foto"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            </>
+          )}
 
-          {/* Active Photo Container */}
           <motion.div
             key={photo.id}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.3 }}
-            className="relative max-w-full max-h-[65vh] sm:max-h-[72vh] rounded-3xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8)] border border-purple-500/30 flex items-center justify-center bg-black/50"
+            transition={{ duration: 0.25 }}
+            className="relative max-w-full max-h-[68vh] sm:max-h-[75vh] rounded-3xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8)] border border-purple-500/30 flex items-center justify-center bg-black/50"
             style={{
               transform: `scale(${zoom}) rotate(${rotation}deg)`,
               transition: 'transform 0.25s ease-out',
@@ -301,110 +268,41 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
           >
             <SmartPhoto
               photo={photo}
-              alt={photo.title}
-              className="w-auto h-auto max-w-full max-h-[65vh] sm:max-h-[72vh] object-contain rounded-2xl select-none pointer-events-auto"
+              alt="Foto do Casal"
+              className="w-auto h-auto max-w-full max-h-[68vh] sm:max-h-[75vh] object-contain rounded-2xl select-none pointer-events-auto"
+              hideDetails
             />
           </motion.div>
-
-          {/* Slide-in Details Drawer */}
-          <AnimatePresence>
-            {showInfo && (
-              <motion.div
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 50 }}
-                className="absolute right-4 top-4 bottom-4 w-80 rounded-2xl glass-card-glow border border-purple-400/30 p-5 z-40 flex flex-col justify-between shadow-2xl backdrop-blur-2xl text-left overflow-y-auto"
-              >
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-pink-300 font-semibold uppercase">
-                      Detalhes da Memória
-                    </span>
-                    <button
-                      onClick={() => setShowInfo(false)}
-                      className="p-1 rounded-lg text-purple-300 hover:text-white"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <div>
-                    <h4 className="text-lg font-bold text-white font-display">{photo.title}</h4>
-                    <p className="text-xs text-purple-200/80 mt-1">{photo.subtitle}</p>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-purple-950/60 border border-purple-500/20 text-xs space-y-1.5">
-                    <div className="flex justify-between text-purple-300/70">
-                      <span>Data:</span>
-                      <span className="text-white font-medium">{photo.date}</span>
-                    </div>
-                    <div className="flex justify-between text-purple-300/70">
-                      <span>Memória:</span>
-                      <span className="text-white">#{photo.index}</span>
-                    </div>
-                    <div className="flex justify-between text-purple-300/70">
-                      <span>Status:</span>
-                      <span className="text-pink-400 font-medium">{photo.isFavorite ? 'Favorita' : 'Normal'}</span>
-                    </div>
-                  </div>
-
-                  {photo.caption && (
-                    <div className="p-3 rounded-xl bg-pink-950/40 border border-pink-500/20 text-xs text-pink-200 leading-relaxed italic">
-                      "{photo.caption}"
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-4 border-t border-purple-500/20 flex gap-2">
-                  <button
-                    onClick={handleShare}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-purple-600/60 hover:bg-purple-600 text-white text-xs font-semibold transition-all"
-                  >
-                    {copied ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
-                    <span>{copied ? 'Copiado!' : 'Compartilhar'}</span>
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </main>
 
-        {/* --- BOTTOM SECTION: Caption, Integrated Audio & Thumbnails --- */}
+        {/* Rodapé limpo apenas com player rápido e miniaturas */}
         <footer
           className="relative z-30 px-4 py-3 bg-gradient-to-t from-black/95 via-black/80 to-transparent backdrop-blur-xl border-t border-purple-500/20 flex flex-col gap-2.5"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Integrated Mini Music Player Bar & Caption */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 max-w-4xl mx-auto w-full">
-            <div className="text-center sm:text-left min-w-0 flex-1">
-              <h4 className="text-sm font-bold text-white truncate font-display">{photo.title}</h4>
-              <p className="text-xs text-purple-200/70 truncate">{photo.subtitle}</p>
-            </div>
-
-            {/* Quick Soundtrack Player */}
-            <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/10 border border-purple-400/30 backdrop-blur-md">
-              <Music className="w-3.5 h-3.5 text-pink-400 animate-pulse" />
-              <span className="text-xs text-white truncate max-w-[140px] font-medium">
-                {currentSong?.title || 'Sem música tocando'}
-              </span>
-              {currentSong && (
+          {currentSong && (
+            <div className="flex items-center justify-center">
+              <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/10 border border-purple-400/30 backdrop-blur-md">
+                <Music className="w-3.5 h-3.5 text-pink-400 animate-pulse" />
+                <span className="text-xs text-white truncate max-w-[180px] font-medium">
+                  {currentSong.title}
+                </span>
                 <button
                   onClick={togglePlay}
-                  className="p-1 rounded-full bg-pink-600 text-white hover:bg-pink-500 transition-transform active:scale-95"
+                  className="p-1 rounded-full bg-pink-600 text-white hover:bg-pink-500 transition-transform active:scale-95 cursor-pointer"
                   title="Tocar Trilha Sonora"
                 >
                   {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 fill-current ml-0.5" />}
                 </button>
-              )}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Quick-switch Thumbnails Strip */}
           <div
             ref={thumbnailsRef}
             className="flex items-center gap-2 overflow-x-auto py-1 px-2 no-scrollbar max-w-4xl mx-auto w-full"
           >
-            {photos.map((p, idx) => {
+            {photos.map((p) => {
               const isActive = p.id === photo.id;
               return (
                 <button
@@ -423,12 +321,10 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
                 >
                   <SmartPhoto
                     photo={p}
-                    alt={p.title}
+                    alt="Miniatura"
                     className="w-full h-full object-cover pointer-events-none"
+                    hideDetails
                   />
-                  <span className="absolute bottom-0.5 right-1 text-[9px] font-mono text-white/90 drop-shadow">
-                    #{p.index}
-                  </span>
                 </button>
               );
             })}

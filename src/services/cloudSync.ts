@@ -446,7 +446,6 @@ export async function saveCloudWorld(input: SaveCloudInput): Promise<void> {
       aquariumState: input.aquariumState,
       seasonalState: input.seasonalState,
       missionsState: input.missionsState,
-      ...(input.lastMysteryChestAt ? { lastMysteryChestAt: input.lastMysteryChestAt } : {}),
       ...(input.legacyResetBackup ? { legacyResetBackup: input.legacyResetBackup } : {}),
     });
 
@@ -472,9 +471,7 @@ export async function saveCloudWorld(input: SaveCloudInput): Promise<void> {
 export async function clearCloudWorld(): Promise<void> {
   const path = `${COUPLE_WORLD_COLLECTION}/${COUPLE_WORLD_ID}`;
   try {
-    const colRef = collection(db, COUPLE_WORLD_COLLECTION, COUPLE_WORLD_ID, PHOTOS_SUBCOLLECTION);
-    const snap = await getDocs(colRef);
-    await Promise.allSettled(snap.docs.map((d) => deleteDoc(d.ref)));
+    // Mantém a subcoleção de fotos reais intacta permanentemente mesmo ao zerar o progresso
     await deleteDoc(doc(db, COUPLE_WORLD_COLLECTION, COUPLE_WORLD_ID));
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);

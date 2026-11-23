@@ -34,7 +34,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { COOLDOWN_MS, INTEGRATED_MISSIONS_CATALOG, PET_SPECIES_CATALOG } from '../data/initialData';
-import { getCouplePhotoUrl, REAL_PHOTO_SLOTS } from '../data/mediaAssets';
 import { VISUAL_ASSETS } from '../data/visualAssets';
 import {
   AquariumCoralIcon,
@@ -142,20 +141,22 @@ export const HomeView: React.FC = () => {
       <Header />
 
       {/* 2. Romantic Hero Section */}
-      <section className="relative rounded-3xl overflow-hidden p-6 md:p-8 min-h-[210px] md:min-h-[240px] bg-gradient-to-r from-[#0d041c] via-[#15072e]/90 to-transparent border border-purple-500/20 shadow-[0_12px_40px_rgba(0,0,0,0.5)] flex flex-col justify-between">
-        <div className="absolute top-0 right-0 bottom-0 w-full md:w-2/3 pointer-events-none overflow-hidden opacity-90">
-          <SmartPhoto
-            photo={photos[0]}
-            photoIndex={1}
-            src={getCouplePhotoUrl(photos, 0, REAL_PHOTO_SLOTS.heroCouple)}
-            alt="Gabriel e Samella"
-            className="w-full h-full rounded-none"
-            imgClassName="w-full h-full object-cover object-right md:object-center mix-blend-screen scale-105"
-            hideDetails
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0d041c] via-[#0d041c]/70 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0d041c] via-transparent to-transparent" />
-        </div>
+      <section className="relative rounded-3xl overflow-hidden p-6 md:p-8 min-h-[210px] md:min-h-[240px] bg-gradient-to-r from-[#0d041c] via-[#15072e]/90 to-[#240a44]/80 border border-purple-500/20 shadow-[0_12px_40px_rgba(0,0,0,0.5)] flex flex-col justify-between">
+        {photos.length > 0 && (
+          <div className="absolute top-0 right-0 bottom-0 w-full md:w-2/3 pointer-events-none overflow-hidden opacity-90">
+            <SmartPhoto
+              photo={photos[Math.floor(nowMs / 9000) % photos.length]}
+              photoIndex={(Math.floor(nowMs / 9000) % photos.length) + 1}
+              src={photos[Math.floor(nowMs / 9000) % photos.length]?.url}
+              alt="Gabriel e Samella"
+              className="w-full h-full rounded-none"
+              imgClassName="w-full h-full object-cover object-right md:object-center mix-blend-screen scale-105"
+              hideDetails
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#0d041c] via-[#0d041c]/70 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0d041c] via-transparent to-transparent" />
+          </div>
+        )}
 
         <div className="absolute top-4 right-6 text-right select-none pointer-events-none hidden sm:block">
           <div className="font-romantic text-xl md:text-2xl text-pink-200/90 rotate-[-4deg] drop-shadow-[0_0_10px_rgba(244,114,182,0.6)]">

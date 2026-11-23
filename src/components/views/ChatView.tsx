@@ -313,14 +313,17 @@ export const ChatView: React.FC = () => {
       <div className="rounded-t-3xl px-4 py-3 bg-[#15072b]/95 border border-purple-500/30 border-b-0 flex items-center justify-between gap-2 shadow-lg flex-shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <div className="relative flex-shrink-0">
-            <img
-              src={getCouplePhotoUrl(photos, 0, REAL_PHOTO_SLOTS.loginPortrait)}
-              alt={peerDisplayName}
-              className="w-10 h-10 rounded-full object-cover border border-pink-400/50"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = '/assets/img/1.jpg';
-              }}
-            />
+            {getCouplePhotoUrl(photos, 0) ? (
+              <img
+                src={getCouplePhotoUrl(photos, 0)}
+                alt={peerDisplayName}
+                className="w-10 h-10 rounded-full object-cover border border-pink-400/50"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full border border-pink-400/50 bg-gradient-to-tr from-purple-700 to-pink-600 flex items-center justify-center">
+                <Heart className="w-4 h-4 text-white fill-white" />
+              </div>
+            )}
             <span
               className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#15072b] ${
                 isPeerOnline ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-slate-500'

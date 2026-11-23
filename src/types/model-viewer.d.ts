@@ -15,11 +15,14 @@ export interface ModelViewerElement extends HTMLElement {
   alt: string;
   autoplay: boolean;
   animationName?: string;
+  animationCrossfadeDuration?: number;
   availableAnimations?: string[];
+  currentTime?: number;
   model?: {
     materials: ModelViewerMaterial[];
   };
-  play?: () => void;
+  materialFromPoint?: (x: number, y: number) => ModelViewerMaterial | null;
+  play?: (options?: { repetitions?: number }) => void;
   pause?: () => void;
 }
 

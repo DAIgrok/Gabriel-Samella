@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X,
@@ -26,9 +26,9 @@ import { useApp } from '../../context/AppContext';
 import { motion } from 'motion/react';
 import { saveMediaBlob } from '../../services/localMediaStore';
 import { extractYouTubeId, fetchYouTubeMetadata, getYouTubeThumbnailUrl } from '../../services/realAudio';
-import { compressImageToDataUrl } from '../../services/googleDrive';
-import { REAL_PHOTO_SLOTS } from '../../data/mediaAssets';
+import { compressPhotoSafe, extractPhotosFromZipFile } from '../../utils/zipPhotoExtractor';
 import {
+  DEFAULT_PET_GLB_URLS,
   HOUSE_FURNITURE_CATALOG,
   PET_SPECIES_CATALOG,
 } from '../../data/initialData';
@@ -99,9 +99,8 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
 
   // Photo Manager state
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const [photoTitle, setPhotoTitle] = useState('');
-  const [photoCaption, setPhotoCaption] = useState('');
-  const [photoDate, setPhotoDate] = useState(new Date().toLocaleDateString('pt-BR'));
+  const glbPetFileInputRef = useRef<HTMLInputElement>(null);
+  const glbFurnitureFileInputRef = useRef<HTMLInputElement>(null);
   const [photoUrl, setPhotoUrl] = useState('');
   const [photoLoop, setPhotoLoop] = useState(true);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -121,18 +120,30 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
 
   // Modelos 3D (.glb) state
   const [selectedGlbPet, setSelectedGlbPet] = useState<PetType>(
-    PET_SPECIES_CATALOG[0]?.type || 'dog'
+    PET_SPECIES_CATALOG[0]?.type || 'cat'
   );
   const [selectedGlbFurniture, setSelectedGlbFurniture] = useState<string>(
     HOUSE_FURNITURE_CATALOG[0]?.id || 'house-sofa'
   );
   const [glbPetsDraft, setGlbPetsDraft] = useState<Partial<Record<PetType, string>>>(
-    () => ({ ...(config.customGlbModels?.pets || {}) })
+    () =>
+      config.customGlbModels?.pets
+        ? { ...config.customGlbModels.pets }
+        : { ...DEFAULT_PET_GLB_URLS }
   );
   const [glbFurnitureDraft, setGlbFurnitureDraft] = useState<Record<string, string>>(
     () => ({ ...(config.customGlbModels?.furniture || {}) })
   );
   const [isGlbSaved, setIsGlbSaved] = useState(false);
+
+  useEffect(() => {
+    setGlbPetsDraft(
+      config.customGlbModels?.pets
+        ? { ...config.customGlbModels.pets }
+        : { ...DEFAULT_PET_GLB_URLS }
+    );
+    setGlbFurnitureDraft({ ...(config.customGlbModels?.furniture || {}) });
+  }, [config.customGlbModels]);
 
   // Reset state
   const [confirmReset, setConfirmReset] = useState(false);
@@ -196,7 +207,7 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
         duration: dur,
         durationFormatted: durFormatted,
         audioUrl: idbKey,
-        coverUrl: REAL_PHOTO_SLOTS.musicCovers[0],
+        coverUrl: '',
         lyrics: songLyrics.trim()
           ? songLyrics.split('\n').map((l) => l.trim())
           : ['Trilha especial adicionada para o Nosso Mundo ♡'],
@@ -224,7 +235,7 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
     const ytId = extractYouTubeId(rawUrl);
     let resolvedTitle = songTitle.trim();
     let resolvedArtist = songArtist.trim();
-    let resolvedCover = REAL_PHOTO_SLOTS.musicCovers[0];
+    let resolvedCover = '';
 
     if (ytId) {
       resolvedCover = getYouTubeThumbnailUrl(ytId);
@@ -262,25 +273,49 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
     const files: File[] = e.target.files ? Array.from(e.target.files) : [];
     if (files.length === 0) return;
     setIsUploadingPhoto(true);
+    let addedCount = 0;
     try {
       for (const file of files) {
-        const { dataUrl, aspect } = await compressImageToDataUrl(file, 1100, 0.78);
-        const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ').trim();
-        addPhoto({
-          title: photoTitle.trim() || (cleanName.length <= 36 ? cleanName : 'Nosso Momento ♡'),
-          subtitle: photoCaption.trim() || `${config.myName} & ${config.partnerName}`,
-          date: photoDate || new Date().toLocaleDateString('pt-BR'),
-          url: dataUrl,
-          sourceType: 'upload',
-          aspect,
-          inHomeLoop: photoLoop,
-          caption: photoCaption.trim(),
-        });
+        const lowerName = file.name.toLowerCase();
+        const isZip =
+          lowerName.endsWith('.zip') ||
+          file.type === 'application/zip' ||
+          file.type === 'application/x-zip-compressed';
+        if (isZip) {
+          const extracted = await extractPhotosFromZipFile(file);
+          for (const item of extracted) {
+            addPhoto({
+              title: '',
+              subtitle: '',
+              date: '',
+              url: item.dataUrl,
+              sourceType: 'upload',
+              aspect: item.aspect,
+              inHomeLoop: photoLoop,
+              caption: '',
+            });
+            addedCount++;
+          }
+        } else {
+          const { dataUrl, aspect } = await compressPhotoSafe(file);
+          addPhoto({
+            title: '',
+            subtitle: '',
+            date: '',
+            url: dataUrl,
+            sourceType: 'upload',
+            aspect,
+            inHomeLoop: photoLoop,
+            caption: '',
+          });
+          addedCount++;
+        }
       }
-      setPhotoTitle('');
-      setPhotoCaption('');
+      if (addedCount > 0) {
+        showToast(`${addedCount} foto(s) salva(s) permanentemente!`, 'camera');
+      }
     } catch {
-      showToast('Erro ao processar imagem selecionada.');
+      showToast('Erro ao processar imagem ou pacote .zip.');
     } finally {
       setIsUploadingPhoto(false);
       e.target.value = '';
@@ -294,16 +329,15 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
       return;
     }
     addPhoto({
-      title: photoTitle.trim() || 'Nosso Momento Especial ♡',
-      subtitle: photoCaption.trim() || `${config.myName} & ${config.partnerName}`,
-      date: photoDate || new Date().toLocaleDateString('pt-BR'),
+      title: '',
+      subtitle: '',
+      date: '',
       url: photoUrl.trim(),
+      sourceType: 'url',
       inHomeLoop: photoLoop,
-      caption: photoCaption.trim(),
+      caption: '',
     });
-    setPhotoTitle('');
     setPhotoUrl('');
-    setPhotoCaption('');
   };
 
   const handleAddQuizQuestion = (e: React.FormEvent) => {
@@ -344,15 +378,22 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
     setCapMessage('');
   };
 
-  const handleSaveGlbModels = (e: React.FormEvent) => {
-    e.preventDefault();
+  const persistGlbDrafts = (
+    nextPets: Partial<Record<PetType, string>>,
+    nextFurniture: Record<string, string>,
+    toastText?: string
+  ) => {
     const cleanedPets: Partial<Record<PetType, string>> = {};
-    (Object.entries(glbPetsDraft) as [PetType, string | undefined][]).forEach(([k, v]) => {
+    (Object.entries(nextPets) as [PetType, string | undefined][]).forEach(([k, v]) => {
       const trimmed = (v || '').trim();
-      if (trimmed) cleanedPets[k] = trimmed;
+      if (trimmed) {
+        cleanedPets[k] = trimmed;
+      } else if (DEFAULT_PET_GLB_URLS[k]) {
+        cleanedPets[k] = '';
+      }
     });
     const cleanedFurniture: Record<string, string> = {};
-    (Object.entries(glbFurnitureDraft) as [string, string | undefined][]).forEach(([k, v]) => {
+    (Object.entries(nextFurniture) as [string, string | undefined][]).forEach(([k, v]) => {
       const trimmed = typeof v === 'string' ? v.trim() : '';
       if (trimmed) cleanedFurniture[k] = trimmed;
     });
@@ -365,8 +406,13 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
     setGlbPetsDraft(cleanedPets);
     setGlbFurnitureDraft(cleanedFurniture);
     setIsGlbSaved(true);
-    showToast('URLs de modelos .glb salvas!');
+    if (toastText) showToast(toastText);
     setTimeout(() => setIsGlbSaved(false), 1200);
+  };
+
+  const handleSaveGlbModels = (e: React.FormEvent) => {
+    e.preventDefault();
+    persistGlbDrafts(glbPetsDraft, glbFurnitureDraft, 'Modelos 3D (.glb) salvos com segurança!');
   };
 
   const handlePreLaunchReset = async () => {
@@ -711,7 +757,7 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                 <input
                   ref={photoInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/*,.zip,application/zip,application/x-zip-compressed"
                   multiple
                   className="hidden"
                   onChange={handlePhotoFileSelect}
@@ -720,45 +766,20 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                 <div className="p-4 rounded-2xl glass-panel border border-purple-500/25 space-y-3">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <h4 className="text-xs font-bold text-pink-300 uppercase tracking-wider">
-                      Adicionar Fotos na Galeria e Loop Inicial
+                      Adicionar Fotos Reais ou .ZIP (Permanentes)
                     </h4>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        type="button"
-                        disabled={isUploadingPhoto}
-                        onClick={() => photoInputRef.current?.click()}
-                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow cursor-pointer disabled:opacity-60"
-                      >
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>{isUploadingPhoto ? 'Enviando...' : 'Escolher da Galeria'}</span>
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      disabled={isUploadingPhoto}
+                      onClick={() => photoInputRef.current?.click()}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow cursor-pointer disabled:opacity-60"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{isUploadingPhoto ? 'Extraindo e Salvando...' : 'Escolher Fotos ou .ZIP'}</span>
+                    </button>
                   </div>
 
                   <form onSubmit={handleAddPhotoByUrl} className="space-y-2.5">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <input
-                        type="text"
-                        placeholder="Título do momento"
-                        value={photoTitle}
-                        onChange={(e) => setPhotoTitle(e.target.value)}
-                        className="px-3 py-2 rounded-xl bg-purple-950/70 border border-purple-500/30 text-white text-xs"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Legenda carinhosa"
-                        value={photoCaption}
-                        onChange={(e) => setPhotoCaption(e.target.value)}
-                        className="px-3 py-2 rounded-xl bg-purple-950/70 border border-purple-500/30 text-white text-xs"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Data"
-                        value={photoDate}
-                        onChange={(e) => setPhotoDate(e.target.value)}
-                        className="px-3 py-2 rounded-xl bg-purple-950/70 border border-purple-500/30 text-white text-xs"
-                      />
-                    </div>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <input
                         type="url"
@@ -774,7 +795,7 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                           onChange={(e) => setPhotoLoop(e.target.checked)}
                           className="accent-pink-500"
                         />
-                        <span>Mostrar no Loop Inicial</span>
+                        <span>Rotacionar ao Fundo & Loop</span>
                       </label>
                       <button
                         type="submit"
@@ -786,43 +807,47 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                   </form>
                 </div>
 
-                {/* Photos list */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[260px] overflow-y-auto pr-1">
-                  {photos.map((photo) => (
-                    <div
-                      key={photo.id}
-                      className="p-2.5 rounded-2xl bg-purple-950/50 border border-purple-500/20 flex items-center gap-2.5"
-                    >
-                      <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-black/40">
-                        <SmartPhoto photo={photo} hideDetails className="w-full h-full rounded-none" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-white truncate">{photo.title}</p>
-                        <p className="text-[10px] text-purple-300/70 truncate">{photo.date}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => togglePhotoInLoop(photo.id)}
-                        title="Ativar/Desativar no Loop da Tela Inicial"
-                        className={`p-2 rounded-xl text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors ${
-                          photo.inHomeLoop
-                            ? 'bg-pink-500/30 text-pink-200 border border-pink-400/40'
-                            : 'glass-panel text-purple-400 hover:text-white'
-                        }`}
+                {/* Photos list (sem título/descrição) */}
+                {photos.length === 0 ? (
+                  <p className="text-xs text-purple-300/75 text-center py-6">
+                    Nenhuma foto na galeria ainda. Envie fotos reais ou um pacote .zip acima.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[260px] overflow-y-auto pr-1">
+                    {photos.map((photo) => (
+                      <div
+                        key={photo.id}
+                        className="p-2 rounded-2xl bg-purple-950/50 border border-purple-500/20 flex items-center justify-between gap-2"
                       >
-                        <Repeat className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removePhoto(photo.id)}
-                        title="Remover foto"
-                        className="p-2 rounded-xl glass-panel text-rose-400/80 hover:text-rose-300 cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                        <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-black/40">
+                          <SmartPhoto photo={photo} hideDetails className="w-full h-full rounded-none" />
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => togglePhotoInLoop(photo.id)}
+                            title="Ativar/Desativar no Loop e Fundo"
+                            className={`p-2 rounded-xl text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                              photo.inHomeLoop !== false
+                                ? 'bg-pink-500/30 text-pink-200 border border-pink-400/40'
+                                : 'glass-panel text-purple-400 hover:text-white'
+                            }`}
+                          >
+                            <Repeat className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(photo.id)}
+                            title="Remover foto"
+                            className="p-2 rounded-xl glass-panel text-rose-400/80 hover:text-rose-300 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -939,25 +964,70 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
             {/* TAB 5: MODELOS 3D (.GLB) */}
             {activeTab === 'modelos3d' && (
               <form onSubmit={handleSaveGlbModels} className="space-y-4">
+                <input
+                  ref={glbPetFileInputRef}
+                  type="file"
+                  accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const idbKey = await saveMediaBlob(`glb-pet-${selectedGlbPet}-${Date.now()}`, file);
+                      const nextPets = { ...glbPetsDraft, [selectedGlbPet]: idbKey };
+                      setGlbPetsDraft(nextPets);
+                      persistGlbDrafts(nextPets, glbFurnitureDraft, `Arquivo ${file.name} salvo no aparelho!`);
+                    } catch {
+                      showToast('Erro ao salvar arquivo .glb localmente.');
+                    } finally {
+                      e.target.value = '';
+                    }
+                  }}
+                />
+                <input
+                  ref={glbFurnitureFileInputRef}
+                  type="file"
+                  accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const idbKey = await saveMediaBlob(`glb-furn-${selectedGlbFurniture}-${Date.now()}`, file);
+                      const nextFurniture = { ...glbFurnitureDraft, [selectedGlbFurniture]: idbKey };
+                      setGlbFurnitureDraft(nextFurniture);
+                      persistGlbDrafts(glbPetsDraft, nextFurniture, `Móvel ${file.name} salvo no aparelho!`);
+                    } catch {
+                      showToast('Erro ao salvar arquivo .glb localmente.');
+                    } finally {
+                      e.target.value = '';
+                    }
+                  }}
+                />
+
                 <div className="p-3.5 rounded-2xl bg-purple-950/60 border border-pink-400/25 text-xs text-purple-200/85 space-y-1">
                   <p className="font-bold text-pink-300">
-                    Substituição Opcional de Modelos .glb (Pets & Móveis)
+                    Modelos 3D (.glb) — Salvamento Automático
                   </p>
                   <p className="text-[11px] text-purple-200/75 leading-relaxed">
-                    Cole a URL pública de um arquivo <code className="text-pink-300 font-mono">.glb</code> para carregar o modelo externo automaticamente com iluminação de estúdio e sombras suaves. Deixe vazio para continuar exibindo o modelo 3D fofo padrão do app.
+                    Cole um link direto <code className="text-pink-300 font-mono">.glb</code> (para aparecer nos dois celulares) ou envie um arquivo <code className="text-pink-300 font-mono">.glb</code> do aparelho. Tudo fica salvo automaticamente ao colar ou enviar.
                   </p>
                 </div>
 
-                {/* Pet GLB selector & URL */}
+                {/* Pet GLB selector, URL & Upload */}
                 <div className="p-4 rounded-2xl glass-panel border border-purple-500/25 space-y-2.5">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
                     <h4 className="text-xs font-bold text-pink-300 uppercase tracking-wider">
                       Mascote 3D (.glb)
                     </h4>
-                    <span className="text-[11px] text-purple-300/70">
-                      {(Object.values(glbPetsDraft) as (string | undefined)[])
-                        .filter((v) => typeof v === 'string' && v.trim().length > 0).length} configurado(s)
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => glbPetFileInputRef.current?.click()}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-pink-600/80 hover:bg-pink-500 text-white text-[11px] font-bold cursor-pointer"
+                    >
+                      <Upload className="w-3 h-3" />
+                      <span>Enviar .glb do Celular</span>
+                    </button>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -975,8 +1045,8 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
 
                     <div className="flex items-center gap-1.5">
                       <input
-                        type="url"
-                        placeholder="https://.../pet.glb (opcional)"
+                        type="text"
+                        placeholder="https://.../gatinho.glb ou ./gatinho.glb"
                         value={glbPetsDraft[selectedGlbPet] || ''}
                         onChange={(e) =>
                           setGlbPetsDraft((prev) => ({
@@ -984,18 +1054,29 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                             [selectedGlbPet]: e.target.value,
                           }))
                         }
+                        onBlur={(e) => {
+                          const val = e.target.value.trim();
+                          const nextPets = { ...glbPetsDraft, [selectedGlbPet]: val };
+                          persistGlbDrafts(nextPets, glbFurnitureDraft);
+                        }}
+                        onPaste={(e) => {
+                          const pasted = e.clipboardData?.getData('text')?.trim();
+                          if (pasted) {
+                            const nextPets = { ...glbPetsDraft, [selectedGlbPet]: pasted };
+                            window.setTimeout(() => {
+                              persistGlbDrafts(nextPets, glbFurnitureDraft, 'Link .glb salvo automaticamente!');
+                            }, 50);
+                          }
+                        }}
                         className="flex-1 min-h-[42px] px-3 py-2 rounded-xl bg-purple-950/70 border border-purple-500/35 text-white text-xs font-mono focus:outline-none focus:border-pink-400"
                       />
                       {(glbPetsDraft[selectedGlbPet] || '').trim() && (
                         <button
                           type="button"
-                          onClick={() =>
-                            setGlbPetsDraft((prev) => {
-                              const next = { ...prev };
-                              delete next[selectedGlbPet];
-                              return next;
-                            })
-                          }
+                          onClick={() => {
+                            const nextPets = { ...glbPetsDraft, [selectedGlbPet]: '' };
+                            persistGlbDrafts(nextPets, glbFurnitureDraft, 'Modelo customizado removido.');
+                          }}
                           className="min-h-[42px] px-3 rounded-xl bg-rose-500/20 border border-rose-400/35 text-rose-200 text-xs font-bold cursor-pointer"
                           title="Usar modelo padrão"
                         >
@@ -1004,18 +1085,27 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                       )}
                     </div>
                   </div>
+                  {(glbPetsDraft[selectedGlbPet] || '').trim().includes('skfb.ly') && (
+                    <p className="text-[11px] text-amber-300/90 leading-snug">
+                      Aviso: links curtos <code className="font-mono">skfb.ly/...</code> são páginas web, não arquivos <code className="font-mono">.glb</code> diretos. Envie o arquivo <code className="font-mono">.glb</code> baixado ou cole a URL terminando em <code className="font-mono">.glb</code>.
+                    </p>
+                  )}
                 </div>
 
-                {/* Furniture GLB selector & URL */}
+                {/* Furniture GLB selector, URL & Upload */}
                 <div className="p-4 rounded-2xl glass-panel border border-purple-500/25 space-y-2.5">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
                     <h4 className="text-xs font-bold text-pink-300 uppercase tracking-wider">
                       Móvel da Casa dos Sonhos (.glb)
                     </h4>
-                    <span className="text-[11px] text-purple-300/70">
-                      {(Object.values(glbFurnitureDraft) as (string | undefined)[])
-                        .filter((v) => typeof v === 'string' && v.trim().length > 0).length} configurado(s)
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => glbFurnitureFileInputRef.current?.click()}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600/80 hover:bg-purple-500 text-white text-[11px] font-bold cursor-pointer"
+                    >
+                      <Upload className="w-3 h-3" />
+                      <span>Enviar .glb do Celular</span>
+                    </button>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1033,7 +1123,7 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
 
                     <div className="flex items-center gap-1.5">
                       <input
-                        type="url"
+                        type="text"
                         placeholder="https://.../movel.glb (opcional)"
                         value={glbFurnitureDraft[selectedGlbFurniture] || ''}
                         onChange={(e) =>
@@ -1042,18 +1132,32 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                             [selectedGlbFurniture]: e.target.value,
                           }))
                         }
+                        onBlur={(e) => {
+                          const val = e.target.value.trim();
+                          const nextFurniture = { ...glbFurnitureDraft };
+                          if (val) nextFurniture[selectedGlbFurniture] = val;
+                          else delete nextFurniture[selectedGlbFurniture];
+                          persistGlbDrafts(glbPetsDraft, nextFurniture);
+                        }}
+                        onPaste={(e) => {
+                          const pasted = e.clipboardData?.getData('text')?.trim();
+                          if (pasted) {
+                            const nextFurniture = { ...glbFurnitureDraft, [selectedGlbFurniture]: pasted };
+                            window.setTimeout(() => {
+                              persistGlbDrafts(glbPetsDraft, nextFurniture, 'Link .glb do móvel salvo!');
+                            }, 50);
+                          }
+                        }}
                         className="flex-1 min-h-[42px] px-3 py-2 rounded-xl bg-purple-950/70 border border-purple-500/35 text-white text-xs font-mono focus:outline-none focus:border-pink-400"
                       />
                       {(glbFurnitureDraft[selectedGlbFurniture] || '').trim() && (
                         <button
                           type="button"
-                          onClick={() =>
-                            setGlbFurnitureDraft((prev) => {
-                              const next = { ...prev };
-                              delete next[selectedGlbFurniture];
-                              return next;
-                            })
-                          }
+                          onClick={() => {
+                            const nextFurniture = { ...glbFurnitureDraft };
+                            delete nextFurniture[selectedGlbFurniture];
+                            persistGlbDrafts(glbPetsDraft, nextFurniture, 'Modelo do móvel removido.');
+                          }}
                           className="min-h-[42px] px-3 rounded-xl bg-rose-500/20 border border-rose-400/35 text-rose-200 text-xs font-bold cursor-pointer"
                           title="Usar modelo padrão"
                         >
@@ -1070,7 +1174,7 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                     className="px-6 min-h-[44px] rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold text-xs shadow-md flex items-center gap-2 cursor-pointer"
                   >
                     {isGlbSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                    <span>{isGlbSaved ? 'Salvo!' : 'Salvar URLs .glb'}</span>
+                    <span>{isGlbSaved ? 'Salvo!' : 'Salvar Modelos 3D'}</span>
                   </button>
                 </div>
               </form>
@@ -1096,16 +1200,10 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                 <div className="p-4 rounded-2xl glass-panel border border-purple-500/25 space-y-2 text-xs text-purple-200/80">
                   <h4 className="font-bold text-pink-300 flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>Arquivos Estáticos para GitHub (Opcional):</span>
+                    <span>Fotos Reais & Músicas Permanentes:</span>
                   </h4>
-                  <p>
-                    Fotos estáticas: <code className="text-pink-300 font-mono">public/assets/img/1.jpg ... 4.jpg</code>
-                  </p>
-                  <p>
-                    Músicas estáticas: <code className="text-pink-300 font-mono">public/assets/audio/nome.mp3</code>
-                  </p>
-                  <p className="text-[11px] text-purple-300/70">
-                    Você também pode enviar fotos e MP3 diretamente pelas abas acima sem tocar em código.
+                  <p className="text-[11px] text-purple-200/80 leading-relaxed">
+                    Todas as fotos reais enviadas na Galeria (inclusive via arquivos <code className="text-pink-300 font-mono">.zip</code>) e as músicas da Trilha Sonora permanecem salvas na nuvem para sempre, mesmo quando você zera o progresso para entrega.
                   </p>
                 </div>
 

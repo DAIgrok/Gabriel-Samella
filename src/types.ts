@@ -60,7 +60,7 @@ export interface MemoryPhoto {
   title: string;
   subtitle: string;
   date: string;
-  url: string; // Local primary url (e.g. /assets/img/1.jpg), compressed data: URL, or external url
+  url: string; // Compressed data URL, idb:// local blob, or external URL
   localPath?: string;
   driveUrl?: string;
   driveFileId?: string;
@@ -229,6 +229,7 @@ export interface KittenState {
   equippedCollar?: string;
   equippedGlasses?: string;
   lastFed?: string;
+  lastFedTimestamp?: number;
   lastSlept?: string;
   lastBathed?: string;
   lastPlayed?: string;
@@ -237,8 +238,10 @@ export interface KittenState {
   xp: number;
   maxXp: number;
   ownedPets?: PetType[];
+  deadPets?: PetType[];
   customNames?: Partial<Record<PetType, string>>;
   petColors?: Partial<Record<PetType, string>>;
+  petPartColors?: Partial<Record<PetType, Record<string, string>>>;
   accessoryColors?: Record<string, string>;
 }
 
@@ -366,7 +369,7 @@ export interface DailyWheelState {
   totalSpins: number;
 }
 
-export type HouseRoomId = 'sala' | 'quarto' | 'varanda' | 'cozinha';
+export type HouseRoomId = 'sala' | 'quarto' | 'varanda' | 'cozinha' | 'banheiro';
 export type HouseWallTheme = 'lavender' | 'midnight' | 'rosewood' | 'starlight' | 'christmas' | 'halloween';
 export type HouseFloorTheme = 'wood' | 'marble' | 'velvet' | 'checkered';
 
@@ -390,6 +393,7 @@ export interface HouseFurnitureTransform {
 
 export interface DreamHouseState {
   activeRoom: HouseRoomId;
+  unlockedRooms?: HouseRoomId[];
   wallTheme: HouseWallTheme;
   floorTheme: HouseFloorTheme;
   customWallHex?: string;

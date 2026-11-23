@@ -362,12 +362,22 @@ export const HOUSE_FURNITURE_CATALOG: HouseFurnitureCatalogItem[] = [
     accentHex: '#f472b6',
     modelVariant: 'kitchen_coffee',
   },
+  {
+    id: 'house-pet-bowl',
+    name: 'Pote de Ração & Água Duplo',
+    room: 'cozinha',
+    category: 'cozinha',
+    description: 'Comedouro e bebedouro duplo indispensável para alimentar e hidratar seu pet.',
+    price: 12,
+    accentHex: '#f472b6',
+    modelVariant: 'pet_bowl',
+  },
 
   // --- BANHEIRO & SPA ---
   {
     id: 'house-bathtub',
     name: 'Banheira Vitoriana de Espuma',
-    room: 'quarto',
+    room: 'banheiro',
     category: 'banheiro',
     description: 'Banheira clássica cheia de espuma quentinha e patinho fofo.',
     price: 30,
@@ -387,7 +397,7 @@ export const HOUSE_FURNITURE_CATALOG: HouseFurnitureCatalogItem[] = [
   {
     id: 'house-bathroom-vanity',
     name: 'Lavatório com Espelho Redondo',
-    room: 'quarto',
+    room: 'banheiro',
     category: 'banheiro',
     description: 'Bancada com cuba esculpida, toalhinhas dobradas e difusor.',
     price: 18,
@@ -592,9 +602,18 @@ export const HOUSE_FLOOR_THEMES: {
   { id: 'checkered', label: 'Xadrez Clássico', colorHex: '#27173a', price: 14, unlockedByDefault: false },
 ];
 
-// Casa dos Sonhos starts 100% empty of furniture so Samella buys and decorates every piece!
+export const HOUSE_ROOM_PRICES: Record<DreamHouseState['activeRoom'], number> = {
+  sala: 0,
+  quarto: 35,
+  cozinha: 40,
+  banheiro: 35,
+  varanda: 30,
+};
+
+// Casa dos Sonhos começa do zero: Sala vazia gratuita e demais cômodos comprados separadamente
 export const INITIAL_DREAM_HOUSE: DreamHouseState = {
   activeRoom: 'sala',
+  unlockedRooms: ['sala'],
   wallTheme: 'lavender',
   floorTheme: 'wood',
   customWallHex: '#3b1c6d',
@@ -609,6 +628,7 @@ export const INITIAL_DREAM_HOUSE: DreamHouseState = {
     quarto: [],
     varanda: [],
     cozinha: [],
+    banheiro: [],
   },
   furnitureTransforms: {},
   comfortLevel: 1,

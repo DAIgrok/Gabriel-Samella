@@ -74,17 +74,18 @@ export const LoginScreen: React.FC = () => {
         transition={{ duration: 0.6, ease: 'easeOut' }}
         className="w-full max-w-sm glass-card-glow rounded-3xl p-6 md:p-8 text-center border border-purple-400/25 relative z-10 my-auto shadow-[0_20px_60px_rgba(0,0,0,0.7)]"
       >
-        {/* Real Couple Portrait + Glowing Heart Badge */}
+        {/* Real Couple Portrait or Glowing Heart Badge */}
         <div className="relative mx-auto w-20 h-20 mb-4">
-          <div className="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-purple-600 via-pink-500 to-rose-400 shadow-[0_0_25px_rgba(244,114,182,0.45)] overflow-hidden">
-            <img
-              src={getCouplePhotoUrl(photos, 0, REAL_PHOTO_SLOTS.loginPortrait)}
-              alt="Gabriel e Samella"
-              className="w-full h-full object-cover rounded-full"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = '/assets/img/2.jpg';
-              }}
-            />
+          <div className="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-purple-600 via-pink-500 to-rose-400 shadow-[0_0_25px_rgba(244,114,182,0.45)] overflow-hidden flex items-center justify-center bg-[#180830]">
+            {getCouplePhotoUrl(photos, 0) ? (
+              <img
+                src={getCouplePhotoUrl(photos, 0)}
+                alt="Gabriel e Samella"
+                className="w-full h-full object-cover rounded-full"
+              />
+            ) : (
+              <Heart className="w-9 h-9 text-pink-200 fill-pink-400/50 animate-pulse" />
+            )}
           </div>
           <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[#120524] border border-pink-400/50 flex items-center justify-center shadow-md">
             <Heart className="w-3.5 h-3.5 text-pink-400 fill-pink-400 animate-pulse" />

@@ -57,6 +57,7 @@ export interface PetWorldDesignProps {
   cdSleep: number;
   cdPlay: number;
   onFeed: () => void;
+  onWater?: () => void;
   onPlay: () => void;
   onBath: () => void;
   onToggleSleep: () => void;
@@ -69,6 +70,11 @@ export interface PetWorldDesignProps {
   onChangePetColor: (petType: PetType, hex: string) => void;
   onChangeAccessoryColor: (itemId: string, hex: string) => void;
   onOpenWardrobeModal: () => void;
+  onGoToStore?: () => void;
+  onGoToHouse?: () => void;
+  hasKitchenAndBowl?: boolean;
+  hasBathroomUnlocked?: boolean;
+  isPetDead?: boolean;
   customModelUrl?: string;
 }
 
@@ -111,6 +117,7 @@ export const PetWorldDesign: React.FC<PetWorldDesignProps> = ({
   cdSleep,
   cdPlay,
   onFeed,
+  onWater,
   onPlay,
   onBath,
   onToggleSleep,
@@ -123,6 +130,11 @@ export const PetWorldDesign: React.FC<PetWorldDesignProps> = ({
   onChangePetColor,
   onChangeAccessoryColor,
   onOpenWardrobeModal,
+  onGoToStore,
+  onGoToHouse,
+  hasKitchenAndBowl = true,
+  hasBathroomUnlocked = true,
+  isPetDead = false,
   customModelUrl,
 }) => {
   const prefersReducedMotion = useReducedMotion();
@@ -298,6 +310,7 @@ export const PetWorldDesign: React.FC<PetWorldDesignProps> = ({
               alt={displayName}
               colorHex={currentFurHex}
               isSpectator={isSpectator}
+              isDead={isPetDead}
               cdPet={cdPet}
               cdFeed={cdFeed}
               onColorChange={(hex) => onChangePetColor(currentPetType, hex)}
@@ -328,6 +341,31 @@ export const PetWorldDesign: React.FC<PetWorldDesignProps> = ({
                   handleTapPet();
                 }}
               />
+            </div>
+          )}
+
+          {isPetDead && (
+            <div className="absolute inset-0 z-30 rounded-[22px] bg-[#0b0416]/88 backdrop-blur-md border border-rose-400/40 p-5 flex flex-col items-center justify-center text-center space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-400/40 flex items-center justify-center text-rose-300">
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <div className="space-y-1 max-w-xs">
+                <h4 className="text-base font-extrabold text-white">
+                  {displayName} virou uma estrelinha ♡
+                </h4>
+                <p className="text-xs text-purple-200/80 leading-relaxed">
+                  A fome ou sede chegou a 0% sem a Cozinha e o Pote na Casa dos Sonhos. Adote um novo mascote na Loja para recomeçar com todo carinho!
+                </p>
+              </div>
+              {!isSpectator && onGoToStore && (
+                <button
+                  type="button"
+                  onClick={onGoToStore}
+                  className="min-h-[42px] px-4 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow-lg cursor-pointer hover:brightness-110 transition"
+                >
+                  Ir para a Loja ♡
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -391,21 +429,33 @@ export const PetWorldDesign: React.FC<PetWorldDesignProps> = ({
           </div>
         </div>
 
-        {/* Stat Bars */}
+        {/* Discreet Pet Needs Bars: Fome, Sede & Higiene */}
         <div className="mt-4 space-y-2 text-left">
           {[
-            { label: 'Felicidade', value: clampStat(happiness) },
-            { label: 'Energia', value: clampStat(energy) },
-            { label: 'Fome', value: clampStat(hunger) },
+            {
+              label: 'Fome',
+              value: clampStat(hunger),
+              grad: 'linear-gradient(90deg, #fb7185, #fbbf24)',
+            },
+            {
+              label: 'Sede',
+              value: clampStat(thirst),
+              grad: 'linear-gradient(90deg, #38bdf8, #818cf8)',
+            },
+            {
+              label: 'Higiene',
+              value: clampStat(hygiene),
+              grad: 'linear-gradient(90deg, #34d399, #2dd4bf)',
+            },
           ].map((stat) => (
-            <div key={stat.label} className="grid grid-cols-[80px_1fr_40px] items-center gap-2.5 text-xs">
-              <span className="text-purple-100/85 font-medium">{stat.label}</span>
-              <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
+            <div key={stat.label} className="grid grid-cols-[68px_1fr_38px] items-center gap-2.5 text-xs">
+              <span className="text-purple-100/85 font-semibold">{stat.label}</span>
+              <div className="h-2 rounded-full bg-white/10 overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
                     width: `${stat.value}%`,
-                    background: 'linear-gradient(90deg, #ff5fa2, #ffb86b)',
+                    background: stat.grad,
                   }}
                 />
               </div>
@@ -418,38 +468,69 @@ export const PetWorldDesign: React.FC<PetWorldDesignProps> = ({
           <div className="grid grid-cols-2 gap-2 pt-1 text-[11px] text-purple-200/80 tabular-nums">
             <div className="px-2.5 py-1.5 rounded-xl bg-white/[0.05] border border-white/10 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <Droplets className="w-3.5 h-3.5 text-cyan-300" />
-                Sede
+                <Heart className="w-3.5 h-3.5 text-pink-300" />
+                Felicidade
               </span>
-              <span className="font-bold text-white">{clampStat(thirst)}%</span>
+              <span className="font-bold text-white">{clampStat(happiness)}%</span>
             </div>
             <div className="px-2.5 py-1.5 rounded-xl bg-white/[0.05] border border-white/10 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-sky-300" />
-                Higiene
+                <Moon className="w-3.5 h-3.5 text-indigo-300" />
+                Energia
               </span>
-              <span className="font-bold text-white">{clampStat(hygiene)}%</span>
+              <span className="font-bold text-white">{clampStat(energy)}%</span>
             </div>
           </div>
+
+          {(!hasKitchenAndBowl || !hasBathroomUnlocked) && !isPetDead && (
+            <div className="mt-1.5 p-2.5 rounded-2xl bg-amber-500/10 border border-amber-400/30 text-[11px] text-amber-100 flex items-center justify-between gap-2">
+              <span className="leading-snug">
+                {!hasKitchenAndBowl
+                  ? 'Para alimentar e dar água, desbloqueie a Cozinha e coloque o Pote na Casa 3D.'
+                  : 'Para dar banho, desbloqueie o Banheiro na Casa dos Sonhos 3D.'}
+              </span>
+              {onGoToHouse && (
+                <button
+                  type="button"
+                  onClick={onGoToHouse}
+                  className="px-2.5 py-1 rounded-xl bg-amber-400/20 border border-amber-300/40 text-amber-200 font-bold shrink-0 cursor-pointer"
+                >
+                  Casa 3D
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* 2x2 Action Grid */}
+      {/* Action Grid */}
       <div className="grid grid-cols-2 gap-2.5">
         <button
           type="button"
           onClick={onFeed}
-          disabled={isSpectator || cdFeed > 0}
+          disabled={isSpectator || isPetDead || cdFeed > 0}
           className="min-h-[48px] px-3 py-3 rounded-[14px] border border-white/15 bg-white/[0.07] hover:bg-white/[0.12] text-white font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Utensils className="w-4 h-4 text-amber-300" />
           <span>{cdFeed > 0 ? formatCooldownMs(cdFeed) : 'Alimentar'}</span>
         </button>
 
+        {onWater && (
+          <button
+            type="button"
+            onClick={onWater}
+            disabled={isSpectator || isPetDead}
+            className="min-h-[48px] px-3 py-3 rounded-[14px] border border-white/15 bg-white/[0.07] hover:bg-white/[0.12] text-white font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Droplets className="w-4 h-4 text-cyan-300" />
+            <span>Dar Água</span>
+          </button>
+        )}
+
         <button
           type="button"
           onClick={onPlay}
-          disabled={isSpectator || cdPlay > 0}
+          disabled={isSpectator || isPetDead || cdPlay > 0}
           className="min-h-[48px] px-3 py-3 rounded-[14px] border border-white/15 bg-white/[0.07] hover:bg-white/[0.12] text-white font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Gamepad2 className="w-4 h-4 text-pink-300" />
@@ -459,7 +540,7 @@ export const PetWorldDesign: React.FC<PetWorldDesignProps> = ({
         <button
           type="button"
           onClick={onBath}
-          disabled={isSpectator || cdBath > 0}
+          disabled={isSpectator || isPetDead || cdBath > 0}
           className="min-h-[48px] px-3 py-3 rounded-[14px] border border-white/15 bg-white/[0.07] hover:bg-white/[0.12] text-white font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Bath className="w-4 h-4 text-cyan-300" />
@@ -469,8 +550,8 @@ export const PetWorldDesign: React.FC<PetWorldDesignProps> = ({
         <button
           type="button"
           onClick={onToggleSleep}
-          disabled={isSpectator || (!isSleeping && cdSleep > 0)}
-          className="min-h-[48px] px-3 py-3 rounded-[14px] border border-white/15 bg-white/[0.07] hover:bg-white/[0.12] text-white font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isSpectator || isPetDead || (!isSleeping && cdSleep > 0)}
+          className={`${onWater ? 'col-span-2' : ''} min-h-[48px] px-3 py-3 rounded-[14px] border border-white/15 bg-white/[0.07] hover:bg-white/[0.12] text-white font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           {isSleeping ? (
             <Sun className="w-4 h-4 text-amber-300" />

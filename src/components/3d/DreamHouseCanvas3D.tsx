@@ -3,13 +3,17 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import {
+  AquariumLightMode,
   HouseFloorTheme,
   HouseFurnitureTransform,
   HouseRoomId,
   HouseWallTheme,
+  PetType,
   SeasonalEventId,
 } from '../../types';
 import { HOUSE_FURNITURE_CATALOG } from '../../data/houseFurnitureCatalog';
+import { AQUARIUM_SPECIES_CATALOG } from '../../data/initialData';
+import { buildCompactRoamingPet, RoamingPetInstance } from '../../utils/petMesh3D';
 import {
   addCozyThreePointLights,
   detectSoftwareWebGL,
@@ -81,6 +85,7 @@ export const DEFAULT_FURNITURE_TRANSFORMS: Record<string, HouseFurnitureTransfor
   'house-stove': { x: 0.4, z: -1.28, rotY: 0 },
   'house-sink-cabinet': { x: -0.45, z: -1.28, rotY: 0 },
   'house-coffee-bar': { x: 1.15, z: -1.22, rotY: -0.2 },
+  'house-pet-bowl': { x: 1.45, z: 0.55, rotY: 0 },
   // Banheiro & Spa
   'house-bathtub': { x: -0.95, z: 0.35, rotY: Math.PI / 2 },
   'house-jacuzzi': { x: -0.75, z: 0.25, rotY: 0 },
@@ -140,6 +145,7 @@ const FURNITURE_TARGET_HEIGHTS: Record<string, number> = {
   'house-stove': 1.02,
   'house-sink-cabinet': 1.05,
   'house-coffee-bar': 1.05,
+  'house-pet-bowl': 0.38,
   'house-bathtub': 0.72,
   'house-jacuzzi': 0.75,
   'house-bathroom-vanity': 1.38,
@@ -178,6 +184,19 @@ interface DreamHouseCanvas3DProps {
   isEditMode?: boolean;
   selectedFurnitureId?: string | null;
   furnitureGlbUrls?: Record<string, string>;
+  ownedPets?: PetType[];
+  deadPets?: PetType[];
+  petColors?: Partial<Record<PetType, string>>;
+  petGlbUrl?: string;
+  petHunger?: number;
+  petThirst?: number;
+  petLastFedTimestamp?: number;
+  aquarium?: {
+    activeFishIds: string[];
+    lightMode: AquariumLightMode;
+    bubblesActive: boolean;
+  };
+  onTapAquarium?: () => void;
   onInteractFurniture?: (furnitureId: string) => void;
   onSelectFurniture?: (furnitureId: string | null) => void;
   onMoveFurniture?: (furnitureId: string, transform: HouseFurnitureTransform) => void;
@@ -186,14 +205,27 @@ interface DreamHouseCanvas3DProps {
 function createFloorTexture(
   theme: HouseFloorTheme,
   maxAniso: number,
-  customFloorHex?: string
+  customFloorHex?: string,
+  isBathroomSpa?: boolean
 ): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 512;
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    if (customFloorHex) {
+    if (isBathroomSpa && !customFloorHex) {
+      const size = 64;
+      for (let x = 0; x < 512; x += size) {
+        for (let y = 0; y < 512; y += size) {
+          const even = (x / size + y / size) % 2 === 0;
+          ctx.fillStyle = even ? '#d8f3ff' : '#c7d2fe';
+          ctx.fillRect(x, y, size, size);
+          ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x, y, size, size);
+        }
+      }
+    } else if (customFloorHex) {
       const base = customFloorHex;
       const lighter = shadeHex(base, 0.16);
       const darker = shadeHex(base, -0.28);
@@ -1155,6 +1187,35 @@ function buildCozyFurniture(
     const jar = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.18, 16), velvetLilac);
     jar.position.set(0.22, 0.92, 0);
     g.add(counter, topBoard, espressoBody, cup, jar);
+  } else if (id === 'house-pet-bowl') {
+    baseY = 0.014;
+    const mat = new THREE.Mesh(new RoundedBoxGeometry(0.76, 0.024, 0.42, 3, 0.02), creamMat);
+    mat.receiveShadow = true;
+    const bowlFood = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.09, 20), primaryMat);
+    bowlFood.position.set(-0.19, 0.055, 0);
+    bowlFood.castShadow = true;
+    const kibble = new THREE.Mesh(
+      new THREE.SphereGeometry(0.115, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.5),
+      new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.72 })
+    );
+    kibble.position.set(-0.19, 0.085, 0);
+    const bowlWater = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.09, 20), primaryLightMat);
+    bowlWater.position.set(0.19, 0.055, 0);
+    bowlWater.castShadow = true;
+    const waterDisc = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.118, 0.118, 0.015, 20),
+      new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.45,
+        roughness: 0.16,
+        transparent: true,
+        opacity: 0.88,
+      })
+    );
+    waterDisc.position.set(0.19, 0.095, 0);
+    glowMeshes.push(waterDisc);
+    g.add(mat, bowlFood, kibble, bowlWater, waterDisc);
 
   // --- BANHEIRO & SPA ---
   } else if (id === 'house-bathtub' || id === 'house-jacuzzi') {
@@ -1515,6 +1576,144 @@ function buildCozyFurniture(
   return { group: g, emberMeshes, glowMeshes, flameLight, swingGroup, baseY };
 }
 
+function isUnsupportedGlbUrl(url?: string): boolean {
+  const clean = (url || '').trim().toLowerCase();
+  if (!clean) return true;
+  return (
+    clean === 'https://supabase.co' ||
+    clean === 'https://supabase.co/' ||
+    clean.includes('skfb.ly/') ||
+    clean.includes('sketchfab.com/')
+  );
+}
+
+function buildEmbeddedSalaAquarium(
+  aquarium: { activeFishIds: string[]; lightMode: AquariumLightMode; bubblesActive: boolean } | undefined,
+  lightsOn: boolean
+) {
+  const aqGroup = new THREE.Group();
+  aqGroup.position.set(-2.12, 0, -2.06);
+
+  const stand = new THREE.Mesh(
+    new RoundedBoxGeometry(1.52, 0.58, 0.56, 4, 0.05),
+    new THREE.MeshStandardMaterial({ color: 0x3b1c6d, roughness: 0.55, metalness: 0.1 })
+  );
+  stand.position.y = 0.29;
+  stand.castShadow = true;
+  stand.receiveShadow = true;
+  aqGroup.add(stand);
+
+  const trim = new THREE.Mesh(
+    new RoundedBoxGeometry(1.56, 0.05, 0.6, 3, 0.02),
+    new THREE.MeshStandardMaterial({ color: 0xfcd34d, roughness: 0.3, metalness: 0.72 })
+  );
+  trim.position.y = 0.59;
+  aqGroup.add(trim);
+
+  const mode = aquarium?.lightMode || 'bioluminescent';
+  const waterHex =
+    mode === 'coral'
+      ? 0xf472b6
+      : mode === 'moonlight'
+      ? 0x6366f1
+      : mode === 'sunlight'
+      ? 0x38bdf8
+      : 0x2dd4bf;
+
+  const tankBox = new THREE.Mesh(
+    new RoundedBoxGeometry(1.42, 0.74, 0.48, 3, 0.03),
+    new THREE.MeshStandardMaterial({
+      color: waterHex,
+      emissive: waterHex,
+      emissiveIntensity: lightsOn ? 0.38 : 0.22,
+      roughness: 0.16,
+      transparent: true,
+      opacity: 0.44,
+      depthWrite: false,
+    })
+  );
+  tankBox.position.y = 0.99;
+  aqGroup.add(tankBox);
+
+  const sandBed = new THREE.Mesh(
+    new RoundedBoxGeometry(1.34, 0.06, 0.4, 2, 0.02),
+    new THREE.MeshStandardMaterial({ color: 0xfde68a, roughness: 0.8 })
+  );
+  sandBed.position.y = 0.65;
+  aqGroup.add(sandBed);
+
+  // Corais decorativos no fundo
+  [[-0.45, 0.75, -0.06, 0xf472b6], [0.42, 0.76, 0.05, 0xc084fc]].forEach(([cx, cy, cz, cHex]) => {
+    const coral = new THREE.Mesh(
+      new THREE.ConeGeometry(0.06, 0.2, 8),
+      new THREE.MeshStandardMaterial({ color: cHex as number, roughness: 0.58 })
+    );
+    coral.position.set(cx as number, cy as number, cz as number);
+    aqGroup.add(coral);
+  });
+
+  const activeIds = (aquarium?.activeFishIds || ['clownfish', 'betta', 'angelfish']).slice(0, 8);
+  const fishNodes: { mesh: THREE.Group; phase: number; speed: number; radiusX: number; baseY: number }[] = [];
+
+  activeIds.forEach((fId, idx) => {
+    const spec = AQUARIUM_SPECIES_CATALOG.find((s) => s.id === fId) || AQUARIUM_SPECIES_CATALOG[0];
+    const fishGroup = new THREE.Group();
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(spec.colorHex || '#f97316'),
+      roughness: 0.4,
+      metalness: 0.1,
+    });
+    const accentMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(spec.accentHex || '#ffffff'),
+      roughness: 0.45,
+    });
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.048, 12, 10), bodyMat);
+    body.scale.set(1.55, 0.95, 0.7);
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.036, 0.06, 6), accentMat);
+    tail.rotation.z = Math.PI / 2;
+    tail.position.x = -0.075;
+    fishGroup.add(body, tail);
+    fishGroup.scale.setScalar(Math.min(1.15, Math.max(0.75, spec.scale * 0.85)));
+
+    const baseY = 0.78 + (idx % 4) * 0.1;
+    fishGroup.position.set((idx % 2 === 0 ? -0.2 : 0.2), baseY, (idx % 3 - 1) * 0.08);
+    aqGroup.add(fishGroup);
+    fishNodes.push({
+      mesh: fishGroup,
+      phase: idx * 1.3,
+      speed: 0.65 + (idx % 3) * 0.22,
+      radiusX: 0.46 - (idx % 2) * 0.12,
+      baseY,
+    });
+  });
+
+  const bubbleNodes: { mesh: THREE.Mesh; offset: number; x: number; z: number }[] = [];
+  if (aquarium?.bubblesActive !== false) {
+    const bubbleMat = new THREE.MeshStandardMaterial({
+      color: 0xe0f2fe,
+      emissive: 0xbae6fd,
+      emissiveIntensity: 0.6,
+      transparent: true,
+      opacity: 0.72,
+    });
+    const bubbleGeo = new THREE.SphereGeometry(0.016, 8, 8);
+    for (let b = 0; b < 8; b++) {
+      const bm = new THREE.Mesh(bubbleGeo, bubbleMat);
+      const bx = -0.5 + (b % 4) * 0.32;
+      const bz = (b % 2 === 0 ? -0.06 : 0.06);
+      bm.position.set(bx, 0.7, bz);
+      aqGroup.add(bm);
+      bubbleNodes.push({ mesh: bm, offset: b * 0.14, x: bx, z: bz });
+    }
+  }
+
+  aqGroup.traverse((obj) => {
+    obj.userData.aquariumHit = true;
+  });
+
+  return { aqGroup, fishNodes, bubbleNodes };
+}
+
 export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
   activeRoom,
   wallTheme,
@@ -1532,6 +1731,15 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
   isEditMode = false,
   selectedFurnitureId = null,
   furnitureGlbUrls,
+  ownedPets,
+  deadPets,
+  petColors,
+  petGlbUrl,
+  petHunger = 80,
+  petThirst = 80,
+  petLastFedTimestamp = 0,
+  aquarium,
+  onTapAquarium,
   onInteractFurniture,
   onSelectFurniture,
   onMoveFurniture,
@@ -1556,6 +1764,15 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     isEditMode,
     selectedFurnitureId,
     furnitureGlbUrls,
+    ownedPets,
+    deadPets,
+    petColors,
+    petGlbUrl,
+    petHunger,
+    petThirst,
+    petLastFedTimestamp,
+    aquarium,
+    onTapAquarium,
     onInteractFurniture,
     onSelectFurniture,
     onMoveFurniture,
@@ -1577,6 +1794,15 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     isEditMode,
     selectedFurnitureId,
     furnitureGlbUrls,
+    ownedPets,
+    deadPets,
+    petColors,
+    petGlbUrl,
+    petHunger,
+    petThirst,
+    petLastFedTimestamp,
+    aquarium,
+    onTapAquarium,
     onInteractFurniture,
     onSelectFurniture,
     onMoveFurniture,
@@ -1598,8 +1824,8 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
 
     const width = container.clientWidth || 320;
     const height = container.clientHeight || 340;
-    const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 70);
-    camera.position.set(3.8, 3.3, 4.4);
+    const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 80);
+    camera.position.set(5.2, 4.4, 5.8);
 
     const isSoftwareGl = detectSoftwareWebGL();
     const renderer = new THREE.WebGLRenderer({
@@ -1618,11 +1844,11 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     controls.enableDamping = !isSoftwareGl;
     controls.dampingFactor = 0.08;
     controls.enablePan = false;
-    controls.minDistance = 3.2;
-    controls.maxDistance = 8.4;
+    controls.minDistance = 3.8;
+    controls.maxDistance = 12.0;
     controls.maxPolarAngle = Math.PI / 2 - 0.05;
     controls.minPolarAngle = Math.PI / 8;
-    controls.target.set(0, 0.85, 0);
+    controls.target.set(0, 0.9, 0);
 
     const { hemiLight, keyLight, rimLight, fillLight } = addCozyThreePointLights(scene, {
       skyColor: 0xdbeafe,
@@ -1630,19 +1856,19 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
       hemiIntensity: 1.08,
       keyColor: 0xfff8eb,
       keyIntensity: 1.9,
-      keyPosition: [4.5, 6.8, 5.2],
+      keyPosition: [5.5, 7.6, 6.2],
       rimColor: 0xf472b6,
       rimIntensity: 1.3,
-      rimPosition: [-4.2, 4.5, -4.8],
+      rimPosition: [-5.2, 5.0, -5.8],
       fillColor: 0xe9d5ff,
       fillIntensity: 0.72,
       shadowMapSize: 1024,
-      shadowExtent: 3.8,
+      shadowExtent: 5.0,
       isSoftwareGl,
     });
 
-    const roomLight = new THREE.PointLight(0xfef08a, 1.35, 10.0);
-    roomLight.position.set(0, 2.4, 0.25);
+    const roomLight = new THREE.PointLight(0xfef08a, 1.45, 14.0);
+    roomLight.position.set(0, 2.65, 0.25);
     scene.add(roomLight);
 
     const skyContainer = new THREE.Group();
@@ -1651,7 +1877,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     const roomGroup = new THREE.Group();
     scene.add(roomGroup);
 
-    const gridHelper = new THREE.GridHelper(3.4, 14, 0xf472b6, 0xd8b4fe);
+    const gridHelper = new THREE.GridHelper(6.0, 24, 0xf472b6, 0xd8b4fe);
     gridHelper.position.set(0, 0.008, 0.02);
     const gridMats = Array.isArray(gridHelper.material) ? gridHelper.material : [gridHelper.material];
     gridMats.forEach((m) => {
@@ -1676,18 +1902,43 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     selectionRing.visible = false;
     scene.add(selectionRing);
 
+    interface RoamingPetSlot {
+      instance: RoamingPetInstance;
+      mixer?: THREE.AnimationMixer;
+      actions: Record<string, THREE.AnimationAction>;
+      currentActionName?: string;
+      aiTimer: number;
+      aiMode: 'walk' | 'idle' | 'sit' | 'eat';
+    }
+
     const furnitureRootMap = new Map<string, { group: THREE.Group; baseY: number }>();
     let emberMeshes: THREE.Mesh[] = [];
     let glowMeshes: THREE.Mesh[] = [];
     let flameLights: THREE.PointLight[] = [];
     let swingGroups: THREE.Group[] = [];
     let balconyTreeGroup: THREE.Group | null = null;
+    let aquariumFishNodes: { mesh: THREE.Group; phase: number; speed: number; radiusX: number; baseY: number }[] = [];
+    let aquariumBubbleNodes: { mesh: THREE.Mesh; offset: number; x: number; z: number }[] = [];
+    let roamingPetSlots: RoamingPetSlot[] = [];
     let skyClouds: { mesh: THREE.Group; speed: number; baseX: number }[] = [];
     let skyBirds: { group: THREE.Group; wingL: THREE.Mesh; wingR: THREE.Mesh; phaseOffset: number; radius: number; speed: number; y: number }[] = [];
     let skyStars: THREE.Points | null = null;
     let skyEclipseHalo: THREE.Mesh | null = null;
     let skyDomeTex: THREE.CanvasTexture | null = null;
     let rebuildToken = 0;
+
+    const playSlotAnimation = (slot: RoamingPetSlot, candidates: string[]) => {
+      const nextName = candidates.find((c) => Boolean(slot.actions[c]));
+      if (!nextName || slot.currentActionName === nextName) return;
+      const prev = slot.currentActionName ? slot.actions[slot.currentActionName] : undefined;
+      const next = slot.actions[nextName];
+      if (!next) return;
+      if (prev && prev !== next) {
+        prev.fadeOut(0.25);
+      }
+      next.reset().fadeIn(0.25).play();
+      slot.currentActionName = nextName;
+    };
 
     const syncTransformsAndOverlay = () => {
       const {
@@ -1718,6 +1969,11 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
       rebuildToken += 1;
       const myToken = rebuildToken;
 
+      roamingPetSlots.forEach((slot) => {
+        slot.mixer?.stopAllAction();
+      });
+      roamingPetSlots = [];
+
       const {
         activeRoom: room,
         wallTheme: wTheme,
@@ -1732,6 +1988,11 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
         treeLevel: tLevel,
         activeSeasonalEvent: seasonal,
         furnitureGlbUrls: glbMap,
+        ownedPets: oPets,
+        deadPets: dPets,
+        petColors: pColors,
+        petGlbUrl: pGlbUrl,
+        aquarium: aqState,
       } = propsRef.current;
 
       // Rebuild Real-Time Climatic Sky Backdrop
@@ -1774,28 +2035,30 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
       flameLights = [];
       swingGroups = [];
       balconyTreeGroup = null;
+      aquariumFishNodes = [];
+      aquariumBubbleNodes = [];
 
-      roomLight.intensity = lOn ? 1.35 : 0.42;
+      roomLight.intensity = lOn ? 1.45 : 0.45;
       hemiLight.intensity = lOn ? 1.12 : 0.65;
       keyLight.intensity = lOn ? 1.9 : 1.05;
       rimLight.intensity = lOn ? 1.3 : 0.9;
       fillLight.intensity = lOn ? 0.72 : 0.45;
 
       const maxAniso = renderer.capabilities.getMaxAnisotropy();
-      const floorTex = createFloorTexture(fTheme, maxAniso, cFloorHex);
+      const floorTex = createFloorTexture(fTheme, maxAniso, cFloorHex, room === 'banheiro');
       const wallTex = createWallTexture(wTheme, maxAniso, cWallHex);
 
       const plinth = new THREE.Mesh(
-        new RoundedBoxGeometry(4.48, 0.26, 3.88, 4, 0.08),
+        new RoundedBoxGeometry(6.75, 0.28, 5.75, 4, 0.08),
         new THREE.MeshStandardMaterial({ color: 0x4a2284, roughness: 0.6, metalness: 0.08 })
       );
-      plinth.position.y = -0.13;
+      plinth.position.y = -0.14;
       plinth.receiveShadow = true;
       roomGroup.add(plinth);
 
       const floorMesh = new THREE.Mesh(
-        new RoundedBoxGeometry(4.2, 0.05, 3.6, 3, 0.02),
-        new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.62, metalness: 0.04 })
+        new RoundedBoxGeometry(6.4, 0.05, 5.4, 3, 0.02),
+        new THREE.MeshStandardMaterial({ map: floorTex, roughness: room === 'banheiro' ? 0.36 : 0.62, metalness: 0.04 })
       );
       floorMesh.position.y = -0.022;
       floorMesh.receiveShadow = true;
@@ -1817,17 +2080,17 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
           opacity: 0.38,
           depthWrite: false,
         });
-        const backRailTop = new THREE.Mesh(new RoundedBoxGeometry(4.2, 0.09, 0.12, 3, 0.03), railMat);
-        backRailTop.position.set(0, 0.92, -1.72);
-        const backGlass = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.85, 0.04), glassMat);
-        backGlass.position.set(0, 0.46, -1.72);
-        const leftRail = new THREE.Mesh(new RoundedBoxGeometry(0.12, 0.09, 3.5, 3, 0.03), railMat);
-        leftRail.position.set(-2.04, 0.92, 0);
+        const backRailTop = new THREE.Mesh(new RoundedBoxGeometry(6.4, 0.09, 0.12, 3, 0.03), railMat);
+        backRailTop.position.set(0, 0.92, -2.62);
+        const backGlass = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.85, 0.04), glassMat);
+        backGlass.position.set(0, 0.46, -2.62);
+        const leftRail = new THREE.Mesh(new RoundedBoxGeometry(0.12, 0.09, 5.3, 3, 0.03), railMat);
+        leftRail.position.set(-3.14, 0.92, 0);
         roomGroup.add(backRailTop, backGlass, leftRail);
 
         const miniTree = new THREE.Group();
         const scaleT = 0.58 + (tLevel / 10) * 0.72;
-        miniTree.position.set(0, -0.3, -3.5);
+        miniTree.position.set(0, -0.3, -4.5);
         miniTree.scale.setScalar(scaleT);
         const trunk = new THREE.Mesh(
           new THREE.CylinderGeometry(0.14, 0.25, 1.5, 18),
@@ -1856,19 +2119,19 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
         roomGroup.add(miniTree);
         balconyTreeGroup = miniTree;
       } else {
-        const backWall = new THREE.Mesh(new RoundedBoxGeometry(4.2, 2.4, 0.14, 3, 0.04), wallMat);
-        backWall.position.set(0, 1.2, -1.75);
+        const backWall = new THREE.Mesh(new RoundedBoxGeometry(6.4, 2.75, 0.14, 3, 0.04), wallMat);
+        backWall.position.set(0, 1.375, -2.65);
         backWall.receiveShadow = true;
-        const leftWall = new THREE.Mesh(new RoundedBoxGeometry(0.14, 2.4, 3.6, 3, 0.04), wallMat);
-        leftWall.position.set(-2.05, 1.2, -0.02);
+        const leftWall = new THREE.Mesh(new RoundedBoxGeometry(0.14, 2.75, 5.4, 3, 0.04), wallMat);
+        leftWall.position.set(-3.15, 1.375, -0.02);
         leftWall.receiveShadow = true;
         roomGroup.add(backWall, leftWall);
 
         const winFrame = new THREE.Mesh(
-          new RoundedBoxGeometry(1.18, 1.08, 0.09, 3, 0.03),
+          new RoundedBoxGeometry(1.55, 1.24, 0.09, 3, 0.03),
           new THREE.MeshStandardMaterial({ color: 0xfff5fa, roughness: 0.58 })
         );
-        winFrame.position.set(0.85, 1.42, -1.66);
+        winFrame.position.set(1.15, 1.56, -2.56);
         const winGlassColor =
           skyPhase === 'day'
             ? 0x7dd3fc
@@ -1878,7 +2141,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
             ? 0x9333ea
             : 0x818cf8;
         const winGlass = new THREE.Mesh(
-          new THREE.PlaneGeometry(0.98, 0.88),
+          new THREE.PlaneGeometry(1.32, 1.02),
           new THREE.MeshStandardMaterial({
             color: seasonal === 'natal' ? 0xbae6fd : seasonal === 'halloween' ? 0xc084fc : winGlassColor,
             emissive: seasonal === 'halloween' ? 0xf97316 : winGlassColor,
@@ -1886,30 +2149,21 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
             roughness: 0.45,
           })
         );
-        winGlass.position.set(0.85, 1.42, -1.605);
+        winGlass.position.set(1.15, 1.56, -2.505);
         roomGroup.add(winFrame, winGlass);
+      }
 
-        const frameOuter = new THREE.Mesh(
-          new RoundedBoxGeometry(0.06, 0.64, 0.84, 3, 0.025),
-          new THREE.MeshStandardMaterial({ color: 0xfcd34d, roughness: 0.28, metalness: 0.75 })
-        );
-        frameOuter.position.set(-1.96, 1.48, -0.58);
-        const frameArt = new THREE.Mesh(
-          new RoundedBoxGeometry(0.07, 0.5, 0.7, 2, 0.02),
-          new THREE.MeshStandardMaterial({
-            color: 0xf472b6,
-            emissive: 0xec4899,
-            emissiveIntensity: 0.4,
-            roughness: 0.58,
-          })
-        );
-        frameArt.position.set(-1.955, 1.48, -0.58);
-        roomGroup.add(frameOuter, frameArt);
+      // Aquário Vivo Integrado na Sala de Estar
+      if (room === 'sala') {
+        const builtAq = buildEmbeddedSalaAquarium(aqState, lOn);
+        roomGroup.add(builtAq.aqGroup);
+        aquariumFishNodes = builtAq.fishNodes;
+        aquariumBubbleNodes = builtAq.bubbleNodes;
       }
 
       if (seasonal === 'natal') {
         const treeGroup = new THREE.Group();
-        treeGroup.position.set(1.62, 0, -1.32);
+        treeGroup.position.set(2.45, 0, -2.05);
         const pot = new THREE.Mesh(
           new THREE.CylinderGeometry(0.18, 0.14, 0.22, 18),
           new THREE.MeshStandardMaterial({ color: 0xe11d48, roughness: 0.58 })
@@ -1933,7 +2187,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
           new THREE.MeshStandardMaterial({ color: 0xfb923c, emissive: 0xf97316, emissiveIntensity: 0.85, roughness: 0.58 })
         );
         pump.scale.set(1.2, 0.88, 1.2);
-        pump.position.set(1.62, 0.16, 1.12);
+        pump.position.set(2.4, 0.16, 1.75);
         roomGroup.add(pump);
       }
 
@@ -1947,7 +2201,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
         if (built.swingGroup) swingGroups.push(built.swingGroup);
 
         const customUrl = glbMap?.[fId]?.trim();
-        if (customUrl) {
+        if (customUrl && !isUnsupportedGlbUrl(customUrl)) {
           const targetH = FURNITURE_TARGET_HEIGHTS[fId] || 1.0;
           loadCachedGlbInstance(customUrl, targetH, true)
             .then(({ group: glbGroup }) => {
@@ -1965,6 +2219,73 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
             })
             .catch(() => {
               // Keep Cozy procedural furniture on invalid GLB URL
+            });
+        }
+      });
+
+      // Mascotes vivos andando livremente pelo cômodo
+      const deadSet = new Set(dPets || []);
+      const basePets: PetType[] = (oPets && oPets.length > 0 ? oPets : ['cat']).filter(
+        (p) => !deadSet.has(p)
+      );
+      const visiblePets = basePets.slice(0, 5);
+      visiblePets.forEach((petType, idx) => {
+        const inst = buildCompactRoamingPet(petType, pColors?.[petType]);
+        const startX = -1.35 + (idx % 3) * 1.25;
+        const startZ = -0.6 + Math.floor(idx / 3) * 1.15;
+        inst.root.position.set(startX, 0, startZ);
+        inst.targetX = Math.max(-2.2, Math.min(2.2, startX + 0.8));
+        inst.targetZ = Math.max(-1.8, Math.min(1.8, startZ + 0.4));
+        roomGroup.add(inst.root);
+
+        const slot: RoamingPetSlot = {
+          instance: inst,
+          actions: {},
+          aiTimer: 1.5 + idx * 0.9,
+          aiMode: idx === 0 ? 'walk' : 'idle',
+        };
+        roamingPetSlots.push(slot);
+
+        if (petType === 'cat' && pGlbUrl && !isUnsupportedGlbUrl(pGlbUrl)) {
+          loadCachedGlbInstance(pGlbUrl, 0.46, true)
+            .then(({ group: glbGroup, animations }) => {
+              if (myToken !== rebuildToken || !inst.root.parent) {
+                disposeObject3D(glbGroup);
+                return;
+              }
+              const catColor = pColors?.cat;
+              if (catColor) {
+                const col = new THREE.Color(catColor);
+                glbGroup.traverse((obj) => {
+                  if ((obj as THREE.Mesh).isMesh) {
+                    const mesh = obj as THREE.Mesh;
+                    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+                    mats.forEach((m) => {
+                      if (!m) return;
+                      const matName = (m.name || '').toLowerCase();
+                      const hasCatMat = matName.includes('c_cat_mixed');
+                      if ((hasCatMat || mats.length === 1) && 'color' in m && m.color instanceof THREE.Color) {
+                        m.color.copy(col);
+                        m.needsUpdate = true;
+                      }
+                    });
+                  }
+                });
+              }
+              inst.bodyGroup.visible = false;
+              inst.root.add(glbGroup);
+
+              if (animations && animations.length > 0) {
+                const mixer = new THREE.AnimationMixer(glbGroup);
+                animations.forEach((clip) => {
+                  slot.actions[clip.name] = mixer.clipAction(clip);
+                });
+                slot.mixer = mixer;
+                playSlotAnimation(slot, ['Walk', 'Walk_2', 'Idle', 'Stand']);
+              }
+            })
+            .catch(() => {
+              // Mantém o pet 3D compacto caso falhe o carregamento do .glb
             });
         }
       });
@@ -2048,8 +2369,8 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
       if (raycaster.ray.intersectPlane(floorPlane, intersectPt)) {
         const rawX = intersectPt.x - dragOffsetX;
         const rawZ = intersectPt.z - dragOffsetZ;
-        const snappedX = Math.max(-1.45, Math.min(1.45, Math.round(rawX / 0.25) * 0.25));
-        const snappedZ = Math.max(-1.15, Math.min(1.2, Math.round(rawZ / 0.25) * 0.25));
+        const snappedX = Math.max(-2.6, Math.min(2.6, Math.round(rawX / 0.25) * 0.25));
+        const snappedZ = Math.max(-2.1, Math.min(2.1, Math.round(rawZ / 0.25) * 0.25));
 
         entry.group.position.x = snappedX;
         entry.group.position.z = snappedZ;
@@ -2090,6 +2411,15 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
       updateMouseFromEvent(e);
       raycaster.setFromCamera(mouse, camera);
       const hits = raycaster.intersectObjects(roomGroup.children, true);
+
+      if (!propsRef.current.isEditMode) {
+        const aqHit = hits.find((h) => h.object.userData?.aquariumHit);
+        if (aqHit) {
+          propsRef.current.onTapAquarium?.();
+          return;
+        }
+      }
+
       const hit = hits.find((h) => h.object.userData?.furnitureId);
 
       if (propsRef.current.isEditMode) {
@@ -2146,7 +2476,8 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
 
     const tick = () => {
       if (lost) return;
-      const t = clock.getElapsedTime();
+      const dt = Math.min(0.1, clock.getDelta());
+      const t = clock.elapsedTime;
 
       if (!prefersReducedMotion) {
         for (let i = 0; i < emberMeshes.length; i++) {
@@ -2194,6 +2525,127 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
           const sc = 1 + Math.sin(t * 1.6) * 0.05;
           skyEclipseHalo.scale.set(sc, sc, 1);
         }
+
+        // Peixes e bolhas animados no Aquário da Sala
+        for (let i = 0; i < aquariumFishNodes.length; i++) {
+          const fn = aquariumFishNodes[i];
+          const ang = t * fn.speed + fn.phase;
+          const nx = Math.sin(ang) * fn.radiusX;
+          const nz = Math.cos(ang * 1.3) * 0.11;
+          const ny = fn.baseY + Math.sin(ang * 2) * 0.035;
+          const dirX = Math.cos(ang) * fn.radiusX * fn.speed;
+          fn.mesh.position.set(nx, ny, nz);
+          fn.mesh.rotation.y = dirX >= 0 ? 0 : Math.PI;
+        }
+        for (let i = 0; i < aquariumBubbleNodes.length; i++) {
+          const bn = aquariumBubbleNodes[i];
+          const progress = (t * 0.35 + bn.offset) % 1;
+          bn.mesh.position.set(bn.x + Math.sin(t * 3 + i) * 0.02, 0.68 + progress * 0.62, bn.z);
+        }
+
+        // Mascotes andando autonomamente pelo cômodo e indo comer/beber na tigela da Cozinha
+        const {
+          activeRoom: curRoom,
+          petHunger: curHunger = 80,
+          petThirst: curThirst = 80,
+          petLastFedTimestamp: lastFed = 0,
+        } = propsRef.current;
+        const bowlEntry = curRoom === 'cozinha' ? furnitureRootMap.get('house-pet-bowl') : undefined;
+        const shouldEatAtBowl =
+          Boolean(bowlEntry) &&
+          (curHunger < 45 || curThirst < 45 || Date.now() - lastFed < 12000);
+
+        for (let i = 0; i < roamingPetSlots.length; i++) {
+          const slot = roamingPetSlots[i];
+          const pet = slot.instance;
+          slot.mixer?.update(dt);
+
+          if (shouldEatAtBowl && bowlEntry) {
+            const bx = bowlEntry.group.position.x + (i % 2 === 0 ? -0.18 : 0.18);
+            const bz = bowlEntry.group.position.z + 0.34;
+            pet.targetX = bx;
+            pet.targetZ = bz;
+            const dx = pet.targetX - pet.root.position.x;
+            const dz = pet.targetZ - pet.root.position.z;
+            const dist = Math.hypot(dx, dz);
+            if (dist > 0.12) {
+              slot.aiMode = 'walk';
+              const step = Math.min(dist, pet.speed * 1.15 * dt);
+              pet.root.position.x += (dx / dist) * step;
+              pet.root.position.z += (dz / dist) * step;
+              pet.root.rotation.y = Math.atan2(dx, dz);
+              pet.walkPhase += dt * 11;
+              pet.legs.forEach((leg, li) => {
+                leg.rotation.x = Math.sin(pet.walkPhase + (li % 2 === 0 ? 0 : Math.PI)) * 0.45;
+              });
+              playSlotAnimation(slot, ['Walk', 'Run', 'Walk_2']);
+            } else {
+              slot.aiMode = 'eat';
+              pet.root.rotation.y = Math.atan2(
+                bowlEntry.group.position.x - pet.root.position.x,
+                bowlEntry.group.position.z - pet.root.position.z
+              );
+              pet.legs.forEach((leg) => {
+                leg.rotation.x *= 0.85;
+              });
+              pet.headGroup.rotation.x = 0.42 + Math.sin(t * 7.5 + i) * 0.14;
+              playSlotAnimation(slot, ['Eat', 'Feeding', 'SitIdle', 'Idle']);
+            }
+            continue;
+          }
+
+          pet.headGroup.rotation.x *= 0.85;
+          slot.aiTimer -= dt;
+          if (slot.aiTimer <= 0) {
+            const roll = Math.random();
+            if (roll < 0.58) {
+              slot.aiMode = 'walk';
+              pet.targetX = (Math.random() - 0.5) * 4.4;
+              pet.targetZ = (Math.random() - 0.5) * 3.6;
+              slot.aiTimer = 3.0 + Math.random() * 2.5;
+            } else if (roll < 0.82) {
+              slot.aiMode = 'sit';
+              slot.aiTimer = 2.2 + Math.random() * 2.0;
+            } else {
+              slot.aiMode = 'idle';
+              slot.aiTimer = 1.8 + Math.random() * 1.8;
+            }
+          }
+
+          if (slot.aiMode === 'walk') {
+            const dx = pet.targetX - pet.root.position.x;
+            const dz = pet.targetZ - pet.root.position.z;
+            const dist = Math.hypot(dx, dz);
+            if (dist > 0.1) {
+              const step = Math.min(dist, pet.speed * dt);
+              pet.root.position.x += (dx / dist) * step;
+              pet.root.position.z += (dz / dist) * step;
+              pet.root.rotation.y = Math.atan2(dx, dz);
+              pet.walkPhase += dt * 9.5;
+              pet.legs.forEach((leg, li) => {
+                leg.rotation.x = Math.sin(pet.walkPhase + (li % 2 === 0 ? 0 : Math.PI)) * 0.4;
+              });
+              pet.bodyGroup.position.y = Math.abs(Math.sin(pet.walkPhase)) * 0.018;
+              playSlotAnimation(slot, ['Walk', 'Walk_2', 'Run']);
+            } else {
+              slot.aiMode = 'idle';
+              slot.aiTimer = 1.5;
+            }
+          } else {
+            pet.legs.forEach((leg) => {
+              leg.rotation.x *= 0.85;
+            });
+            pet.bodyGroup.position.y = slot.aiMode === 'sit' ? -0.025 : Math.sin(t * 2.5 + i) * 0.008;
+            if (slot.aiMode === 'sit') {
+              playSlotAnimation(slot, ['SitIdle', 'Sit', 'Idle']);
+            } else {
+              playSlotAnimation(slot, ['Idle', 'Stand']);
+            }
+          }
+          if (pet.tail) {
+            pet.tail.rotation.y = Math.sin(t * 5.2 + i) * 0.28;
+          }
+        }
       }
 
       controls.update();
@@ -2223,6 +2675,10 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     return () => {
       cancelAnimationFrame(animId);
       clearTimeout(animId);
+      roamingPetSlots.forEach((slot) => {
+        slot.mixer?.stopAllAction();
+      });
+      roamingPetSlots = [];
       window.removeEventListener('resize', handleResize);
       resizeObs?.disconnect();
       renderer.domElement.removeEventListener('pointerdown', handlePointerDown);
@@ -2252,6 +2708,11 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
   const placedKey = placedFurnitureIds.join(',');
   const glbUrlsKey = JSON.stringify(furnitureGlbUrls || {});
   const colorsKey = JSON.stringify(furnitureColors || {});
+  const ownedPetsKey = (ownedPets || []).join(',');
+  const deadPetsKey = (deadPets || []).join(',');
+  const petColorsKey = JSON.stringify(petColors || {});
+  const aqFishKey = (aquarium?.activeFishIds || []).join(',');
+  const aqModeKey = `${aquarium?.lightMode || 'day'}:${aquarium?.bubblesActive !== false}`;
   useEffect(() => {
     rebuildFnRef.current?.();
   }, [
@@ -2268,6 +2729,12 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     treeLevel,
     activeSeasonalEvent,
     glbUrlsKey,
+    ownedPetsKey,
+    deadPetsKey,
+    petColorsKey,
+    petGlbUrl,
+    aqFishKey,
+    aqModeKey,
   ]);
 
   const transformsKey = JSON.stringify(furnitureTransforms || {});
@@ -2276,7 +2743,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
   }, [transformsKey, isEditMode, selectedFurnitureId]);
 
   return (
-    <div className="relative w-full h-80 sm:h-96 rounded-3xl overflow-hidden cursor-grab active:cursor-grabbing select-none touch-none">
+    <div className="relative w-full h-96 sm:h-[26rem] rounded-3xl overflow-hidden cursor-grab active:cursor-grabbing select-none touch-none">
       <div ref={containerRef} className="w-full h-full" />
       {contextLost && (
         <div className="absolute inset-0 flex items-center justify-center bg-[#1e0b36]/92 text-xs text-pink-200 font-semibold p-4 text-center">

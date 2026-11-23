@@ -43,13 +43,18 @@ export {
   INITIAL_DREAM_HOUSE,
 };
 
-// Optional default external .glb 3D model URLs (leave empty to use Cozy Procedural 3D models)
-export const DEFAULT_PET_GLB_URLS: Partial<Record<PetType, string>> = {};
+// Modelo 3D padrão do gatinho já salvo permanentemente para carregar automático na aba de pets
+export const DEFAULT_PET_GLB_URLS: Partial<Record<PetType, string>> = {
+  cat: 'https://skfb.ly/pQwNL',
+};
 export const DEFAULT_FURNITURE_GLB_URLS: Record<string, string> = {};
 
 export function resolvePetGlbUrl(petType: PetType, config?: CoupleConfig): string | undefined {
-  const custom = config?.customGlbModels?.pets?.[petType]?.trim();
-  if (custom) return custom;
+  const customMap = config?.customGlbModels?.pets;
+  if (customMap && Object.prototype.hasOwnProperty.call(customMap, petType)) {
+    const custom = customMap[petType]?.trim();
+    return custom || undefined;
+  }
   const def = DEFAULT_PET_GLB_URLS[petType]?.trim();
   return def || undefined;
 }
@@ -69,7 +74,10 @@ export const INITIAL_COUPLE_CONFIG: CoupleConfig = {
   passcode: '120623', // 12/06/2023
   creatorPasscode: '2010', // Modo Espectador oculto do Gabriel
   themeGlowColor: '#c084fc',
-  customGlbModels: { pets: {}, furniture: {} },
+  customGlbModels: {
+    pets: { cat: 'https://skfb.ly/pQwNL' },
+    furniture: {},
+  },
 };
 
 // 60+ Authentic Heartfelt Romantic Phrases & Poems
@@ -367,65 +375,8 @@ Você é o meu amor eterno. ♡`,
 // Controlled Reset: Letters start completely clean so Gabriel & Samella write real two-way letters to each other
 export const INITIAL_LETTERS: Letter[] = [];
 
-// Somente as 4 fotos reais em public/assets/img/{1..4}.jpg (sem fotos genéricas ou de IA)
-export const INITIAL_PHOTOS: MemoryPhoto[] = [
-  {
-    id: 'photo-1',
-    index: 1,
-    title: 'Nosso Primeiro Olhar',
-    subtitle: 'Onde tudo começou entre nós dois',
-    date: 'Memória #1',
-    url: '/assets/img/1.jpg',
-    localPath: '/assets/img/1.jpg',
-    sourceType: 'local',
-    aspect: 'portrait',
-    isFavorite: true,
-    inHomeLoop: true,
-    caption: 'Memória #1 — Momento guardado com amor ♡',
-  },
-  {
-    id: 'photo-2',
-    index: 2,
-    title: 'Aquele Sorriso Nosso',
-    subtitle: 'Cumplicidade que ninguém explica',
-    date: 'Memória #2',
-    url: '/assets/img/2.jpg',
-    localPath: '/assets/img/2.jpg',
-    sourceType: 'local',
-    aspect: 'landscape',
-    isFavorite: true,
-    inHomeLoop: true,
-    caption: 'Memória #2 — Momento guardado com amor ♡',
-  },
-  {
-    id: 'photo-3',
-    index: 3,
-    title: 'Mãos Dadas Sempre',
-    subtitle: 'Meu porto seguro em qualquer dia',
-    date: 'Memória #3',
-    url: '/assets/img/3.jpg',
-    localPath: '/assets/img/3.jpg',
-    sourceType: 'local',
-    aspect: 'square',
-    isFavorite: false,
-    inHomeLoop: true,
-    caption: 'Memória #3 — Momento guardado com amor ♡',
-  },
-  {
-    id: 'photo-4',
-    index: 4,
-    title: 'Para Sempre Nós Dois',
-    subtitle: 'Cada instante com você vale ouro',
-    date: 'Memória #4',
-    url: '/assets/img/4.jpg',
-    localPath: '/assets/img/4.jpg',
-    sourceType: 'local',
-    aspect: 'portrait',
-    isFavorite: true,
-    inHomeLoop: true,
-    caption: 'Memória #4 — Momento guardado com amor ♡',
-  },
-];
+// Galeria começa limpa (zero fotos estáticas ou de IA); apenas fotos reais adicionadas pelo casal permanecem salvas para sempre
+export const INITIAL_PHOTOS: MemoryPhoto[] = [];
 
 // Playlist starts empty; Gabriel & Samella add YouTube links or audio files via MusicView or Settings
 export const INITIAL_SONGS: Song[] = [];
@@ -1223,8 +1174,10 @@ export const INITIAL_KITTEN: KittenState = {
   equippedCollar: '',
   equippedGlasses: '',
   ownedPets: ['cat'],
+  deadPets: [],
   customNames: {},
   petColors: {},
+  petPartColors: {},
   accessoryColors: {},
   cooldowns: {},
 };

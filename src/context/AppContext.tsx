@@ -85,15 +85,19 @@ import {
   getAccessToken,
 } from '../services/firebaseAuth';
 import { fetchDriveFolderPhotos, TARGET_DRIVE_FOLDER_ID } from '../services/googleDrive';
+import { HOUSE_ROOM_PRICES } from '../data/houseFurnitureCatalog';
 import {
   clearCloudWorld,
   CloudWorldPayload,
   deleteCloudPhoto,
   GameRecords,
+  loadCloudPhotos,
   loadCloudWorld,
   saveCloudPhoto,
   saveCloudPhotosBatch,
+  saveCloudWorld,
 } from '../services/cloudSync';
+import { isSupabaseConfigured } from '../services/supabaseClient';
 import {
   buildWorldSignature,
   clearSupabaseWorld,
@@ -135,6 +139,19 @@ export function formatCooldownMs(ms: number): string {
 
 const INITIAL_PHOTO_IDS = new Set(INITIAL_PHOTOS.map((p) => p.id));
 const INITIAL_SONG_IDS = new Set(INITIAL_SONGS.map((s) => s.id));
+
+const LEGACY_STOCK_PHOTO_IDS = new Set(['photo-1', 'photo-2', 'photo-3', 'photo-4']);
+
+function filterRealCouplePhotos(list: MemoryPhoto[] | undefined | null): MemoryPhoto[] {
+  if (!Array.isArray(list)) return [];
+  return list.filter((p) => {
+    if (!p || !p.url) return false;
+    if (p.sourceType === 'drive') return false;
+    if (LEGACY_STOCK_PHOTO_IDS.has(p.id) && p.url.startsWith('/assets/img/')) return false;
+    if (p.url.startsWith('/assets/img/')) return false;
+    return true;
+  });
+}
 
 const DEFAULT_GAME_RECORDS: GameRecords = {
   bestHearts: 0,
@@ -305,6 +322,8 @@ interface AppContextType {
   renamePet: (newName: string) => void;
   adoptPet: (petType: PetType, customColor?: string) => void;
   setPetColor: (petType: PetType, hex: string) => void;
+  setPetPartColor: (petType: PetType, partKey: string, hex: string) => void;
+  clearPetPartColors: (petType: PetType) => void;
   setAccessoryColor: (itemId: string, hex: string) => void;
   waterLoveTree: () => boolean;
   sunLoveTree: () => boolean;
@@ -354,6 +373,7 @@ interface AppContextType {
   openMysteryChest: () => { ok: boolean; coins?: number; prizeText?: string; remainingMs?: number };
   // Dream House 3D
   setHouseRoom: (room: HouseRoomId) => void;
+  unlockHouseRoom: (room: HouseRoomId) => boolean;
   setHouseWallTheme: (theme: HouseWallTheme) => void;
   setHouseFloorTheme: (theme: HouseFloorTheme) => void;
   setHouseCustomWallHex: (hex: string) => void;
@@ -400,6 +420,40 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const DEVICE_AUTH_STORAGE_KEY = 'nosso-mundo-device-auth';
   const DEVICE_PERM_PROMPT_KEY = 'nosso-mundo-perm-prompt-v1';
+  const CUSTOM_GLB_STORAGE_KEY = 'nosso-mundo-custom-glb-v1';
+
+  const readLocalCustomGlbModels = (): CoupleConfig['customGlbModels'] | undefined => {
+    if (typeof window === 'undefined') return undefined;
+    try {
+      const raw = window.localStorage.getItem(CUSTOM_GLB_STORAGE_KEY);
+      if (!raw) return undefined;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          pets: parsed.pets && typeof parsed.pets === 'object' ? parsed.pets : {},
+          furniture: parsed.furniture && typeof parsed.furniture === 'object' ? parsed.furniture : {},
+        };
+      }
+      return undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const writeLocalCustomGlbModels = (models?: CoupleConfig['customGlbModels']) => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(
+        CUSTOM_GLB_STORAGE_KEY,
+        JSON.stringify({
+          pets: models?.pets || {},
+          furniture: models?.furniture || {},
+        })
+      );
+    } catch {
+      // Ignore storage quota errors
+    }
+  };
 
   const readDeviceAuth = (): { unlocked: boolean; role: ViewerRole } => {
     if (typeof window === 'undefined') return { unlocked: false, role: 'samella' };
@@ -416,6 +470,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const initialDeviceAuth = readDeviceAuth();
+  const initialLocalGlbModels = readLocalCustomGlbModels();
 
   const [journeyStarted, setJourneyStarted] = useState<boolean>(
     Boolean(savedData?.journeyStarted)
@@ -424,9 +479,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [viewerRole, setViewerRole] = useState<ViewerRole>(initialDeviceAuth.role);
   const isSpectator = viewerRole === 'gabriel_spectator';
 
-  const [config, setConfig] = useState<CoupleConfig>(
-    savedData?.config || INITIAL_COUPLE_CONFIG
-  );
+  const [config, setConfig] = useState<CoupleConfig>(() => {
+    const baseCfg = savedData?.config || INITIAL_COUPLE_CONFIG;
+    if (!initialLocalGlbModels) return baseCfg;
+    return {
+      ...baseCfg,
+      customGlbModels: {
+        pets: {
+          ...(baseCfg.customGlbModels?.pets || {}),
+          ...(initialLocalGlbModels.pets || {}),
+        },
+        furniture: {
+          ...(baseCfg.customGlbModels?.furniture || {}),
+          ...(initialLocalGlbModels.furniture || {}),
+        },
+      },
+    };
+  });
   const [coins, setCoins] = useState<number>(savedData?.coins ?? 0);
   const [activeTab, setActiveTabState] = useState<ActiveTab>('inicio');
   const [extendedView, setExtendedViewState] = useState<ExtendedView>('inicio');
@@ -473,7 +542,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [selectedLetter, setSelectedLetter] = useState<Letter | null>(null);
 
   const [photos, setPhotos] = useState<MemoryPhoto[]>(
-    mergeInitialItems(savedData?.photos, INITIAL_PHOTOS)
+    filterRealCouplePhotos(savedData?.photos)
   );
   const [selectedPhoto, setSelectedPhoto] = useState<MemoryPhoto | null>(null);
 
@@ -535,6 +604,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     },
     furnitureTransforms: {},
   }));
+  const dreamHouseRef = useRef(dreamHouse);
+  dreamHouseRef.current = dreamHouse;
   const [aquarium, setAquarium] = useState<AquariumState>(() => ({
     ...INITIAL_AQUARIUM_STATE,
   }));
@@ -648,11 +719,35 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         !cloud.config.creatorPasscode || cloud.config.creatorPasscode === '2023'
           ? '2010'
           : cloud.config.creatorPasscode;
+      const localGlb = readLocalCustomGlbModels();
+      const cloudPets = cloud.config.customGlbModels?.pets || {};
+      const localPets = localGlb?.pets || {};
+      const mergedPets: Partial<Record<PetType, string>> = { ...cloudPets };
+      // Preserve local idb:// uploads and locally saved custom URLs when cloud still holds default placeholder
+      (Object.entries(localPets) as [PetType, string | undefined][]).forEach(([petK, localVal]) => {
+        if (!localVal) return;
+        const cloudVal = cloudPets[petK];
+        if (
+          localVal.startsWith('idb://') ||
+          !cloudVal ||
+          cloudVal === INITIAL_COUPLE_CONFIG.customGlbModels?.pets?.[petK]
+        ) {
+          mergedPets[petK] = localVal;
+        }
+      });
+      const mergedFurniture = {
+        ...(cloud.config.customGlbModels?.furniture || {}),
+        ...(localGlb?.furniture || {}),
+      };
       setConfig({
         ...INITIAL_COUPLE_CONFIG,
         ...cloud.config,
         passcode: normalizedPasscode,
         creatorPasscode: normalizedCreator,
+        customGlbModels: {
+          pets: mergedPets,
+          furniture: mergedFurniture,
+        },
       });
     }
     if (typeof cloud.coins === 'number') setCoins(cloud.coins);
@@ -778,7 +873,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     if (cloud.customPhotos && cloud.customPhotos.length > 0) {
-      const cleanCustomPhotos = cloud.customPhotos.filter((p) => p.sourceType !== 'drive');
+      const cleanCustomPhotos = filterRealCouplePhotos(cloud.customPhotos);
       if (cleanCustomPhotos.length > 0) {
         setPhotos((prev) => mergeInitialItems(cleanCustomPhotos, prev));
       }
@@ -817,14 +912,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     if (cloud.dreamHouseState) {
+      const mergedPlaced = {
+        ...INITIAL_DREAM_HOUSE.placedFurniture,
+        ...(cloud.dreamHouseState.placedFurniture || {}),
+      };
+      const unlockedSet = new Set<HouseRoomId>([
+        'sala',
+        ...(cloud.dreamHouseState.unlockedRooms || []),
+      ]);
+      (Object.keys(mergedPlaced) as HouseRoomId[]).forEach((roomKey) => {
+        if ((mergedPlaced[roomKey] || []).length > 0) {
+          unlockedSet.add(roomKey);
+        }
+      });
+      const resolvedUnlocked = Array.from(unlockedSet);
+      const safeActive = unlockedSet.has(cloud.dreamHouseState.activeRoom)
+        ? cloud.dreamHouseState.activeRoom
+        : 'sala';
       setDreamHouse({
         ...INITIAL_DREAM_HOUSE,
         ...cloud.dreamHouseState,
+        activeRoom: safeActive,
+        unlockedRooms: resolvedUnlocked,
         unlockedFurnitureIds: Array.from(new Set(cloud.dreamHouseState.unlockedFurnitureIds || [])),
-        placedFurniture: {
-          ...INITIAL_DREAM_HOUSE.placedFurniture,
-          ...(cloud.dreamHouseState.placedFurniture || {}),
-        },
+        placedFurniture: mergedPlaced,
         furnitureTransforms: {
           ...(cloud.dreamHouseState.furnitureTransforms || {}),
         },
@@ -894,7 +1005,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             : incomingMsg.text;
         const notif = new Notification(`${senderTitle} — Nosso Mundo`, {
           body: previewBody.slice(0, 110),
-          icon: '/assets/img/1.jpg',
         });
         window.setTimeout(() => notif.close(), 4500);
       } catch {
@@ -913,10 +1023,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const bootstrapCloud = async () => {
       try {
-        const [supaWorld, supaMessages, supaPhotos, supaSongs] = await Promise.all([
+        const [supaWorld, supaMessages, supaPhotos, cloudPhotos, supaSongs] = await Promise.all([
           loadSupabaseWorld(),
           loadSupabaseMessages(),
           loadSupabasePhotos(),
+          loadCloudPhotos().catch(() => [] as MemoryPhoto[]),
           loadSupabaseSongs(),
         ]);
         if (!active) return;
@@ -930,11 +1041,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           }
         }
 
-        if (supaPhotos && supaPhotos.length > 0) {
-          const cleanSupaPhotos = supaPhotos.filter((p) => p.sourceType !== 'drive');
-          if (cleanSupaPhotos.length > 0) {
-            setPhotos((prev) => mergeInitialItems(cleanSupaPhotos, prev));
-          }
+        const combinedRealPhotos = filterRealCouplePhotos([
+          ...(supaPhotos || []),
+          ...(cloudPhotos || []),
+        ]);
+        if (combinedRealPhotos.length > 0) {
+          setPhotos((prev) => mergeInitialItems(combinedRealPhotos, filterRealCouplePhotos(prev)));
         }
 
         if (supaSongs && supaSongs.length > 0) {
@@ -977,7 +1089,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           );
           unsubscribePhotosLive = subscribeSupabasePhotos((remotePhotos) => {
             if (!active || !remotePhotos.length) return;
-            setPhotos((prev) => mergeInitialItems(remotePhotos, prev));
+            const cleanRemote = filterRealCouplePhotos(remotePhotos);
+            if (!cleanRemote.length) return;
+            setPhotos((prev) => mergeInitialItems(cleanRemote, filterRealCouplePhotos(prev)));
           });
           unsubscribeSongsLive = subscribeSupabaseSongs((remoteSongs) => {
             if (!active || !remoteSongs.length) return;
@@ -1173,14 +1287,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     syncTimeoutRef.current = window.setTimeout(() => {
       lastSyncedSignatureRef.current = nextSignature;
-      saveSupabaseWorld(saveInput)
-        .then((ok) => {
-          if (ok) setIsCloudSynced(true);
-        })
-        .catch((err) => {
-          console.warn('Supabase sync deferred:', err);
-        });
-    }, 550);
+      const persistCloud = async () => {
+        if (isSupabaseConfigured) {
+          const ok = await saveSupabaseWorld(saveInput);
+          if (ok) {
+            setIsCloudSynced(true);
+            return;
+          }
+        }
+        await saveCloudWorld(saveInput);
+        setIsCloudSynced(true);
+      };
+      persistCloud().catch((err) => {
+        console.warn('Cloud sync deferred:', err);
+      });
+    }, 400);
 
     return () => {
       if (syncTimeoutRef.current) {
@@ -1232,6 +1353,49 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }, 2500);
     return () => clearInterval(sleepTimer);
   }, [kitten.isSleeping]);
+
+  // Passive gradual hunger, thirst & hygiene decay for interactive Pet Needs System
+  useEffect(() => {
+    if (isSpectator || !isLoggedIn) return;
+    const hungerTimer = window.setInterval(() => {
+      const dh = dreamHouseRef.current;
+      const unlocked = dh.unlockedRooms || ['sala'];
+      const hasKitchenAndBowl =
+        unlocked.includes('cozinha') &&
+        (dh.placedFurniture?.cozinha || []).includes('house-pet-bowl');
+
+      setKitten((prev) => {
+        if (prev.isSleeping || prev.isEating) return prev;
+        const activeType = (prev.petType || 'cat') as PetType;
+        const deadList = prev.deadPets || [];
+        if (deadList.includes(activeType)) return prev;
+
+        const minFloor = hasKitchenAndBowl ? 12 : 0;
+        const nextHunger = Math.max(minFloor, (prev.hunger ?? 70) - 1);
+        const nextThirst = Math.max(minFloor, (prev.thirst ?? 70) - 1);
+        const nextHygiene = Math.max(10, (prev.hygiene ?? 75) - 1);
+        const diedNow = !hasKitchenAndBowl && (nextHunger <= 0 || nextThirst <= 0);
+        const nextMood =
+          nextHunger <= 30
+            ? 'com-fome'
+            : nextThirst <= 30
+            ? 'com-sede'
+            : nextHygiene <= 30
+            ? 'sujinho'
+            : prev.mood;
+
+        return {
+          ...prev,
+          hunger: nextHunger,
+          thirst: nextThirst,
+          hygiene: nextHygiene,
+          mood: nextMood,
+          deadPets: diedNow ? Array.from(new Set([...deadList, activeType])) : deadList,
+        };
+      });
+    }, 90000);
+    return () => clearInterval(hungerTimer);
+  }, [isSpectator, isLoggedIn]);
 
   // Sync realAudio engine state (YouTube IFrame + HTML5 audio) & auto-advance / auto-skip invalid
   useEffect(() => {
@@ -1795,6 +1959,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const uniqueSuffix = Math.random().toString(36).slice(2, 6);
     const newPhoto: MemoryPhoto = {
       ...newPhotoData,
+      title: newPhotoData.title ?? '',
+      subtitle: newPhotoData.subtitle ?? '',
+      date: newPhotoData.date ?? '',
       id: `photo-${Date.now()}-${uniqueSuffix}`,
       index: photos.length + 1,
       isFavorite: false,
@@ -1982,7 +2149,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (guardSpectator()) return false;
     const item = storeItems.find((i) => i.id === id);
     if (!item) return false;
-    if (item.purchased) {
+    const isDeadPetRevival =
+      item.category === 'pets' &&
+      Boolean(item.petTypeTarget) &&
+      (kitten.deadPets || []).includes(item.petTypeTarget as PetType);
+
+    if (item.purchased && !isDeadPetRevival) {
       showToast('Item já adquirido e ativo!', 'shop');
       return true;
     }
@@ -1997,7 +2169,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         )
       );
 
-      // Handle pet adoption + custom color
+      // Handle pet adoption / revival + custom color
       if (item.category === 'pets' || (item.petTypeTarget && item.petTypeTarget !== 'all')) {
         const targetType = (item.petTypeTarget || 'cat') as PetType;
         const nextOwnedCount = (kitten.ownedPets || ['cat']).includes(targetType)
@@ -2008,11 +2180,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           const owned = prev.ownedPets || ['cat'];
           const newOwned = owned.includes(targetType) ? owned : [...owned, targetType];
           const existingCustom = prev.customNames?.[targetType] || '';
+          const nextDead = (prev.deadPets || []).filter((p) => p !== targetType);
           return {
             ...prev,
             ownedPets: newOwned,
+            deadPets: nextDead,
             petType: targetType,
             name: existingCustom,
+            hunger: 85,
+            thirst: 85,
+            hygiene: 85,
+            happiness: 85,
+            energy: 85,
             mood: 'feliz',
             petColors: chosenHex
               ? { ...(prev.petColors || {}), [targetType]: chosenHex }
@@ -2264,6 +2443,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const petKitten = (_part?: 'head' | 'belly' | 'paw') => {
     if (guardSpectator()) return;
+    const activeType = (kitten.petType || 'cat') as PetType;
+    if ((kitten.deadPets || []).includes(activeType)) {
+      showToast('Este pet virou estrelinha. Adote um novo mascote na Loja ♡', 'paw');
+      return;
+    }
     soundEngine.playPurr();
     triggerHeartExplosion(0.5, 0.4);
     const rem = getCooldownRemaining(kitten.cooldowns, 'pet_pet');
@@ -2315,6 +2499,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const feedKitten = (foodName = 'Comidinha Especial', hungerBoost = 30, happyBoost = 10): boolean => {
     if (guardSpectator()) return false;
+    const activeType = (kitten.petType || 'cat') as PetType;
+    if ((kitten.deadPets || []).includes(activeType)) {
+      showToast('Este pet virou estrelinha. Adote um novo mascote na Loja ♡', 'paw');
+      return false;
+    }
+    const unlockedRooms = dreamHouse.unlockedRooms || ['sala'];
+    if (!unlockedRooms.includes('cozinha')) {
+      showToast('Desbloqueie o cômodo Cozinha na Casa dos Sonhos para alimentar!', 'house');
+      return false;
+    }
+    const kitchenPlaced = dreamHouse.placedFurniture?.cozinha || [];
+    if (!kitchenPlaced.includes('house-pet-bowl')) {
+      showToast('Compre e coloque o Pote de Ração & Água na Cozinha primeiro!', 'paw');
+      return false;
+    }
+
     const rem = getCooldownRemaining(kitten.cooldowns, 'pet_feed');
     if (rem > 0) {
       showToast(`Cheio por agora! Alimente de novo em ${formatCooldownMs(rem)}`, 'paw');
@@ -2330,6 +2530,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       happiness: Math.min(100, (prev.happiness || 50) + happyBoost),
       mood: 'feliz',
       isEating: true,
+      lastFedTimestamp: Date.now(),
       lastFed: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       cooldowns: {
         ...(prev.cooldowns || {}),
@@ -2346,6 +2547,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const giveWaterKitten = (): boolean => {
     if (guardSpectator()) return false;
+    const activeType = (kitten.petType || 'cat') as PetType;
+    if ((kitten.deadPets || []).includes(activeType)) {
+      showToast('Este pet virou estrelinha. Adote um novo mascote na Loja ♡', 'paw');
+      return false;
+    }
+    const unlockedRooms = dreamHouse.unlockedRooms || ['sala'];
+    if (!unlockedRooms.includes('cozinha')) {
+      showToast('Desbloqueie o cômodo Cozinha na Casa dos Sonhos para dar água!', 'house');
+      return false;
+    }
+    const kitchenPlaced = dreamHouse.placedFurniture?.cozinha || [];
+    if (!kitchenPlaced.includes('house-pet-bowl')) {
+      showToast('Compre e coloque o Pote de Ração & Água na Cozinha primeiro!', 'aqua');
+      return false;
+    }
+
     const rem = getCooldownRemaining(kitten.cooldowns, 'pet_water');
     if (rem > 0) {
       showToast(`Hidratado! Próxima água em ${formatCooldownMs(rem)}`, 'aqua');
@@ -2360,6 +2577,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       happiness: Math.min(100, (prev.happiness || 50) + 6),
       mood: 'feliz',
       isDrinking: true,
+      lastFedTimestamp: Date.now(),
       cooldowns: {
         ...(prev.cooldowns || {}),
         pet_water: Date.now() + COOLDOWN_MS.pet_water,
@@ -2375,6 +2593,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const batheKitten = (boostAmount = 100): boolean => {
     if (guardSpectator()) return false;
+    const activeType = (kitten.petType || 'cat') as PetType;
+    if ((kitten.deadPets || []).includes(activeType)) {
+      showToast('Este pet virou estrelinha. Adote um novo mascote na Loja ♡', 'paw');
+      return false;
+    }
+    const unlockedRooms = dreamHouse.unlockedRooms || ['sala'];
+    if (!unlockedRooms.includes('banheiro')) {
+      showToast('Construa o Banheiro na Casa dos Sonhos para dar banho no mascote!', 'bath');
+      return false;
+    }
+
     const rem = getCooldownRemaining(kitten.cooldowns, 'pet_bath');
     if (rem > 0) {
       showToast(`Limpinho! Próximo banho em ${formatCooldownMs(rem)}`, 'aqua');
@@ -2406,6 +2635,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const toggleSleepKitten = (): boolean => {
     if (guardSpectator()) return false;
+    const activeType = (kitten.petType || 'cat') as PetType;
+    if ((kitten.deadPets || []).includes(activeType)) {
+      showToast('Este pet virou estrelinha. Adote um novo mascote na Loja ♡', 'paw');
+      return false;
+    }
     const label = getSpeciesDisplayName(kitten.petType, kitten.name);
     if (!kitten.isSleeping) {
       const rem = getCooldownRemaining(kitten.cooldowns, 'pet_sleep');
@@ -2442,6 +2676,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const playWithKitten = (toyName = 'Novelo de Lã', source: 'toy' | 'dance' = 'toy'): boolean => {
     if (guardSpectator()) return false;
+    const activeType = (kitten.petType || 'cat') as PetType;
+    if ((kitten.deadPets || []).includes(activeType)) {
+      showToast('Este pet virou estrelinha. Adote um novo mascote na Loja ♡', 'paw');
+      return false;
+    }
     const cdKey = source === 'dance' ? 'pet_dance' : 'pet_play';
     const cdDuration = source === 'dance' ? COOLDOWN_MS.pet_dance : COOLDOWN_MS.pet_play;
     const rem = getCooldownRemaining(kitten.cooldowns, cdKey);
@@ -2555,11 +2794,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const currentOwned = prev.ownedPets || ['cat'];
       const newOwned = currentOwned.includes(petType) ? currentOwned : [...currentOwned, petType];
       const existingName = prev.customNames?.[petType] || '';
+      const nextDead = (prev.deadPets || []).filter((p) => p !== petType);
       return {
         ...prev,
         ownedPets: newOwned,
+        deadPets: nextDead,
         petType,
         name: existingName,
+        hunger: 85,
+        thirst: 85,
+        hygiene: 85,
+        happiness: 85,
+        energy: 85,
         petColors: customColor
           ? { ...(prev.petColors || {}), [petType]: customColor }
           : prev.petColors,
@@ -2583,14 +2829,51 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const setPetColor = (petType: PetType, hex: string) => {
     if (guardSpectator()) return;
     soundEngine.playHeartPop();
+    setKitten((prev) => {
+      const nextPartColors = { ...(prev.petPartColors || {}) };
+      delete nextPartColors[petType];
+      return {
+        ...prev,
+        petColors: {
+          ...(prev.petColors || {}),
+          [petType]: hex,
+        },
+        petPartColors: nextPartColors,
+      };
+    });
+    showToast('Cor personalizada aplicada ao mascote!', 'sparkles');
+  };
+
+  const setPetPartColor = (petType: PetType, partKey: string, hex: string) => {
+    if (guardSpectator()) return;
+    soundEngine.playHeartPop();
     setKitten((prev) => ({
       ...prev,
-      petColors: {
-        ...(prev.petColors || {}),
-        [petType]: hex,
+      petPartColors: {
+        ...(prev.petPartColors || {}),
+        [petType]: {
+          ...(prev.petPartColors?.[petType] || {}),
+          [partKey]: hex,
+        },
       },
     }));
-    showToast('Cor personalizada aplicada ao mascote!', 'sparkles');
+  };
+
+  const clearPetPartColors = (petType: PetType) => {
+    if (guardSpectator()) return;
+    soundEngine.playHeartPop();
+    setKitten((prev) => {
+      const nextPartColors = { ...(prev.petPartColors || {}) };
+      delete nextPartColors[petType];
+      const nextPetColors = { ...(prev.petColors || {}) };
+      delete nextPetColors[petType];
+      return {
+        ...prev,
+        petColors: nextPetColors,
+        petPartColors: nextPartColors,
+      };
+    });
+    showToast('Cores originais do mascote restauradas!', 'sparkles');
   };
 
   const setAccessoryColor = (itemId: string, hex: string) => {
@@ -2930,7 +3213,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const updateConfig = (newConfig: Partial<CoupleConfig>) => {
     allowSpectatorWorldSaveRef.current = true;
-    setConfig((prev) => ({ ...prev, ...newConfig }));
+    setConfig((prev) => {
+      const next: CoupleConfig = {
+        ...prev,
+        ...newConfig,
+        ...(newConfig.customGlbModels
+          ? {
+              customGlbModels: {
+                pets: { ...(newConfig.customGlbModels.pets || {}) },
+                furniture: { ...(newConfig.customGlbModels.furniture || {}) },
+              },
+            }
+          : {}),
+      };
+      if (newConfig.customGlbModels !== undefined) {
+        writeLocalCustomGlbModels(next.customGlbModels);
+      }
+      return next;
+    });
     showToast('Configurações atualizadas!', 'sparkles');
   };
 
@@ -3243,8 +3543,42 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // --- DREAM HOUSE 3D ACTIONS ---
   const setHouseRoom = (room: HouseRoomId) => {
+    const unlocked = dreamHouse.unlockedRooms || ['sala'];
+    if (!unlocked.includes(room)) {
+      const price = HOUSE_ROOM_PRICES[room] ?? 30;
+      showToast(`Cômodo bloqueado! Desbloqueie por ${price} diamantes para construir.`, 'house');
+      return;
+    }
     soundEngine.playHeartPop();
     setDreamHouse((prev) => ({ ...prev, activeRoom: room }));
+  };
+
+  const unlockHouseRoom = (room: HouseRoomId): boolean => {
+    if (guardSpectator()) return false;
+    const unlocked = dreamHouse.unlockedRooms || ['sala'];
+    if (unlocked.includes(room)) {
+      setDreamHouse((prev) => ({ ...prev, activeRoom: room }));
+      return true;
+    }
+    const price = HOUSE_ROOM_PRICES[room] ?? 30;
+    if (!spendCoins(price)) return false;
+
+    soundEngine.playSparkle();
+    triggerHeartExplosion(0.5, 0.4);
+    setDreamHouse((prev) => ({
+      ...prev,
+      activeRoom: room,
+      unlockedRooms: Array.from(new Set([...(prev.unlockedRooms || ['sala']), room])),
+    }));
+    const roomLabels: Record<HouseRoomId, string> = {
+      sala: 'Sala de Estar',
+      quarto: 'Quarto Aconchegante',
+      cozinha: 'Cozinha Gourmet',
+      banheiro: 'Banheiro & Spa',
+      varanda: 'Varanda Estrelada',
+    };
+    showToast(`${roomLabels[room]} desbloqueado! Agora decore do zero ♡`, 'house');
+    return true;
   };
 
   const setHouseWallTheme = (theme: HouseWallTheme) => {
@@ -3748,6 +4082,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         renamePet,
         adoptPet,
         setPetColor,
+        setPetPartColor,
+        clearPetPartColors,
         setAccessoryColor,
         waterLoveTree,
         sunLoveTree,
@@ -3780,6 +4116,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         spinDailyWheel,
         openMysteryChest,
         setHouseRoom,
+        unlockHouseRoom,
         setHouseWallTheme,
         setHouseFloorTheme,
         setHouseCustomWallHex,

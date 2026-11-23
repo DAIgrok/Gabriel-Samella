@@ -7,6 +7,8 @@ interface PetCharacterProps {
   kitten: KittenState;
   petType: PetType;
   danceMove?: PetDanceMove;
+  paintMode?: boolean;
+  onPaintPart?: (partKey: string) => void;
   onPetPart: (part: 'head' | 'belly' | 'paw') => void;
   onNoseClick: (e: React.MouseEvent) => void;
   hasSoapFoam?: boolean;
@@ -16,6 +18,17 @@ interface PetCharacterProps {
   hasSunglasses?: boolean;
   hasBowtie?: boolean;
   hasAngelWings?: boolean;
+}
+
+function adjustHexBrightness(hex: string, factor: number): string {
+  const clean = hex.replace('#', '');
+  if (clean.length !== 6) return hex;
+  const num = parseInt(clean, 16);
+  if (Number.isNaN(num)) return hex;
+  const r = Math.max(0, Math.min(255, Math.round(((num >> 16) & 0xff) * factor)));
+  const g = Math.max(0, Math.min(255, Math.round(((num >> 8) & 0xff) * factor)));
+  const b = Math.max(0, Math.min(255, Math.round((num & 0xff) * factor)));
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
 }
 
 interface SpeciesPalette {
@@ -335,6 +348,8 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
   kitten,
   petType,
   danceMove = 'idle',
+  paintMode = false,
+  onPaintPart,
   onPetPart,
   onNoseClick,
   hasSoapFoam = false,
@@ -355,18 +370,44 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
   const isTired = (kitten.energy ?? 80) < 35 && !isSleeping;
   const isSad = (kitten.hunger ?? 80) < 30 || (kitten.thirst ?? 80) < 30 || (kitten.fun ?? 80) < 30;
 
+  const partColors = kitten.petPartColors?.[petType];
+
   const colors = useMemo(() => {
     const base = getPalette(petType, isSleeping);
     const customHex = kitten.petColors?.[petType];
-    if (!customHex) return base;
+    const headBase = partColors?.head || customHex;
+    const bodyBase = partColors?.body || customHex;
     return {
       ...base,
-      light: customHex,
-      mid: customHex,
-      dark: customHex,
-      earOuter: customHex,
+      headLight: headBase ? adjustHexBrightness(headBase, 1.15) : base.light,
+      headMid: headBase || base.mid,
+      headDark: headBase ? adjustHexBrightness(headBase, 0.8) : base.dark,
+      light: bodyBase ? adjustHexBrightness(bodyBase, 1.15) : base.light,
+      mid: bodyBase || base.mid,
+      dark: bodyBase ? adjustHexBrightness(bodyBase, 0.8) : base.dark,
+      earOuter: partColors?.ears || customHex || base.earOuter,
+      earInner: partColors?.earInner || base.earInner,
+      belly: partColors?.belly || base.belly,
+      paws: partColors?.paws || partColors?.belly || base.belly,
+      arms: partColors?.paws || partColors?.body || customHex || base.mid,
+      tail: partColors?.tail || partColors?.body || customHex || base.dark,
+      cheeks: partColors?.cheeks || base.cheeks,
+      nose: partColors?.nose || base.nose,
     };
-  }, [petType, isSleeping, kitten.petColors]);
+  }, [petType, isSleeping, kitten.petColors, partColors]);
+
+  const handleSvgPartClick = (
+    e: React.MouseEvent,
+    paintKey: string,
+    normalPart: 'head' | 'belly' | 'paw'
+  ) => {
+    e.stopPropagation();
+    if (paintMode && onPaintPart) {
+      onPaintPart(paintKey);
+      return;
+    }
+    onPetPart(normalPart);
+  };
 
   const hatId = kitten.equippedHat || (hasCrown ? 'item-cat-crown' : hasRibbon ? 'item-cat-ribbon' : '');
   const glassesId = kitten.equippedGlasses || (hasSunglasses ? 'item-cat-sunglasses' : '');
@@ -475,9 +516,9 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
               <stop offset="100%" stopColor={colors.dark} />
             </radialGradient>
             <radialGradient id={`headGrad-${petType}`} cx="42%" cy="30%" r="68%">
-              <stop offset="0%" stopColor={colors.light} />
-              <stop offset="55%" stopColor={colors.mid} />
-              <stop offset="100%" stopColor={colors.dark} />
+              <stop offset="0%" stopColor={colors.headLight} />
+              <stop offset="55%" stopColor={colors.headMid} />
+              <stop offset="100%" stopColor={colors.headDark} />
             </radialGradient>
             <linearGradient id={`hoodieGrad-${petType}`} x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#c084fc" />
@@ -549,9 +590,11 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
             <motion.path
               d="M168,186 C206,184 214,142 192,138 C182,136 182,154 192,156"
               fill="none"
-              stroke={colors.dark}
+              stroke={colors.tail}
               strokeWidth="12"
               strokeLinecap="round"
+              className="cursor-pointer"
+              onClick={(e) => handleSvgPartClick(e, 'tail', 'paw')}
               animate={prefersReducedMotion ? undefined : { rotate: [-4, 7, -4] }}
               transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
               style={{ originX: '168px', originY: '186px' }}
@@ -560,30 +603,36 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
             <motion.path
               d="M168,182 Q204,162 198,136"
               fill="none"
-              stroke={colors.dark}
+              stroke={colors.tail}
               strokeWidth="12"
               strokeLinecap="round"
+              className="cursor-pointer"
+              onClick={(e) => handleSvgPartClick(e, 'tail', 'paw')}
               animate={prefersReducedMotion ? undefined : { rotate: [-12, 16, -12] }}
               transition={{ duration: 0.7, repeat: Infinity, ease: 'easeInOut' }}
               style={{ originX: '168px', originY: '182px' }}
             />
           ) : petType === 'fox' ? (
             <motion.g
+              className="cursor-pointer"
+              onClick={(e) => handleSvgPartClick(e, 'tail', 'paw')}
               animate={prefersReducedMotion ? undefined : { rotate: [-5, 6, -5] }}
               transition={{ duration: 2.0, repeat: Infinity, ease: 'easeInOut' }}
               style={{ originX: '164px', originY: '182px' }}
             >
-              <path d="M160,188 C210,192 222,134 188,128 C168,125 160,160 160,188 Z" fill={colors.mid} stroke={colors.stroke} strokeWidth="2.5" />
+              <path d="M160,188 C210,192 222,134 188,128 C168,125 160,160 160,188 Z" fill={colors.tail} stroke={colors.stroke} strokeWidth="2.5" />
               <path d="M196,130 C210,136 208,154 192,158 C185,148 184,136 196,130 Z" fill="#ffffff" />
             </motion.g>
           ) : petType === 'pig' ? (
-            <path d="M168,180 C186,180 190,164 180,162 C172,160 174,174 186,174 C196,174 202,162 196,156" fill="none" stroke={colors.stroke} strokeWidth="4" strokeLinecap="round" />
+            <path d="M168,180 C186,180 190,164 180,162 C172,160 174,174 186,174 C196,174 202,162 196,156" fill="none" stroke={partColors?.tail || colors.stroke} strokeWidth="4" strokeLinecap="round" className="cursor-pointer" onClick={(e) => handleSvgPartClick(e, 'tail', 'paw')} />
           ) : isAquatic ? (
             <motion.path
               d="M165,184 C196,188 214,170 218,150 C202,156 196,166 196,170 C206,174 212,184 214,196 C198,194 182,188 165,184 Z"
-              fill={colors.dark}
+              fill={colors.tail}
               stroke={colors.stroke}
               strokeWidth="2.5"
+              className="cursor-pointer"
+              onClick={(e) => handleSvgPartClick(e, 'tail', 'paw')}
               animate={prefersReducedMotion ? undefined : { rotate: [-6, 6, -6] }}
               transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
               style={{ originX: '165px', originY: '184px' }}
@@ -592,14 +641,16 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
             <path
               d="M158,194 C202,202 216,172 192,160 C176,152 178,136 194,134"
               fill="none"
-              stroke={colors.mid}
+              stroke={colors.tail}
               strokeWidth="16"
               strokeLinecap="round"
+              className="cursor-pointer"
+              onClick={(e) => handleSvgPartClick(e, 'tail', 'paw')}
             />
           ) : petType === 'bee' ? (
-            <g opacity="0.92">
-              <ellipse cx="52" cy="136" rx="26" ry="15" transform="rotate(-24 52 136)" fill="#e0f2fe" stroke="#38bdf8" strokeWidth="2.5" />
-              <ellipse cx="188" cy="136" rx="26" ry="15" transform="rotate(24 188 136)" fill="#e0f2fe" stroke="#38bdf8" strokeWidth="2.5" />
+            <g opacity="0.92" className="cursor-pointer" onClick={(e) => handleSvgPartClick(e, 'tail', 'paw')}>
+              <ellipse cx="52" cy="136" rx="26" ry="15" transform="rotate(-24 52 136)" fill={partColors?.tail || '#e0f2fe'} stroke="#38bdf8" strokeWidth="2.5" />
+              <ellipse cx="188" cy="136" rx="26" ry="15" transform="rotate(24 188 136)" fill={partColors?.tail || '#e0f2fe'} stroke="#38bdf8" strokeWidth="2.5" />
             </g>
           ) : null}
 
@@ -636,66 +687,66 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
 
           {/* EARS / HORNS / DORSAL FIN / ANTENNAE (Behind Head Circle) */}
           {(petType === 'cat' || petType === 'tiger') && (
-            <g className="cursor-pointer" onClick={() => onPetPart('head')}>
-              <path d="M56,92 L48,36 Q48,28 58,34 L96,62 Z" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" strokeLinejoin="round" />
-              <path d="M60,82 L55,46 L86,65 Z" fill={colors.earInner} />
-              <path d="M184,92 L192,36 Q192,28 182,34 L144,62 Z" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" strokeLinejoin="round" />
-              <path d="M180,82 L185,46 L154,65 Z" fill={colors.earInner} />
+            <g className="cursor-pointer">
+              <path d="M56,92 L48,36 Q48,28 58,34 L96,62 Z" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" strokeLinejoin="round" onClick={(e) => handleSvgPartClick(e, 'ears', 'head')} />
+              <path d="M60,82 L55,46 L86,65 Z" fill={colors.earInner} onClick={(e) => handleSvgPartClick(e, 'earInner', 'head')} />
+              <path d="M184,92 L192,36 Q192,28 182,34 L144,62 Z" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" strokeLinejoin="round" onClick={(e) => handleSvgPartClick(e, 'ears', 'head')} />
+              <path d="M180,82 L185,46 L154,65 Z" fill={colors.earInner} onClick={(e) => handleSvgPartClick(e, 'earInner', 'head')} />
             </g>
           )}
 
           {petType === 'fox' && (
-            <g className="cursor-pointer" onClick={() => onPetPart('head')}>
-              <path d="M52,92 L40,26 Q42,18 52,25 L98,60 Z" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" strokeLinejoin="round" />
-              <path d="M56,82 L49,38 L86,62 Z" fill={colors.earInner} />
-              <path d="M188,92 L200,26 Q198,18 188,25 L142,60 Z" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" strokeLinejoin="round" />
-              <path d="M184,82 L191,38 L154,62 Z" fill={colors.earInner} />
+            <g className="cursor-pointer">
+              <path d="M52,92 L40,26 Q42,18 52,25 L98,60 Z" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" strokeLinejoin="round" onClick={(e) => handleSvgPartClick(e, 'ears', 'head')} />
+              <path d="M56,82 L49,38 L86,62 Z" fill={colors.earInner} onClick={(e) => handleSvgPartClick(e, 'earInner', 'head')} />
+              <path d="M188,92 L200,26 Q198,18 188,25 L142,60 Z" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" strokeLinejoin="round" onClick={(e) => handleSvgPartClick(e, 'ears', 'head')} />
+              <path d="M184,82 L191,38 L154,62 Z" fill={colors.earInner} onClick={(e) => handleSvgPartClick(e, 'earInner', 'head')} />
             </g>
           )}
 
           {petType === 'bunny' && (
-            <g className="cursor-pointer" onClick={() => onPetPart('head')}>
-              <ellipse cx="82" cy="40" rx="16" ry="44" transform="rotate(-12 82 40)" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" />
-              <ellipse cx="83" cy="42" rx="9" ry="34" transform="rotate(-12 83 42)" fill={colors.earInner} />
-              <ellipse cx="158" cy="40" rx="16" ry="44" transform="rotate(12 158 40)" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" />
-              <ellipse cx="157" cy="42" rx="9" ry="34" transform="rotate(12 157 42)" fill={colors.earInner} />
+            <g className="cursor-pointer">
+              <ellipse cx="82" cy="40" rx="16" ry="44" transform="rotate(-12 82 40)" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" onClick={(e) => handleSvgPartClick(e, 'ears', 'head')} />
+              <ellipse cx="83" cy="42" rx="9" ry="34" transform="rotate(-12 83 42)" fill={colors.earInner} onClick={(e) => handleSvgPartClick(e, 'earInner', 'head')} />
+              <ellipse cx="158" cy="40" rx="16" ry="44" transform="rotate(12 158 40)" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" onClick={(e) => handleSvgPartClick(e, 'ears', 'head')} />
+              <ellipse cx="157" cy="42" rx="9" ry="34" transform="rotate(12 157 42)" fill={colors.earInner} onClick={(e) => handleSvgPartClick(e, 'earInner', 'head')} />
             </g>
           )}
 
           {petType === 'dog' && (
-            <g className="cursor-pointer" onClick={() => onPetPart('head')}>
+            <g className="cursor-pointer" onClick={(e) => handleSvgPartClick(e, 'ears', 'head')}>
               <ellipse cx="52" cy="108" rx="18" ry="38" transform="rotate(18 52 108)" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" />
               <ellipse cx="188" cy="108" rx="18" ry="38" transform="rotate(-18 188 108)" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" />
             </g>
           )}
 
           {petType === 'pig' && (
-            <g className="cursor-pointer" onClick={() => onPetPart('head')}>
+            <g className="cursor-pointer" onClick={(e) => handleSvgPartClick(e, 'ears', 'head')}>
               <path d="M56,74 C44,44 64,34 86,58 Z" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" />
               <path d="M184,74 C196,44 176,34 154,58 Z" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" />
             </g>
           )}
 
           {(petType === 'panda' || petType === 'bear' || petType === 'hamster' || petType === 'lion' || petType === 'hedgehog') && (
-            <g className="cursor-pointer" onClick={() => onPetPart('head')}>
-              <circle cx="68" cy="60" r="21" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" />
-              <circle cx="69" cy="61" r="11" fill={colors.earInner} />
-              <circle cx="172" cy="60" r="21" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" />
-              <circle cx="171" cy="61" r="11" fill={colors.earInner} />
+            <g className="cursor-pointer">
+              <circle cx="68" cy="60" r="21" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" onClick={(e) => handleSvgPartClick(e, 'ears', 'head')} />
+              <circle cx="69" cy="61" r="11" fill={colors.earInner} onClick={(e) => handleSvgPartClick(e, 'earInner', 'head')} />
+              <circle cx="172" cy="60" r="21" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" onClick={(e) => handleSvgPartClick(e, 'ears', 'head')} />
+              <circle cx="171" cy="61" r="11" fill={colors.earInner} onClick={(e) => handleSvgPartClick(e, 'earInner', 'head')} />
             </g>
           )}
 
           {(petType === 'koala' || petType === 'mouse') && (
-            <g className="cursor-pointer" onClick={() => onPetPart('head')}>
-              <circle cx="54" cy="70" r="29" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" />
-              <circle cx="56" cy="72" r="18" fill={colors.earInner} />
-              <circle cx="186" cy="70" r="29" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" />
-              <circle cx="184" cy="72" r="18" fill={colors.earInner} />
+            <g className="cursor-pointer">
+              <circle cx="54" cy="70" r="29" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" onClick={(e) => handleSvgPartClick(e, 'ears', 'head')} />
+              <circle cx="56" cy="72" r="18" fill={colors.earInner} onClick={(e) => handleSvgPartClick(e, 'earInner', 'head')} />
+              <circle cx="186" cy="70" r="29" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" onClick={(e) => handleSvgPartClick(e, 'ears', 'head')} />
+              <circle cx="184" cy="72" r="18" fill={colors.earInner} onClick={(e) => handleSvgPartClick(e, 'earInner', 'head')} />
             </g>
           )}
 
           {(petType === 'shark' || petType === 'dolphin') && (
-            <g className="cursor-pointer" onClick={() => onPetPart('head')}>
+            <g className="cursor-pointer" onClick={(e) => handleSvgPartClick(e, 'ears', 'head')}>
               <path
                 d="M116,18 C134,28 138,48 136,60 L98,60 C100,42 104,26 116,18 Z"
                 fill={colors.earOuter}
@@ -714,24 +765,24 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
           )}
 
           {petType === 'bee' && (
-            <g>
+            <g className="cursor-pointer" onClick={(e) => handleSvgPartClick(e, 'ears', 'head')}>
               <path d="M100,52 Q88,26 76,30" stroke="#292524" strokeWidth="3.5" fill="none" strokeLinecap="round" />
-              <circle cx="75" cy="30" r="6" fill="#fde047" stroke="#713f12" strokeWidth="2" />
+              <circle cx="75" cy="30" r="6" fill={colors.earOuter} stroke="#713f12" strokeWidth="2" />
               <path d="M140,52 Q152,26 164,30" stroke="#292524" strokeWidth="3.5" fill="none" strokeLinecap="round" />
-              <circle cx="165" cy="30" r="6" fill="#fde047" stroke="#713f12" strokeWidth="2" />
+              <circle cx="165" cy="30" r="6" fill={colors.earOuter} stroke="#713f12" strokeWidth="2" />
             </g>
           )}
 
           {petType === 'frog' && (
-            <g className="cursor-pointer" onClick={() => onPetPart('head')}>
-              <circle cx="88" cy="64" r="22" fill={colors.mid} stroke={colors.stroke} strokeWidth="2.5" />
-              <circle cx="152" cy="64" r="22" fill={colors.mid} stroke={colors.stroke} strokeWidth="2.5" />
+            <g className="cursor-pointer" onClick={(e) => handleSvgPartClick(e, 'ears', 'head')}>
+              <circle cx="88" cy="64" r="22" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" />
+              <circle cx="152" cy="64" r="22" fill={colors.earOuter} stroke={colors.stroke} strokeWidth="2.5" />
             </g>
           )}
 
           {petType === 'parrot' && (
-            <g className="cursor-pointer" onClick={() => onPetPart('head')}>
-              <path d="M114,48 C104,26 118,22 124,42 C132,20 144,28 130,48 Z" fill="#facc15" stroke="#ca8a04" strokeWidth="2" />
+            <g className="cursor-pointer" onClick={(e) => handleSvgPartClick(e, 'ears', 'head')}>
+              <path d="M114,48 C104,26 118,22 124,42 C132,20 144,28 130,48 Z" fill={colors.earOuter} stroke="#ca8a04" strokeWidth="2" />
             </g>
           )}
 
@@ -745,7 +796,7 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
             stroke={colors.stroke}
             strokeWidth="2.5"
             className="cursor-pointer"
-            onClick={() => onPetPart('belly')}
+            onClick={(e) => handleSvgPartClick(e, 'body', 'belly')}
           />
 
           {/* Soft Belly Patch */}
@@ -757,7 +808,7 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
             fill={colors.belly}
             opacity="0.92"
             className="cursor-pointer"
-            onClick={() => onPetPart('belly')}
+            onClick={(e) => handleSvgPartClick(e, 'belly', 'belly')}
           />
 
           {/* Bee / Tiger Belly Stripes */}
@@ -819,20 +870,20 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
 
           {/* SIDE ARMS / FLIPPERS / FINS */}
           {isAquatic ? (
-            <>
-              <ellipse cx="62" cy="170" rx="18" ry="10" transform="rotate(-25 62 170)" fill={colors.dark} stroke={colors.stroke} strokeWidth="2.2" />
-              <ellipse cx="178" cy="170" rx="18" ry="10" transform="rotate(25 178 170)" fill={colors.dark} stroke={colors.stroke} strokeWidth="2.2" />
-            </>
+            <g className="cursor-pointer" onClick={(e) => handleSvgPartClick(e, 'paws', 'paw')}>
+              <ellipse cx="62" cy="170" rx="18" ry="10" transform="rotate(-25 62 170)" fill={colors.arms} stroke={colors.stroke} strokeWidth="2.2" />
+              <ellipse cx="178" cy="170" rx="18" ry="10" transform="rotate(25 178 170)" fill={colors.arms} stroke={colors.stroke} strokeWidth="2.2" />
+            </g>
           ) : petType === 'penguin' || petType === 'parrot' ? (
-            <>
-              <ellipse cx="64" cy="166" rx="14" ry="28" transform="rotate(20 64 166)" fill={colors.dark} stroke={colors.stroke} strokeWidth="2.2" />
-              <ellipse cx="176" cy="166" rx="14" ry="28" transform="rotate(-20 176 166)" fill={colors.dark} stroke={colors.stroke} strokeWidth="2.2" />
-            </>
+            <g className="cursor-pointer" onClick={(e) => handleSvgPartClick(e, 'paws', 'paw')}>
+              <ellipse cx="64" cy="166" rx="14" ry="28" transform="rotate(20 64 166)" fill={colors.arms} stroke={colors.stroke} strokeWidth="2.2" />
+              <ellipse cx="176" cy="166" rx="14" ry="28" transform="rotate(-20 176 166)" fill={colors.arms} stroke={colors.stroke} strokeWidth="2.2" />
+            </g>
           ) : petType !== 'snake' ? (
-            <>
-              <ellipse cx="68" cy="165" rx="13" ry="20" transform="rotate(22 68 165)" fill={outfitId ? '#a855f7' : colors.mid} stroke={colors.stroke} strokeWidth="2.2" />
-              <ellipse cx="172" cy="165" rx="13" ry="20" transform="rotate(-22 172 165)" fill={outfitId ? '#a855f7' : colors.mid} stroke={colors.stroke} strokeWidth="2.2" />
-            </>
+            <g className="cursor-pointer" onClick={(e) => handleSvgPartClick(e, 'paws', 'paw')}>
+              <ellipse cx="68" cy="165" rx="13" ry="20" transform="rotate(22 68 165)" fill={outfitId ? '#a855f7' : colors.arms} stroke={colors.stroke} strokeWidth="2.2" />
+              <ellipse cx="172" cy="165" rx="13" ry="20" transform="rotate(-22 172 165)" fill={outfitId ? '#a855f7' : colors.arms} stroke={colors.stroke} strokeWidth="2.2" />
+            </g>
           ) : null}
 
           {/* HEAD SPHERE WITH GLOSSY HIGHLIGHT */}
@@ -845,7 +896,7 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
             stroke={colors.stroke}
             strokeWidth="2.5"
             className="cursor-pointer"
-            onClick={() => onPetPart('head')}
+            onClick={(e) => handleSvgPartClick(e, 'head', 'head')}
           />
 
           {/* Top Glossy Shine */}
@@ -896,8 +947,8 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
           )}
 
           {/* ROSY BLUSH CHEEKS */}
-          <ellipse cx="78" cy="120" rx="11" ry="6.5" fill={colors.cheeks} opacity="0.58" className="pointer-events-none" />
-          <ellipse cx="162" cy="120" rx="11" ry="6.5" fill={colors.cheeks} opacity="0.58" className="pointer-events-none" />
+          <ellipse cx="78" cy="120" rx="11" ry="6.5" fill={colors.cheeks} opacity="0.68" className="cursor-pointer" onClick={(e) => handleSvgPartClick(e, 'cheeks', 'head')} />
+          <ellipse cx="162" cy="120" rx="11" ry="6.5" fill={colors.cheeks} opacity="0.68" className="cursor-pointer" onClick={(e) => handleSvgPartClick(e, 'cheeks', 'head')} />
 
           {/* EXPRESSIVE POU / TALKING TOM EYES */}
           {isSleeping ? (
@@ -983,21 +1034,61 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
 
           {/* MUZZLE / SNOUT / BEAK / NOSE + MOUTH */}
           {petType === 'pig' ? (
-            <g onClick={onNoseClick} className="cursor-pointer">
-              <ellipse cx="120" cy="122" rx="19" ry="13" fill="#f472b6" stroke="#be185d" strokeWidth="2" />
+            <g
+              onClick={(e) => {
+                if (paintMode && onPaintPart) {
+                  e.stopPropagation();
+                  onPaintPart('nose');
+                } else {
+                  onNoseClick(e);
+                }
+              }}
+              className="cursor-pointer"
+            >
+              <ellipse cx="120" cy="122" rx="19" ry="13" fill={partColors?.nose || '#f472b6'} stroke="#be185d" strokeWidth="2" />
               <ellipse cx="113" cy="122" rx="3.5" ry="5" fill="#831843" />
               <ellipse cx="127" cy="122" rx="3.5" ry="5" fill="#831843" />
             </g>
           ) : isBeakSpecies ? (
-            <g onClick={onNoseClick} className="cursor-pointer">
-              <polygon points="120,128 106,112 134,112" fill="#f59e0b" stroke="#b45309" strokeWidth="2" strokeLinejoin="round" />
+            <g
+              onClick={(e) => {
+                if (paintMode && onPaintPart) {
+                  e.stopPropagation();
+                  onPaintPart('nose');
+                } else {
+                  onNoseClick(e);
+                }
+              }}
+              className="cursor-pointer"
+            >
+              <polygon points="120,128 106,112 134,112" fill={partColors?.nose || '#f59e0b'} stroke="#b45309" strokeWidth="2" strokeLinejoin="round" />
             </g>
           ) : petType === 'koala' ? (
-            <g onClick={onNoseClick} className="cursor-pointer">
+            <g
+              onClick={(e) => {
+                if (paintMode && onPaintPart) {
+                  e.stopPropagation();
+                  onPaintPart('nose');
+                } else {
+                  onNoseClick(e);
+                }
+              }}
+              className="cursor-pointer"
+            >
               <ellipse cx="120" cy="116" rx="11" ry="15" fill={colors.nose} />
             </g>
           ) : (
-            <g onClick={onNoseClick} className="cursor-pointer">
+            <g
+              onClick={(e) => {
+                if (paintMode && onPaintPart) {
+                  e.stopPropagation();
+                  onPaintPart('nose');
+                } else {
+                  onNoseClick(e);
+                }
+              }}
+              className="cursor-pointer"
+            >
               {/* Soft muzzle pad for dogs/bears/lions/cats */}
               {(petType === 'dog' || petType === 'bear' || petType === 'lion' || petType === 'tiger' || petType === 'bunny') && (
                 <ellipse cx="120" cy="125" rx="22" ry="14" fill="#ffffff" fillOpacity="0.72" />
@@ -1045,11 +1136,11 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
 
           {/* BOTTOM PAWS (Touch target) */}
           {!isLegless && (
-            <g className="cursor-pointer" onClick={() => onPetPart('paw')}>
-              <ellipse cx="88" cy="208" rx="17" ry="12" fill={colors.belly} stroke={colors.stroke} strokeWidth="2.5" />
+            <g className="cursor-pointer" onClick={(e) => handleSvgPartClick(e, 'paws', 'paw')}>
+              <ellipse cx="88" cy="208" rx="17" ry="12" fill={colors.paws} stroke={colors.stroke} strokeWidth="2.5" />
               <circle cx="83" cy="208" r="3" fill={colors.cheeks} opacity="0.55" />
               <circle cx="93" cy="208" r="3" fill={colors.cheeks} opacity="0.55" />
-              <ellipse cx="152" cy="208" rx="17" ry="12" fill={colors.belly} stroke={colors.stroke} strokeWidth="2.5" />
+              <ellipse cx="152" cy="208" rx="17" ry="12" fill={colors.paws} stroke={colors.stroke} strokeWidth="2.5" />
               <circle cx="147" cy="208" r="3" fill={colors.cheeks} opacity="0.55" />
               <circle cx="157" cy="208" r="3" fill={colors.cheeks} opacity="0.55" />
             </g>

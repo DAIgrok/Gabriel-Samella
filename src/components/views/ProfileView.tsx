@@ -69,15 +69,16 @@ export const ProfileView: React.FC = () => {
 
         {/* Real Couple Photo Avatar */}
         <div className="relative my-2">
-          <div className="w-28 h-28 rounded-full p-1 bg-gradient-to-tr from-purple-600 via-pink-500 to-rose-400 shadow-[0_0_30px_rgba(244,114,182,0.45)]">
-            <img
-              src={getCouplePhotoUrl(photos, 2, REAL_PHOTO_SLOTS.profileAvatar)}
-              alt="Gabriel e Samella"
-              className="w-full h-full object-cover rounded-full"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = '/assets/img/1.jpg';
-              }}
-            />
+          <div className="w-28 h-28 rounded-full p-1 bg-gradient-to-tr from-purple-600 via-pink-500 to-rose-400 shadow-[0_0_30px_rgba(244,114,182,0.45)] flex items-center justify-center bg-[#180830]">
+            {getCouplePhotoUrl(photos, 0) ? (
+              <img
+                src={getCouplePhotoUrl(photos, 0)}
+                alt="Gabriel e Samella"
+                className="w-full h-full object-cover rounded-full"
+              />
+            ) : (
+              <Heart className="w-11 h-11 text-pink-200 fill-pink-400/50 animate-pulse" />
+            )}
           </div>
           <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-pink-500 border-2 border-[#0e051c] flex items-center justify-center shadow-md">
             <Heart className="w-4 h-4 text-white fill-white" />
@@ -250,31 +251,30 @@ export const ProfileView: React.FC = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-4 gap-2">
-          {REAL_PHOTO_SLOTS.homeMemories.map((fallbackSrc, idx) => {
-            const photoItem = photos[idx];
-            const src = getCouplePhotoUrl(photos, idx, fallbackSrc);
-            return (
+        {photos.length > 0 ? (
+          <div className="grid grid-cols-4 gap-2">
+            {photos.slice(0, 4).map((photoItem) => (
               <div
-                key={idx}
+                key={photoItem.id}
                 onClick={() => {
-                  if (photoItem) setSelectedPhoto(photoItem);
+                  setSelectedPhoto(photoItem);
                   setExtendedView('fotos');
                 }}
                 className="aspect-square rounded-2xl overflow-hidden border border-purple-500/30 bg-purple-950/40 cursor-pointer hover:scale-105 transition-transform"
               >
                 <img
-                  src={src}
-                  alt={photoItem?.title || `Memória ${idx + 1}`}
+                  src={photoItem.url}
+                  alt="Foto do casal"
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = `/assets/img/${idx + 1}.jpg`;
-                  }}
                 />
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-purple-200/70 text-center py-3">
+            Nenhuma foto enviada ainda. Adicione fotos reais na Galeria ♡
+          </p>
+        )}
       </div>
 
       {/* 5. Security Lock Control */}
