@@ -19,6 +19,7 @@ import {
   ShoppingBag,
   Sofa,
   Square,
+  Triangle,
   Sparkles,
   Utensils,
 } from 'lucide-react';
@@ -94,8 +95,9 @@ export const DreamHouseView: React.FC = () => {
   } = useApp();
 
   const stageRef = useRef<HTMLDivElement>(null);
-  const [dockTab, setDockTab] = useState<'moveis' | 'paredes' | 'pisos' | 'tetos' | 'construcao'>('construcao');
+  const [dockTab, setDockTab] = useState<'moveis' | 'paredes' | 'pisos' | 'telhados' | 'construcao'>('construcao');
   const [showCeiling, setShowCeiling] = useState(false);
+  const [roofStyle, setRoofStyle] = useState<'flat' | 'gable'>('gable');
   const [catFilter, setCatFilter] = useState<'all' | HouseFurnitureCategory>('all');
   const [skyMode, setSkyMode] = useState<DreamHouseSkyMode>('auto');
   const [viewMode, setViewMode] = useState<'interior' | 'exterior'>('interior');
@@ -228,6 +230,7 @@ export const DreamHouseView: React.FC = () => {
             wallHeight={dreamHouse.wallHeight ?? 2.75}
             customWalls={dreamHouse.customWalls || []}
             showCeiling={showCeiling}
+            roofStyle={roofStyle}
             furnitureColors={dreamHouse.customColors}
             skyMode={skyMode}
             viewMode={viewMode}
@@ -585,7 +588,7 @@ export const DreamHouseView: React.FC = () => {
                 { id: 'moveis' as const, label: 'Móveis', icon: Sofa },
                 { id: 'paredes' as const, label: 'Paredes', icon: Palette },
                 { id: 'pisos' as const, label: 'Pisos', icon: Palette },
-                { id: 'tetos' as const, label: 'Teto', icon: Palette },
+                { id: 'telhados' as const, label: 'Telhados', icon: Triangle },
                 { id: 'construcao' as const, label: 'Construir', icon: Move },
               ].map((t) => {
                 const Icon = t.icon;
@@ -863,35 +866,61 @@ export const DreamHouseView: React.FC = () => {
               </div>
             )}
 
-            {dockTab === 'tetos' && (
+            {dockTab === 'telhados' && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-purple-950/55 border border-pink-400/30">
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-white">Visualização do teto</p>
-                    <p className="text-[11px] text-purple-200/75">Ative para conferir o acabamento superior do cômodo</p>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={isSpectator}
-                    onClick={() => setShowCeiling((visible) => !visible)}
-                    className={`min-h-[38px] px-3 rounded-xl border text-xs font-bold disabled:opacity-45 ${showCeiling ? 'bg-pink-500/25 border-pink-400 text-white' : 'bg-purple-900/70 border-purple-500/30 text-purple-200'}`}
-                  >
-                    {showCeiling ? 'Teto visível' : 'Mostrar teto'}
-                  </button>
-                </div>
-                <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-purple-950/55 border border-pink-400/30">
+                <div className="rounded-2xl border border-purple-400/20 bg-gradient-to-br from-[#24103f] to-[#160b2d] p-4 space-y-3">
                   <div>
-                    <p className="text-xs font-bold text-white">Cor do teto</p>
-                    <p className="text-[11px] text-purple-200/75">Personalização livre, salva junto da casa</p>
+                    <p className="text-sm font-bold text-white">Formato do telhado</p>
+                    <p className="text-[11px] text-purple-200/70">Escolha a cobertura e visualize o acabamento superior do ambiente 3D.</p>
                   </div>
-                  <input
-                    type="color"
-                    disabled={isSpectator}
-                    value={dreamHouse.customCeilingHex || '#eee7f5'}
-                    onChange={(e) => setHouseCustomCeilingHex(e.target.value)}
-                    className="w-10 h-10 rounded-xl border border-white/25 bg-transparent cursor-pointer disabled:opacity-45"
-                    aria-label="Escolher cor do teto"
-                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      disabled={isSpectator}
+                      onClick={() => setRoofStyle('gable')}
+                      className={`min-h-[78px] rounded-2xl border p-3 flex flex-col items-center justify-center gap-2 transition disabled:opacity-40 ${roofStyle === 'gable' ? 'bg-pink-500/20 border-pink-300 text-white' : 'bg-purple-950/55 border-purple-400/20 text-purple-200'}`}
+                    >
+                      <Triangle className="w-6 h-6" />
+                      <span className="text-xs font-bold">Duas águas</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isSpectator}
+                      onClick={() => setRoofStyle('flat')}
+                      className={`min-h-[78px] rounded-2xl border p-3 flex flex-col items-center justify-center gap-2 transition disabled:opacity-40 ${roofStyle === 'flat' ? 'bg-pink-500/20 border-pink-300 text-white' : 'bg-purple-950/55 border-purple-400/20 text-purple-200'}`}
+                    >
+                      <Square className="w-6 h-6" />
+                      <span className="text-xs font-bold">Plano</span>
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-purple-400/20 bg-black/15 p-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-white">Visualização da cobertura</p>
+                      <p className="text-[11px] text-purple-200/70">Mostra ou oculta o telhado no ambiente</p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isSpectator}
+                      onClick={() => setShowCeiling((visible) => !visible)}
+                      className={`min-h-[38px] px-3 rounded-xl border text-xs font-bold disabled:opacity-45 ${showCeiling ? 'bg-pink-500/25 border-pink-400 text-white' : 'bg-purple-900/70 border-purple-500/30 text-purple-200'}`}
+                    >
+                      {showCeiling ? 'Visível' : 'Mostrar'}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-purple-400/20 bg-black/15 p-3">
+                    <div>
+                      <p className="text-xs font-bold text-white">Cor da cobertura</p>
+                      <p className="text-[11px] text-purple-200/70">Personalização livre</p>
+                    </div>
+                    <input
+                      type="color"
+                      disabled={isSpectator}
+                      value={dreamHouse.customCeilingHex || '#eee7f5'}
+                      onChange={(e) => setHouseCustomCeilingHex(e.target.value)}
+                      className="w-10 h-10 rounded-xl border border-white/25 bg-transparent cursor-pointer disabled:opacity-45"
+                      aria-label="Escolher cor do telhado"
+                    />
+                  </div>
                 </div>
               </div>
             )}
