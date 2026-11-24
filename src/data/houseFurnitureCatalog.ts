@@ -616,6 +616,7 @@ export const INITIAL_DREAM_HOUSE: DreamHouseState = {
   unlockedRooms: ['sala'],
   wallTheme: 'lavender',
   floorTheme: 'wood',
+  roofStyle: 'gable',
   customWallHex: '#3b1c6d',
   customFloorHex: '#5c3419',
   footprintWidth: 6.4,
