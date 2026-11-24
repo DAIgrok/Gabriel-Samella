@@ -391,6 +391,14 @@ export interface HouseFurnitureTransform {
   rotY: number;
 }
 
+export interface HouseConstructionWall {
+  id: string;
+  start: { x: number; z: number };
+  end: { x: number; z: number };
+  height: number;
+  thickness: number;
+}
+
 export interface DreamHouseState {
   activeRoom: HouseRoomId;
   unlockedRooms?: HouseRoomId[];
@@ -402,6 +410,7 @@ export interface DreamHouseState {
   footprintWidth?: number;
   footprintDepth?: number;
   wallHeight?: number;
+  customWalls?: HouseConstructionWall[];
   customColors?: Record<string, string>;
   lightsOn: boolean;
   fireplaceLit: boolean;
