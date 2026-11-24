@@ -320,8 +320,16 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
       const puffsPerCluster = isSoftwareGl ? 15 : 28;
       const totalInstances = clusters.length * puffsPerCluster;
 
-      const puffGeo = new THREE.SphereGeometry(0.35, 16, 12);
-      puffGeo.scale(1.24, 0.78, 1.18);
+      const puffGeo = new THREE.SphereGeometry(0.35, 20, 16);
+      const puffPositions = puffGeo.attributes.position;
+      for (let v = 0; v < puffPositions.count; v++) {
+        const x = puffPositions.getX(v);
+        const y = puffPositions.getY(v);
+        const z = puffPositions.getZ(v);
+        const ripple = 1 + Math.sin(x * 17 + z * 11) * 0.045 + Math.cos(y * 19 - z * 7) * 0.035;
+        puffPositions.setXYZ(v, x * ripple * 1.08, y * ripple * 0.78, z * ripple * 1.08);
+      }
+      puffGeo.computeVertexNormals();
 
       const puffMat = new THREE.MeshStandardMaterial({
         color: 0xffffff,
@@ -415,6 +423,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
     const rebuildTree = () => {
       const {
         level: curLevel,
+        seasonalEvent: season,
         hasSakuraTheme: sakura,
         hasGoldenApples: golden,
         hasFairyLights: lights,
@@ -446,9 +455,9 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
 
       // Smooth Cozy Stylized Cinnamon-Violet Bark with glowing Leyline Spirit Veins shader
       const barkMat = new THREE.MeshStandardMaterial({
-        color: 0x5c374c,
-        roughness: 0.68,
-        metalness: 0.03,
+        color: 0x59432e,
+        roughness: 0.88,
+        metalness: 0.01,
       });
       barkMat.onBeforeCompile = (shader) => {
         shader.uniforms.uTime = shaderUniforms.uTime;
@@ -468,22 +477,26 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
           #include <emissivemap_fragment>
           float veinWave = sin(vWorldBarkPos.y * 7.5 - uTime * 1.9 + sin(vWorldBarkPos.x * 12.0) * 1.8);
           float veinMask = smoothstep(0.86, 0.99, veinWave);
-          totalEmissiveRadiance += vec3(0.94, 0.45, 0.76) * veinMask * 0.65;
+          totalEmissiveRadiance += vec3(0.58, 0.43, 0.22) * veinMask * 0.14;
           `
         );
       };
 
       const isCelestialMax = curLevel >= 10 && !sakura;
-      const showSakura = sakura || curLevel >= 5;
+      const showSakura = sakura || season === 'namorados';
 
-      const paletteHex = sakura || showSakura
-        ? [0xf472b6, 0xfbcfe8, 0xf9a8d4, 0xe879f9, 0xfdf2f8]
+      const paletteHex = season === 'halloween'
+        ? [0x783b25, 0xa34d28, 0xc47735, 0xd6a34d, 0x4d5b35]
+        : season === 'natal'
+        ? [0x174b31, 0x276342, 0x3d7b4b, 0xd6b56d, 0xf2dca3]
+        : showSakura
+        ? [0xc66b91, 0xe7a6b8, 0xf2c8d2, 0x9f668c, 0xf5dce4]
         : isCelestialMax
-        ? [0x5eead4, 0x7dd3fc, 0xc4b5fd, 0x6ee7b7]
-        : [0x4ade80, 0x86efac, 0x34d399, 0xf9a8d4];
+        ? [0x527d4c, 0x799b57, 0xa3b56a, 0xd6b56d]
+        : [0x1f5b36, 0x2f7444, 0x4f8b50, 0x7ba65c, 0x9bb36b];
 
-      const canopyEmissiveHex = isCelestialMax ? 0x0f766e : showSakura ? 0xbe185d : 0x047857;
-      const canopyEmissiveStr = showSakura || isCelestialMax ? 0.34 : 0.22;
+      const canopyEmissiveHex = season === 'natal' ? 0xd6b56d : showSakura ? 0x7c3152 : 0x21452c;
+      const canopyEmissiveStr = showSakura ? 0.12 : season === 'natal' ? 0.16 : 0.035;
 
       if (curLevel <= 1) {
         // --- STAGE 1: LUMINOUS SACRED SPROUT ---
@@ -636,6 +649,17 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
           );
         }
 
+        if (season === 'halloween') {
+          branchSpecs.push(
+            { pts: [[-0.12, 1.35, 0.02], [-0.72, 1.72, 0.38], [-1.08, 2.12, 0.68]], r0: 0.095, r1: 0.03 },
+            { pts: [[0.1, 1.55, -0.02], [0.7, 1.86, -0.34], [1.12, 2.2, -0.62]], r0: 0.09, r1: 0.03 }
+          );
+        } else if (season === 'natal') {
+          branchSpecs.push(
+            { pts: [[-0.1, 1.82, 0.02], [-0.36, 2.58, 0.12], [-0.52, 3.34, 0.18]], r0: 0.09, r1: 0.025 },
+            { pts: [[0.12, 1.78, -0.02], [0.38, 2.55, -0.1], [0.58, 3.32, -0.16]], r0: 0.09, r1: 0.025 }
+          );
+        }
         branchSpecs.forEach((b) => {
           createTaperedBranch(
             b.pts.map(([px, py, pz]) => new THREE.Vector3(px * growth, py * growth, pz * growth)),
@@ -676,6 +700,13 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
           [0.6, 3.44, -0.62, 0.84],
         ];
 
+        if (season === 'halloween') {
+          canopyNodes.push([-1.72, 2.18, 0.35, 0.72], [1.78, 2.12, -0.28, 0.7], [0.02, 2.58, 1.0, 0.68]);
+        } else if (season === 'natal') {
+          canopyNodes.push([-0.42, 3.7, 0.18, 0.68], [0.44, 3.72, -0.16, 0.68], [0.0, 4.38, 0.0, 0.58]);
+        } else if (season === 'namorados') {
+          canopyNodes.push([-1.9, 2.8, 0.1, 0.68], [1.92, 2.78, -0.12, 0.68], [0.0, 4.36, 0.0, 0.66]);
+        }
         if (curLevel >= 4) {
           canopyNodes.push(
             [-1.36, 3.1, -0.82, 0.78],
@@ -1104,10 +1135,6 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
           a.sprite.scale.set(a.baseScale * pulse, a.baseScale * 0.85 * pulse, 1);
         }
 
-        // Rune ring subtle glow pulse
-        runeRingMat.emissiveIntensity = 1.2 + Math.sin(t * 2.1) * 0.35;
-        innerRuneMat.emissiveIntensity = 0.95 + Math.cos(t * 2.4) * 0.3;
-
         // Ribbons fluttering
         for (let i = 0; i < ribbonRefs.length; i++) {
           ribbonRefs[i].mesh.rotation.y = Math.sin(t * 2.4 + ribbonRefs[i].phase) * 0.1;
@@ -1263,6 +1290,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
     rebuildFnRef.current?.();
   }, [
     level,
+    seasonalEvent,
     hasSakuraTheme,
     hasGoldenApples,
     hasFairyLights,
