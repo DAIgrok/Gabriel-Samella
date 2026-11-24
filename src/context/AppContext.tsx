@@ -3651,6 +3651,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       },
       height: Math.max(2.2, Math.min(4.5, Math.round(wall.height * 4) / 4)),
       thickness: Math.max(0.08, Math.min(0.5, wall.thickness)),
+      openings: (wall.openings || []).slice(0, 6).map((opening) => {
+        const length = Math.hypot(wall.end.x - wall.start.x, wall.end.z - wall.start.z);
+        const safeWidth = Math.max(0.4, Math.min(length - 0.1, opening.width));
+        const safeHeight = Math.max(0.4, Math.min(wall.height - 0.1, opening.height));
+        const safeSill = Math.max(0, Math.min(wall.height - safeHeight, opening.sillHeight ?? 0));
+        return {
+          ...opening,
+          width: safeWidth,
+          height: safeHeight,
+          sillHeight: safeSill,
+          offset: Math.max(0, Math.min(length - safeWidth, opening.offset)),
+        };
+      }),
     }));
     setDreamHouse((prev) => ({ ...prev, customWalls: safeWalls }));
   };
