@@ -394,6 +394,7 @@ export interface HouseFurnitureTransform {
 export interface DreamHouseState {
   activeRoom: HouseRoomId;
   unlockedRooms?: HouseRoomId[];
+  plotSize?: number;
   wallTheme: HouseWallTheme;
   floorTheme: HouseFloorTheme;
   customWallHex?: string;
