@@ -2310,7 +2310,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
             height: buildWallHeight,
             thickness: 0.14,
             openings: [
-              { id: `${room}-window`, kind: 'window', offset: 3.575, width: 1.55, height: 1.24, sillHeight: 0.94 },
+              { id: `${room}-window`, kind: 'window', offset: buildWidth - 2.825, width: 1.55, height: 1.24, sillHeight: 0.94 },
             ],
           },
           wallMat
@@ -2358,7 +2358,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
           new RoundedBoxGeometry(1.55, 1.24, 0.09, 3, 0.03),
           new THREE.MeshStandardMaterial({ color: 0xfff5fa, roughness: 0.58 })
         );
-        winFrame.position.set(1.15, 1.56, -2.56);
+        winFrame.position.set(buildWidth / 2 - 2.05, 1.56, -buildDepth / 2 + 0.09);
         const winGlassColor =
           skyPhase === 'day'
             ? 0x7dd3fc
