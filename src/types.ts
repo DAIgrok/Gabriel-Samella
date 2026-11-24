@@ -393,6 +393,7 @@ export interface HouseFurnitureTransform {
 
 export interface HouseConstructionWall {
   id: string;
+  roomId?: HouseRoomId;
   start: { x: number; z: number };
   end: { x: number; z: number };
   height: number;
