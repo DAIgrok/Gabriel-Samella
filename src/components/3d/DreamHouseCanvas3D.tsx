@@ -181,6 +181,7 @@ interface DreamHouseCanvas3DProps {
   wallHeight?: number;
   customWalls?: HouseConstructionWall[];
   showCeiling?: boolean;
+  roofStyle?: 'flat' | 'gable';
   furnitureColors?: Record<string, string>;
   skyMode?: DreamHouseSkyMode;
   viewMode?: 'interior' | 'exterior';
@@ -1737,6 +1738,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
   wallHeight = 2.75,
   customWalls = [],
   showCeiling = false,
+  roofStyle = 'gable',
   furnitureColors,
   skyMode = 'auto',
   viewMode = 'interior',
@@ -1779,6 +1781,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     wallHeight,
     customWalls,
     showCeiling,
+    roofStyle,
     furnitureColors,
     skyMode,
     viewMode,
@@ -1817,6 +1820,8 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     footprintDepth,
     wallHeight,
     customWalls,
+    showCeiling,
+    roofStyle,
     furnitureColors,
     skyMode,
     viewMode,
@@ -2206,6 +2211,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
         customCeilingHex: cCeilingHex,
         customWalls: savedCustomWalls,
         showCeiling: ceilingVisible,
+        roofStyle: currentRoofStyle,
         furnitureColors: fColors,
         skyMode: sMode,
         lightsOn: lOn,
@@ -2294,18 +2300,47 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
       floorMesh.userData = { constructionElement: 'floor', width: buildWidth, depth: buildDepth };
       roomGroup.add(floorMesh);
 
-      const ceilingMesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(buildWidth, buildDepth),
-        new THREE.MeshStandardMaterial({
-          color: cCeilingHex || '#eee7f5',
-          roughness: 0.86,
-          side: THREE.DoubleSide,
-        })
-      );
-      ceilingMesh.rotation.x = -Math.PI / 2;
-      ceilingMesh.position.y = buildWallHeight + 0.25;
-      ceilingMesh.visible = Boolean(ceilingVisible);
-      roomGroup.add(ceilingMesh);
+      const roofMaterial = new THREE.MeshStandardMaterial({
+        color: cCeilingHex || '#eee7f5',
+        roughness: 0.86,
+        side: THREE.DoubleSide,
+      });
+      const roofGroup = new THREE.Group();
+      roofGroup.name = 'house-roof-preview';
+      if (currentRoofStyle === 'gable') {
+        const slope = 0.42;
+        const rise = (buildWidth / 4) * Math.tan(slope);
+        const panelWidth = Math.hypot(buildWidth / 2, rise);
+        const leftRoof = new THREE.Mesh(
+          new THREE.BoxGeometry(panelWidth + 0.22, 0.16, buildDepth + 0.34),
+          roofMaterial
+        );
+        leftRoof.position.set(-buildWidth / 4, buildWallHeight + rise / 2, 0);
+        leftRoof.rotation.z = slope;
+        leftRoof.castShadow = true;
+        leftRoof.receiveShadow = true;
+        const rightRoof = new THREE.Mesh(
+          new THREE.BoxGeometry(panelWidth + 0.22, 0.16, buildDepth + 0.34),
+          roofMaterial
+        );
+        rightRoof.position.set(buildWidth / 4, buildWallHeight + rise / 2, 0);
+        rightRoof.rotation.z = -slope;
+        rightRoof.castShadow = true;
+        rightRoof.receiveShadow = true;
+        roofGroup.add(leftRoof, rightRoof);
+      } else {
+        const flatRoof = new THREE.Mesh(
+          new THREE.BoxGeometry(buildWidth + 0.28, 0.16, buildDepth + 0.34),
+          roofMaterial
+        );
+        flatRoof.position.y = buildWallHeight + 0.25;
+        flatRoof.castShadow = true;
+        flatRoof.receiveShadow = true;
+        roofGroup.add(flatRoof);
+      }
+      roofGroup.visible = Boolean(ceilingVisible);
+      roofGroup.userData = { constructionElement: 'roof', roofStyle: currentRoofStyle };
+      roomGroup.add(roofGroup);
 
       const wallMat = new THREE.MeshStandardMaterial({
         map: wallTex,
@@ -3179,6 +3214,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     customFloorHex,
     customCeilingHex,
     showCeiling,
+    roofStyle,
     colorsKey,
     skyMode,
     viewMode,
