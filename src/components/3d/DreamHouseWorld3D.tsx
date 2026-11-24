@@ -184,16 +184,31 @@ export const DreamHouseWorld3D: React.FC<DreamHouseWorld3DProps> = ({
         branch.rotation.x = Math.sin(angle) * 0.62;
         tree.add(branch);
       }
-      for (let l = 0; l < 13; l++) {
+      // Natural crown: branching twigs first, then varied leaf clusters rather than identical cartoon balls.
+      const twigMat = new THREE.MeshStandardMaterial({ color: 0x684b35, roughness: 0.98 });
+      for (let b = 0; b < 9; b++) {
+        const angle = b * 2.399 + seed * 0.17;
+        const start = new THREE.Vector3(Math.cos(angle) * 0.12, 1.25 + (b % 3) * 0.22, Math.sin(angle) * 0.12);
+        const end = new THREE.Vector3(Math.cos(angle) * (0.62 + deterministic(seed + b) * 0.28), 2.25 + deterministic(seed + b * 2) * 0.85, Math.sin(angle) * (0.62 + deterministic(seed + b * 3) * 0.28));
+        const direction = new THREE.Vector3().subVectors(end, start);
+        const twig = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.045, direction.length(), 6), twigMat);
+        twig.position.copy(start).add(end).multiplyScalar(0.5);
+        twig.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+        twig.castShadow = true;
+        tree.add(twig);
+      }
+      for (let l = 0; l < 30; l++) {
         const angle = l * 2.399 + seed;
-        const crown = new THREE.Mesh(
-          new THREE.IcosahedronGeometry(0.48 + deterministic(seed + l) * 0.22, 1),
+        const spread = 0.42 + deterministic(seed + l) * 0.62;
+        const leaf = new THREE.Mesh(
+          new THREE.SphereGeometry(0.22 + deterministic(seed + l * 7) * 0.12, 9, 7),
           leafMats[l % leafMats.length]
         );
-        crown.position.set(Math.cos(angle) * (0.38 + deterministic(l + seed) * 0.42), 2.05 + deterministic(l + seed * 2) * 0.95, Math.sin(angle) * (0.34 + deterministic(l + seed * 3) * 0.42));
-        crown.scale.set(1.12, 0.72 + deterministic(l + 5) * 0.35, 0.92);
-        crown.castShadow = true;
-        tree.add(crown);
+        leaf.position.set(Math.cos(angle) * spread, 2.0 + deterministic(l + seed * 2) * 1.1, Math.sin(angle) * spread);
+        leaf.scale.set(0.72 + deterministic(l + 11) * 0.4, 0.38 + deterministic(l + 17) * 0.3, 0.48 + deterministic(l + 23) * 0.32);
+        leaf.rotation.set((deterministic(l + 31) - 0.5) * 0.8, angle, (deterministic(l + 37) - 0.5) * 0.9);
+        leaf.castShadow = true;
+        tree.add(leaf);
       }
       landscape.add(tree);
     };
