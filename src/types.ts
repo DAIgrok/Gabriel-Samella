@@ -399,6 +399,9 @@ export interface DreamHouseState {
   customWallHex?: string;
   customFloorHex?: string;
   customCeilingHex?: string;
+  footprintWidth?: number;
+  footprintDepth?: number;
+  wallHeight?: number;
   customColors?: Record<string, string>;
   lightsOn: boolean;
   fireplaceLit: boolean;
