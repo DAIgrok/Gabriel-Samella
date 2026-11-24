@@ -1185,7 +1185,6 @@ export const INITIAL_STORE_ITEMS: StoreItem[] = [
 
   // --- Enfeites da Árvore do Amor ---
   { id: 'item-tree-fairy-lights', title: 'Luzes de Fada Douradas', description: 'Cordão de microlâmpadas cintilantes que iluminam os galhos à noite.', price: 20, icon: 'sparkles', category: 'arvore', purchased: false, slotType: 'tree' },
-  { id: 'item-tree-sakura', title: 'Copa de Cerejeira Sakura', description: 'Transforma toda a folhagem da árvore em flores cor-de-rosa encantadas.', price: 28, icon: 'flower', category: 'arvore', purchased: false, slotType: 'tree' },
   { id: 'item-tree-golden-apples', title: 'Maçãs Douradas do Amor', description: 'Frutos sagrados reluzentes que nascem entre os galhos da árvore.', price: 24, icon: 'star', category: 'arvore', purchased: false, slotType: 'tree' },
   { id: 'item-tree-swing', title: 'Balanço Romântico nos Galhos', description: 'Um balanço de madeira e flores pendurado suavemente no galho principal.', price: 26, icon: 'tree', category: 'arvore', purchased: false, slotType: 'tree' },
   { id: 'item-tree-lanterns', title: 'Lanternas Mágicas Flutuantes', description: 'Lanternas quentes douradas penduradas iluminando a copa em 360°.', price: 22, icon: 'lamp', category: 'arvore', purchased: false, slotType: 'tree' },
@@ -1195,14 +1194,8 @@ export const INITIAL_STORE_ITEMS: StoreItem[] = [
   { id: 'item-tree-promise-ribbon', title: 'Fita Dourada de Promessas', description: 'Enfeita os galhos da árvore com fitas luminosas de eternidade.', price: 14, icon: 'award', category: 'arvore', purchased: false, slotType: 'tree' },
 
   // --- Molduras das Fotos ---
-  { id: 'item-frame-polaroid', title: 'Moldura Polaroid Romântica', description: 'Efeito clássico de foto instantânea com legenda manuscrita.', price: 16, icon: 'camera', category: 'molduras', purchased: false, slotType: 'frame' },
-  { id: 'item-frame-golden-glamour', title: 'Moldura de Ouro Puro & Brilho', description: 'Bordas douradas reluzentes para destacar os momentos mais valiosos.', price: 28, icon: 'image', category: 'molduras', purchased: false, slotType: 'frame' },
-  { id: 'item-frame-neon-glow', title: 'Moldura Neon Lilás & Rosa', description: 'Aura futurista de luz neon pulsante ao redor das memórias.', price: 20, icon: 'heart', category: 'molduras', purchased: false, slotType: 'frame' },
 
   // --- Temas & Efeitos Visuais ---
-  { id: 'item-theme-aurora', title: 'Tema Aurora Boreal Encantada', description: 'Glow mágico verde-esmeralda e lilás iluminando todo o aplicativo.', price: 32, icon: 'moon', category: 'temas', purchased: false, slotType: 'theme' },
-  { id: 'item-effect-meteor-shower', title: 'Chuva de Meteoros do Amor', description: 'Estrelas cadentes cruzando o céu noturno da tela inicial.', price: 28, icon: 'star', category: 'efeitos', purchased: false },
-  { id: 'item-effect-sakura-petals', title: 'Pétalas de Sakura Flutuantes', description: 'Chuva suave de pétalas cor-de-rosa caindo lentamente pela tela.', price: 24, icon: 'flower', category: 'efeitos', purchased: false },
 
   // --- Casa dos Sonhos 3D (Catálogo Completo & Categorizado) ---
   ...HOUSE_STORE_ITEMS,
@@ -1215,9 +1208,6 @@ export const INITIAL_STORE_ITEMS: StoreItem[] = [
   { id: 'item-aqua-crystal', title: 'Cristal Atlante Luminoso', description: 'Aglomerado de cristais azuis e magenta que brilha sob a água.', price: 24, icon: 'diamond', category: 'aquario', purchased: false, slotType: 'aquarium-decor', targetId: 'crystal' },
 
   // --- Trajes Sazonais Exclusivos para Mascotes ---
-  { id: 'item-pet-santa-hat', title: 'Gorro de Papai Noel do Pet', description: 'Gorrinho vermelho fofo com pompom branco de Natal para seu mascote.', price: 16, icon: 'snow', category: 'sazonal', purchased: false, slotType: 'hat' },
-  { id: 'item-pet-witch-hat', title: 'Chapéu Encantado de Halloween', description: 'Chapéu pontudo roxo com fivela dourada para noites de outubro.', price: 16, icon: 'pumpkin', category: 'sazonal', purchased: false, slotType: 'hat' },
-  { id: 'item-pet-valentine-rose', title: 'Rosa Encantada dos Namorados', description: 'Uma rosa carmesim brilhante que flutua ao lado do mascote.', price: 18, icon: 'flower', category: 'sazonal', purchased: false, slotType: 'accessory' },
 ];
 
 // Initial Virtual Pet State (Zeroed progress; user chooses pet name & custom colors)
