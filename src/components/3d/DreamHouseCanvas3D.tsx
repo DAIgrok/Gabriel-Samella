@@ -2060,6 +2060,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     }
 
     const furnitureRootMap = new Map<string, { group: THREE.Group; baseY: number }>();
+    let petObstacleRects: { minX: number; maxX: number; minZ: number; maxZ: number }[] = [];
     let emberMeshes: THREE.Mesh[] = [];
     let glowMeshes: THREE.Mesh[] = [];
     let flameLights: THREE.PointLight[] = [];
@@ -2131,6 +2132,33 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
       } else {
         selectionRing.visible = false;
       }
+    };
+
+    const canPetOccupy = (x: number, z: number, radius = 0.34) => {
+      return !petObstacleRects.some((box) =>
+        x + radius > box.minX &&
+        x - radius < box.maxX &&
+        z + radius > box.minZ &&
+        z - radius < box.maxZ
+      );
+    };
+
+    const movePetSafely = (pet: RoamingPetInstance, stepX: number, stepZ: number) => {
+      const nextX = pet.root.position.x + stepX;
+      const nextZ = pet.root.position.z + stepZ;
+      if (canPetOccupy(nextX, nextZ)) {
+        pet.root.position.set(nextX, pet.root.position.y, nextZ);
+        return true;
+      }
+      if (Math.abs(stepX) > 0.0001 && canPetOccupy(nextX, pet.root.position.z)) {
+        pet.root.position.x = nextX;
+        return true;
+      }
+      if (Math.abs(stepZ) > 0.0001 && canPetOccupy(pet.root.position.x, nextZ)) {
+        pet.root.position.z = nextZ;
+        return true;
+      }
+      return false;
     };
 
     const rebuildRoom = () => {
@@ -2474,6 +2502,22 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
             .catch(() => {
               // Keep Cozy procedural furniture on invalid GLB URL
             });
+        }
+      });
+
+      // Cache de colisões do mobiliário: os pets contornam móveis em vez de atravessá-los.
+      syncTransformsAndOverlay();
+      petObstacleRects = [];
+      furnitureRootMap.forEach(({ group }) => {
+        group.updateMatrixWorld(true);
+        const bounds = new THREE.Box3().setFromObject(group);
+        if (Number.isFinite(bounds.min.x) && Number.isFinite(bounds.max.x)) {
+          petObstacleRects.push({
+            minX: bounds.min.x - 0.08,
+            maxX: bounds.max.x + 0.08,
+            minZ: bounds.min.z - 0.08,
+            maxZ: bounds.max.z + 0.08,
+          });
         }
       });
 
@@ -2825,8 +2869,12 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
             if (dist > 0.12) {
               slot.aiMode = 'walk';
               const step = Math.min(dist, pet.speed * 1.15 * dt);
-              pet.root.position.x += (dx / dist) * step;
-              pet.root.position.z += (dz / dist) * step;
+              const moved = movePetSafely(pet, (dx / dist) * step, (dz / dist) * step);
+              if (!moved) {
+                pet.targetX = pet.root.position.x;
+                pet.targetZ = pet.root.position.z;
+                slot.aiTimer = 0.35;
+              }
               pet.root.rotation.y = Math.atan2(dx, dz);
               pet.walkPhase += dt * 11;
               pet.legs.forEach((leg, li) => {
@@ -2872,8 +2920,12 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
             const dist = Math.hypot(dx, dz);
             if (dist > 0.1) {
               const step = Math.min(dist, pet.speed * dt);
-              pet.root.position.x += (dx / dist) * step;
-              pet.root.position.z += (dz / dist) * step;
+              const moved = movePetSafely(pet, (dx / dist) * step, (dz / dist) * step);
+              if (!moved) {
+                pet.targetX = pet.root.position.x;
+                pet.targetZ = pet.root.position.z;
+                slot.aiTimer = 0.35;
+              }
               pet.root.rotation.y = Math.atan2(dx, dz);
               pet.walkPhase += dt * 9.5;
               pet.legs.forEach((leg, li) => {
