@@ -430,3 +430,49 @@ body {
   outline: 2px solid rgba(214,181,109,.88);
   outline-offset: 3px;
 }
+
+
+/* Acabamento premium: superfícies, controles e palco do mascote. */
+.nm-app-shell {
+  color-scheme: dark;
+}
+.nm-app-shell :is(input, textarea, select) {
+  accent-color: var(--nm-gold);
+}
+.nm-app-shell :is(input:not([type="color"]), textarea, select) {
+  border-color: rgba(147, 165, 219, .24);
+}
+.nm-app-shell :is(input, textarea, select):focus {
+  border-color: rgba(214, 181, 109, .68) !important;
+  box-shadow: 0 0 0 3px rgba(214, 181, 109, .12) !important;
+}
+.nm-app-shell :is(.rounded-2xl, .rounded-3xl, .rounded-\[26px\]) {
+  -webkit-backdrop-filter: saturate(1.08);
+}
+.nm-app-shell .login-card {
+  border-color: rgba(214, 181, 109, .3);
+  background: linear-gradient(150deg, rgba(20, 34, 68, .92), rgba(10, 15, 35, .96));
+}
+.nm-app-shell .login-screen-shell {
+  background:
+    radial-gradient(ellipse at 50% 10%, rgba(96, 165, 250, .18), transparent 46%),
+    #071126;
+}
+.nm-app-shell .login-backdrop-shade {
+  background:
+    linear-gradient(180deg, rgba(7, 17, 38, .38), rgba(7, 17, 38, .84)),
+    radial-gradient(ellipse at center, rgba(7, 17, 38, .12), rgba(7, 17, 38, .82));
+}
+.nm-app-shell ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(96, 165, 250, .55), rgba(167, 139, 250, .55));
+  border: 2px solid rgba(7, 17, 38, .8);
+  border-radius: 999px;
+}
+.nm-app-shell ::-webkit-scrollbar-track {
+  background: rgba(7, 17, 38, .42);
+}
+.nm-app-shell model-viewer {
+  --poster-color: transparent;
+  --progress-bar-color: #d6b56d;
+  --progress-mask: #0b1730;
+}
