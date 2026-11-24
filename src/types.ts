@@ -418,6 +418,7 @@ export interface DreamHouseState {
   customWallHex?: string;
   customFloorHex?: string;
   customCeilingHex?: string;
+  roofStyle?: 'flat' | 'gable';
   footprintWidth?: number;
   footprintDepth?: number;
   wallHeight?: number;
