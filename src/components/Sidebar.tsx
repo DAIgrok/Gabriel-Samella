@@ -26,14 +26,14 @@ export const Sidebar: React.FC = () => {
   const navItems: { id: ExtendedView; label: string; icon: React.ElementType }[] = [
     { id: 'inicio', label: 'Início', icon: Home },
     { id: 'conversas', label: 'Chat', icon: MessageCircle },
-    { id: 'casa', label: 'Casa 3D', icon: DreamHouseCrestIcon },
+    { id: 'casa', label: 'Casa', icon: DreamHouseCrestIcon },
     { id: 'aquario', label: 'Aquário', icon: AquariumCoralIcon },
-    { id: 'gatinho', label: 'Meu Pet', icon: Cat },
-    { id: 'arvore', label: 'Nossa Árvore', icon: Trees },
+    { id: 'gatinho', label: 'Pet', icon: Cat },
+    { id: 'arvore', label: 'Árvore', icon: Trees },
     { id: 'missoes', label: 'Missões', icon: MissionCompassIcon },
     { id: 'loja', label: 'Loja', icon: ShoppingBag },
     { id: 'cartas', label: 'Cartas', icon: Mail },
-    { id: 'jogos', label: '25 Jogos', icon: Gamepad2 },
+    { id: 'jogos', label: 'Jogos', icon: Gamepad2 },
     { id: 'metas', label: 'Desejos', icon: Target },
     { id: 'calendario', label: 'Calendário', icon: CalendarDays },
     { id: 'conquistas', label: 'Conquistas', icon: Trophy },
@@ -85,7 +85,7 @@ export const Sidebar: React.FC = () => {
                   {unreadChatCount > 9 ? '9+' : unreadChatCount}
                 </span>
               )}
-              <span className="text-[10px] font-medium leading-tight text-center">
+              <span className="font-romantic text-[12px] font-semibold tracking-wide leading-tight text-center">
                 {item.label}
               </span>
             </button>
