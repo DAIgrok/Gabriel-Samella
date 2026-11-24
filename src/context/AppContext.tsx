@@ -374,6 +374,7 @@ interface AppContextType {
   // Dream House 3D
   setHouseRoom: (room: HouseRoomId) => void;
   unlockHouseRoom: (room: HouseRoomId) => boolean;
+  expandHousePlot: () => boolean;
   setHouseWallTheme: (theme: HouseWallTheme) => void;
   setHouseFloorTheme: (theme: HouseFloorTheme) => void;
   setHouseCustomWallHex: (hex: string) => void;
