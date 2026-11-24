@@ -10,6 +10,7 @@ export const LoginScreen: React.FC = () => {
   const [passcode, setPasscode] = useState('');
   const [error, setError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const coverPhoto = getCouplePhotoUrl(photos, 0);
 
   const handleUnlock = (overridePass?: string) => {
     const input = (overridePass !== undefined ? overridePass : passcode).trim();
@@ -46,7 +47,7 @@ export const LoginScreen: React.FC = () => {
       const next = passcode + num;
       setPasscode(next);
       // Hidden creator spectator code triggers silently at 4 digits; regular PIN triggers at 6 digits
-      if (next === '2010' || next.length === 6) {
+      if ((config.creatorPasscode && next === config.creatorPasscode) || next.length === 6) {
         handleUnlock(next);
       }
     }
@@ -62,8 +63,14 @@ export const LoginScreen: React.FC = () => {
   return (
     <div
       id="login-screen"
-      className="fixed inset-0 z-40 flex items-center justify-center px-4 py-8 select-none bg-[#080214] overflow-y-auto"
+      className="login-screen-shell fixed inset-0 z-40 flex items-center justify-center px-4 py-8 select-none bg-[#080214] overflow-y-auto"
     >
+      {coverPhoto && (
+        <div className="login-backdrop" aria-hidden="true">
+          <img src={coverPhoto} alt="" />
+        </div>
+      )}
+      <div className="login-backdrop-shade" aria-hidden="true" />
       {/* Background romantic glow */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-purple-600/20 blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-pink-600/15 blur-3xl pointer-events-none" />
@@ -72,7 +79,7 @@ export const LoginScreen: React.FC = () => {
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.6, ease: 'easeOut' }}
-        className="w-full max-w-sm glass-card-glow rounded-3xl p-6 md:p-8 text-center border border-purple-400/25 relative z-10 my-auto shadow-[0_20px_60px_rgba(0,0,0,0.7)]"
+        className="login-card w-full max-w-sm glass-card-glow rounded-3xl p-6 md:p-8 text-center border border-purple-400/25 relative z-10 my-auto shadow-[0_20px_60px_rgba(0,0,0,0.7)]"
       >
         {/* Real Couple Portrait or Glowing Heart Badge */}
         <div className="relative mx-auto w-20 h-20 mb-4">
@@ -96,7 +103,8 @@ export const LoginScreen: React.FC = () => {
         <h1 className="font-romantic text-4xl text-pink-200 neon-title-glow mb-1">
           Nosso Mundo <span className="text-pink-400">♡</span>
         </h1>
-        <p className="text-xs text-purple-300/80 mb-6">
+        <p className="text-[10px] uppercase tracking-[0.28em] text-pink-300/75 mb-2">Um universo só nosso</p>
+        <p className="text-xs text-purple-200/85 mb-6">
           Bem-vinda, minha princesa <strong className="text-pink-300">{config.partnerName}</strong>
         </p>
 
