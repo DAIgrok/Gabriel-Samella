@@ -317,19 +317,17 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
       emissiveHex: number,
       emissiveStrength: number
     ) => {
-      const puffsPerCluster = isSoftwareGl ? 22 : 42;
+      // Folhas individuais com silhueta lanceolada: substitui os antigos volumes ovais
+      // por lâminas pequenas, sobrepostas e orientadas em várias direções.
+      const puffsPerCluster = isSoftwareGl ? 36 : 64;
       const totalInstances = clusters.length * puffsPerCluster;
 
-      const puffGeo = new THREE.SphereGeometry(0.13, 12, 8);
-      puffGeo.scale(1.72, 0.48, 0.82);
-      const puffPositions = puffGeo.attributes.position;
-      for (let v = 0; v < puffPositions.count; v++) {
-        const x = puffPositions.getX(v);
-        const y = puffPositions.getY(v);
-        const z = puffPositions.getZ(v);
-        const ripple = 1 + Math.sin(x * 17 + z * 11) * 0.025 + Math.cos(y * 19 - z * 7) * 0.02;
-        puffPositions.setXYZ(v, x * ripple, y * ripple, z * ripple);
-      }
+      const leafShape = new THREE.Shape();
+      leafShape.moveTo(0, 0);
+      leafShape.quadraticCurveTo(0.075, 0.075, 0.018, 0.205);
+      leafShape.quadraticCurveTo(-0.012, 0.16, -0.045, 0.105);
+      leafShape.quadraticCurveTo(-0.075, 0.045, 0, 0);
+      const puffGeo = new THREE.ShapeGeometry(leafShape, 8);
       puffGeo.computeVertexNormals();
 
       const puffMat = new THREE.MeshStandardMaterial({
@@ -387,8 +385,11 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
             cz * growth + Math.sin(phi) * Math.sin(theta) * dist * 1.2
           );
           dummy.rotation.set(nextRand() * 1.4, nextRand() * Math.PI * 2, nextRand() * 1.4);
-          const puffScale = (0.62 + nextRand() * 0.48) * (0.88 + scaledR * 0.12);
-          dummy.scale.set(puffScale, puffScale * 0.9, puffScale * (0.78 + nextRand() * 0.22));
+          const puffScale = (0.72 + nextRand() * 0.72) * (0.88 + scaledR * 0.12);
+          dummy.scale.set(puffScale, puffScale, 0.72 + nextRand() * 0.45);
+          // Cada folha aponta para fora do ramo, com variação orgânica de inclinação.
+          dummy.rotation.x += (nextRand() - 0.5) * 0.9;
+          dummy.rotation.z += (nextRand() - 0.5) * 1.25;
           dummy.updateMatrix();
 
           instMesh.setMatrixAt(idx, dummy.matrix);
