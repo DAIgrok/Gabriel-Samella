@@ -454,14 +454,14 @@ export const KittenView: React.FC = () => {
     }
     switch (currentRoom) {
       case 'cozinha':
-        return 'from-[#281238] via-[#1c0b2e] to-[#120620] border-amber-400/25';
+        return 'from-[#17264c] via-[#111d3d] to-[#0b1730] border-amber-300/30';
       case 'banheiro':
-        return 'from-[#10223b] via-[#121638] to-[#0d0720] border-cyan-400/25';
+        return 'from-[#102a43] via-[#151d40] to-[#0b1730] border-sky-300/30';
       case 'quarto':
-        return 'from-[#1d0e3b] via-[#14082c] to-[#0a041a] border-indigo-400/30';
+        return 'from-[#1c1948] via-[#101936] to-[#0b1730] border-violet-300/30';
       case 'sala':
       default:
-        return 'from-[#2a0e42] via-[#1a082b] to-[#10041c] border-pink-400/25';
+        return 'from-[#142a4b] via-[#171c43] to-[#0b1730] border-sky-300/25';
     }
   };
 
