@@ -458,12 +458,17 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
       const puffsPerCluster = isSoftwareGl ? 28 : 44;
       const totalInstances = clusters.length * puffsPerCluster;
 
-      const leafShape = new THREE.Shape();
-      leafShape.moveTo(0, 0);
-      leafShape.quadraticCurveTo(0.075, 0.075, 0.018, 0.205);
-      leafShape.quadraticCurveTo(-0.012, 0.16, -0.045, 0.105);
-      leafShape.quadraticCurveTo(-0.075, 0.045, 0, 0);
-      const puffGeo = new THREE.ShapeGeometry(leafShape, 8);
+      // Geometria volumétrica: cada folha é uma malha fechada, afilada na ponta,
+      // com espessura real para receber luz e sombra de diferentes ângulos.
+      const puffGeo = new THREE.SphereGeometry(0.12, 12, 8);
+      const leafPositions = puffGeo.attributes.position;
+      for (let vertex = 0; vertex < leafPositions.count; vertex++) {
+        const x = leafPositions.getX(vertex);
+        const y = leafPositions.getY(vertex);
+        const z = leafPositions.getZ(vertex);
+        const taper = 1 - 0.68 * ((y + 1) * 0.5);
+        leafPositions.setXYZ(vertex, x * taper * 0.92, y * 1.75, z * 0.34);
+      }
       puffGeo.computeVertexNormals();
 
       const puffMat = new THREE.MeshStandardMaterial({
@@ -472,7 +477,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
         emissiveIntensity: emissiveStrength,
         roughness: 0.58,
         metalness: 0.02,
-        side: THREE.DoubleSide,
+        side: THREE.FrontSide,
       });
 
       puffMat.onBeforeCompile = (shader) => {
