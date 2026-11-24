@@ -497,30 +497,19 @@ export const DreamHouseView: React.FC = () => {
       {/* Unified Bottom Control Dock */}
       <div className="glass-card-glow rounded-3xl border border-purple-500/25 overflow-hidden">
         <div className="p-3 sm:p-4 border-b border-purple-500/15 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-            {ROOMS.map((r) => {
-              const isUnlocked = unlockedRooms.includes(r.id);
-              const price = HOUSE_ROOM_PRICES[r.id] ?? 30;
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-[10px] uppercase tracking-[0.16em] text-purple-300/70 font-bold shrink-0">Ambiente</span>
+            {unlockedRooms.map((roomId) => {
+              const room = ROOMS.find((entry) => entry.id === roomId);
+              if (!room) return null;
               return (
                 <button
-                  key={r.id}
+                  key={room.id}
                   type="button"
-                  onClick={() => {
-                    if (isUnlocked) setHouseRoom(r.id);
-                    else unlockHouseRoom(r.id);
-                  }}
-                  className={`min-h-[40px] px-3.5 rounded-2xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
-                    currentRoom === r.id
-                      ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-md'
-                      : isUnlocked
-                      ? 'bg-purple-950/60 border border-purple-500/25 text-purple-200 hover:text-white'
-                      : 'bg-amber-500/15 border border-amber-400/35 text-amber-200 hover:bg-amber-500/25'
-                  }`}
-                  title={isUnlocked ? `Ir para ${r.label}` : `Desbloquear ${r.label} por ${price} diamantes`}
+                  onClick={() => setHouseRoom(room.id)}
+                  className={`min-h-[38px] px-4 rounded-xl text-xs font-bold transition shrink-0 ${currentRoom === room.id ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-md' : 'bg-purple-950/60 border border-purple-500/25 text-purple-200 hover:text-white'}`}
                 >
-                  {!isUnlocked && <Lock className="w-3 h-3 shrink-0" />}
-                  <span>{r.label}</span>
-                  {!isUnlocked && <span className="text-[10px] opacity-90">{price}◆</span>}
+                  {room.label}
                 </button>
               );
             })}
