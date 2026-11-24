@@ -91,6 +91,41 @@ function createCausticsTexture(): THREE.CanvasTexture {
   return tex;
 }
 
+function createFishScaleTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 256, 256);
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth = 1.15;
+    for (let row = 0; row < 12; row++) {
+      const offset = row % 2 ? 10 : 0;
+      for (let col = -1; col < 13; col++) {
+        const x = col * 21 + offset;
+        const y = row * 22 + 8;
+        ctx.beginPath();
+        ctx.arc(x, y, 13, 0.12, Math.PI - 0.12);
+        ctx.stroke();
+      }
+    }
+    const sheen = ctx.createLinearGradient(0, 0, 0, 256);
+    sheen.addColorStop(0, 'rgba(255,255,255,0.20)');
+    sheen.addColorStop(0.48, 'rgba(255,255,255,0.02)');
+    sheen.addColorStop(1, 'rgba(0,0,0,0.12)');
+    ctx.fillStyle = sheen;
+    ctx.fillRect(0, 0, 256, 256);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1.5, 1);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
 function buildFishMesh(fishId: string): {
   group: THREE.Group;
   tailObj: THREE.Object3D;
@@ -105,8 +140,9 @@ function buildFishMesh(fishId: string): {
 
   const mainMat = new THREE.MeshStandardMaterial({
     color: spec.colorHex,
-    roughness: 0.55,
-    metalness: 0.05,
+    map: createFishScaleTexture(),
+    roughness: 0.48,
+    metalness: 0.04,
   });
   const accMat = new THREE.MeshStandardMaterial({
     color: spec.accentHex,
