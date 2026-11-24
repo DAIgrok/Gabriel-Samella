@@ -375,6 +375,7 @@ interface AppContextType {
   setHouseRoom: (room: HouseRoomId) => void;
   unlockHouseRoom: (room: HouseRoomId) => boolean;
   expandHousePlot: () => boolean;
+  setHouseRoomTransform: (room: HouseRoomId, transform: HouseFurnitureTransform) => void;
   setHouseWallTheme: (theme: HouseWallTheme) => void;
   setHouseFloorTheme: (theme: HouseFloorTheme) => void;
   setHouseCustomWallHex: (hex: string) => void;
@@ -3558,6 +3559,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showToast('Terreno ampliado! Agora há mais espaço para construir.', 'house');
     return true;
   };
+  const setHouseRoomTransform = (room: HouseRoomId, transform: HouseFurnitureTransform) => {
+    if (guardSpectator()) return;
+    setDreamHouse((prev) => ({
+      ...prev,
+      roomTransforms: { ...(prev.roomTransforms || {}), [room]: transform },
+    }));
+  };
   const setHouseRoom = (room: HouseRoomId) => {
     const unlocked = dreamHouse.unlockedRooms || ['sala'];
     if (!unlocked.includes(room)) {
@@ -4134,6 +4142,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setHouseRoom,
         unlockHouseRoom,
         expandHousePlot,
+        setHouseRoomTransform,
         setHouseWallTheme,
         setHouseFloorTheme,
         setHouseCustomWallHex,
