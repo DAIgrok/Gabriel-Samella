@@ -59,7 +59,7 @@ const MainAppContent: React.FC = () => {
   }
 
   return (
-    <div className="relative min-h-screen text-slate-100 font-sans selection:bg-pink-500/30 selection:text-pink-200 bg-[#070210] flex overflow-x-hidden">
+    <div className="nm-app-shell relative min-h-screen text-slate-100 font-sans selection:bg-pink-500/30 selection:text-pink-200 bg-[#070210] flex overflow-x-hidden">
       {/* Heart Rain Overlay */}
       <HeartRain />
 
