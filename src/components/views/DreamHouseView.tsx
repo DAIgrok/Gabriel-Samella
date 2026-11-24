@@ -70,6 +70,7 @@ export const DreamHouseView: React.FC = () => {
     activeSeasonalEvent,
     setHouseRoom,
     unlockHouseRoom,
+    expandHousePlot,
     setHouseWallTheme,
     setHouseFloorTheme,
     setHouseCustomWallHex,
@@ -97,6 +98,7 @@ export const DreamHouseView: React.FC = () => {
   const [hudExpanded, setHudExpanded] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedFurnitureId, setSelectedFurnitureId] = useState<string | null>(null);
+  const [isBuildMenuOpen, setIsBuildMenuOpen] = useState(false);
 
   useEffect(() => {
     recordHouseVisit();
@@ -112,7 +114,7 @@ export const DreamHouseView: React.FC = () => {
     catFilter === 'all' ? roomFurniture : roomFurniture.filter((f) => f.category === catFilter);
 
   const roomCategories = Array.from(new Set(roomFurniture.map((f) => f.category)));
-  const roomLabel = ROOMS.find((r) => r.id === currentRoom)?.label || 'Sala';
+  const roomLabel = unlockedRooms.length === 0 ? 'Terreno vazio' : ROOMS.find((r) => r.id === currentRoom)?.label || 'Sala';
 
   const petType = kitten.petType || 'cat';
   const isPetDead = Boolean(kitten.deadPets?.includes(petType));
@@ -207,6 +209,8 @@ export const DreamHouseView: React.FC = () => {
         <div ref={stageRef} className="w-full">
           <DreamHouseCanvas3D
             activeRoom={currentRoom}
+            constructionMode={unlockedRooms.length === 0}
+            plotSize={dreamHouse.plotSize || 12}
             wallTheme={dreamHouse.wallTheme}
             floorTheme={dreamHouse.floorTheme}
             customWallHex={dreamHouse.customWallHex}
@@ -466,36 +470,46 @@ export const DreamHouseView: React.FC = () => {
       {/* Unified Bottom Control Dock */}
       <div className="glass-card-glow rounded-3xl border border-purple-500/25 overflow-hidden">
         <div className="p-3 sm:p-4 border-b border-purple-500/15 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-            {ROOMS.map((r) => {
-              const isUnlocked = unlockedRooms.includes(r.id);
-              const price = HOUSE_ROOM_PRICES[r.id] ?? 30;
+          <div className="flex flex-wrap items-center gap-1.5">
+            {unlockedRooms.map((roomId) => {
+              const room = ROOMS.find((entry) => entry.id === roomId);
+              if (!room) return null;
               return (
                 <button
-                  key={r.id}
+                  key={room.id}
                   type="button"
-                  onClick={() => {
-                    if (isUnlocked) setHouseRoom(r.id);
-                    else unlockHouseRoom(r.id);
-                  }}
-                  className={`min-h-[40px] px-3.5 rounded-2xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
-                    currentRoom === r.id
-                      ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-md'
-                      : isUnlocked
-                      ? 'bg-purple-950/60 border border-purple-500/25 text-purple-200 hover:text-white'
-                      : 'bg-amber-500/15 border border-amber-400/35 text-amber-200 hover:bg-amber-500/25'
-                  }`}
-                  title={isUnlocked ? `Ir para ${r.label}` : `Desbloquear ${r.label} por ${price} diamantes`}
+                  onClick={() => setHouseRoom(room.id)}
+                  className={currentRoom === room.id
+                    ? 'min-h-[40px] px-3.5 rounded-2xl text-xs font-bold bg-gradient-to-r from-sky-600 to-violet-600 text-white shadow-md'
+                    : 'min-h-[40px] px-3.5 rounded-2xl text-xs font-bold bg-[#142440] border border-sky-300/20 text-slate-200'}
                 >
-                  {!isUnlocked && <Lock className="w-3 h-3 shrink-0" />}
-                  <span>{r.label}</span>
-                  {!isUnlocked && <span className="text-[10px] opacity-90">{price}◆</span>}
+                  {room.label}
                 </button>
               );
             })}
+            {!isSpectator && (
+              <button type="button" onClick={() => setIsBuildMenuOpen((open) => !open)} className="min-h-[40px] px-3.5 rounded-2xl text-xs font-bold bg-amber-300/15 border border-amber-200/35 text-amber-100">
+                + Construir
+              </button>
+            )}
+            {isBuildMenuOpen && !isSpectator && (
+              <div className="w-full flex flex-wrap gap-1.5 rounded-2xl bg-[#0b1730] border border-sky-300/15 p-2">
+                {ROOMS.filter((room) => !unlockedRooms.includes(room.id)).map((room) => (
+                  <button key={room.id} type="button" onClick={() => { unlockHouseRoom(room.id); setIsBuildMenuOpen(false); }} className="px-3 py-2 rounded-xl bg-[#172747] border border-sky-300/15 text-slate-100 text-[11px] font-semibold">
+                    {room.label} · {HOUSE_ROOM_PRICES[room.id] ?? 30}◆
+                  </button>
+                ))}
+              </div>
+            )}
+            {unlockedRooms.length === 0 && (
+              <p className="w-full text-[11px] text-slate-300/75">O terreno está vazio. Gire a câmera em 360° e comece a construir quando quiser.</p>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5">
+            <button type="button" disabled={isSpectator || (dreamHouse.plotSize || 12) >= 24} onClick={expandHousePlot} className="min-h-[40px] px-3 rounded-2xl text-xs font-bold border border-amber-200/30 bg-amber-300/10 text-amber-100 disabled:opacity-40">
+              Aumentar terreno · 20◆
+            </button>
             <button
               type="button"
               disabled={isSpectator}
