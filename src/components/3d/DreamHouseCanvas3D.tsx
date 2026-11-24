@@ -169,6 +169,8 @@ const FURNITURE_TARGET_HEIGHTS: Record<string, number> = {
 
 interface DreamHouseCanvas3DProps {
   activeRoom: HouseRoomId;
+  constructionMode?: boolean;
+  plotSize?: number;
   wallTheme: HouseWallTheme;
   floorTheme: HouseFloorTheme;
   customWallHex?: string;
@@ -1716,6 +1718,8 @@ function buildEmbeddedSalaAquarium(
 
 export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
   activeRoom,
+  constructionMode = false,
+  plotSize = 12,
   wallTheme,
   floorTheme,
   customWallHex,
@@ -1749,6 +1753,8 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
 
   const propsRef = useRef({
     activeRoom,
+    constructionMode,
+    plotSize,
     wallTheme,
     floorTheme,
     customWallHex,
@@ -1779,6 +1785,8 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
   });
   propsRef.current = {
     activeRoom,
+    constructionMode,
+    plotSize,
     wallTheme,
     floorTheme,
     customWallHex,
@@ -1976,6 +1984,8 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
 
       const {
         activeRoom: room,
+        constructionMode: isConstructionMode,
+        plotSize: currentPlotSize,
         wallTheme: wTheme,
         floorTheme: fTheme,
         customWallHex: cWallHex,
@@ -2038,6 +2048,64 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
       aquariumFishNodes = [];
       aquariumBubbleNodes = [];
 
+      if (isConstructionMode) {
+        const size = Math.max(10, Math.min(24, currentPlotSize || 12));
+        const ground = new THREE.Mesh(
+          new RoundedBoxGeometry(size, 0.22, size, 5, 0.12),
+          new THREE.MeshStandardMaterial({ color: 0x304a36, roughness: 0.94 })
+        );
+        ground.position.y = -0.16;
+        ground.receiveShadow = true;
+        roomGroup.add(ground);
+        const soil = new THREE.Mesh(
+          new RoundedBoxGeometry(size - 0.7, 0.08, size - 0.7, 4, 0.08),
+          new THREE.MeshStandardMaterial({ color: 0x526b42, roughness: 0.98 })
+        );
+        soil.position.y = -0.025;
+        soil.receiveShadow = true;
+        roomGroup.add(soil);
+        const plotGrid = new THREE.GridHelper(size - 0.9, Math.round(size * 2), 0x8bb5d6, 0x5f8065);
+        plotGrid.position.y = 0.018;
+        const gridMaterials = Array.isArray(plotGrid.material) ? plotGrid.material : [plotGrid.material];
+        gridMaterials.forEach((material) => { material.transparent = true; material.opacity = 0.2; });
+        roomGroup.add(plotGrid);
+        const borderMat = new THREE.MeshStandardMaterial({ color: 0x8c7652, roughness: 0.78 });
+        const half = size / 2 - 0.12;
+        const rails = [
+          { x: 0, z: -half, sx: size, sz: 0.12 },
+          { x: 0, z: half, sx: size, sz: 0.12 },
+          { x: -half, z: 0, sx: 0.12, sz: size },
+          { x: half, z: 0, sx: 0.12, sz: size },
+        ];
+        rails.forEach((rail) => {
+          const mesh = new THREE.Mesh(new THREE.BoxGeometry(rail.sx, 0.16, rail.sz), borderMat);
+          mesh.position.set(rail.x, 0.08, rail.z);
+          mesh.castShadow = true;
+          roomGroup.add(mesh);
+        });
+        const marker = new THREE.Mesh(
+          new THREE.TorusGeometry(0.72, 0.035, 10, 56),
+          new THREE.MeshStandardMaterial({ color: 0xd6b56d, emissive: 0x9a7738, emissiveIntensity: 0.42, metalness: 0.65, roughness: 0.28 })
+        );
+        marker.rotation.x = -Math.PI / 2;
+        marker.position.y = 0.04;
+        roomGroup.add(marker);
+        gridHelper.visible = false;
+        roomLight.intensity = 0.6;
+        hemiLight.intensity = 1.1;
+        keyLight.intensity = 1.4;
+        rimLight.intensity = 0.8;
+        fillLight.intensity = 0.55;
+        camera.position.set(size * 0.58, size * 0.52, size * 0.62);
+        controls.target.set(0, 0.2, 0);
+        controls.update();
+        return;
+      }
+
+      gridHelper.visible = Boolean(propsRef.current.isEditMode);
+      camera.position.set(5.2, 4.4, 5.8);
+      controls.target.set(0, 0.9, 0);
+      controls.update();
       roomLight.intensity = lOn ? 1.45 : 0.45;
       hemiLight.intensity = lOn ? 1.12 : 0.65;
       keyLight.intensity = lOn ? 1.9 : 1.05;
@@ -2717,6 +2785,10 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     rebuildFnRef.current?.();
   }, [
     activeRoom,
+    constructionMode,
+    plotSize,
+    constructionMode,
+    plotSize,
     wallTheme,
     floorTheme,
     customWallHex,
