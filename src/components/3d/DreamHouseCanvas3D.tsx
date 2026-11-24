@@ -175,6 +175,7 @@ interface DreamHouseCanvas3DProps {
   customFloorHex?: string;
   furnitureColors?: Record<string, string>;
   skyMode?: DreamHouseSkyMode;
+  viewMode?: 'interior' | 'exterior';
   lightsOn: boolean;
   fireplaceLit: boolean;
   placedFurnitureIds: string[];
@@ -1722,6 +1723,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
   customFloorHex,
   furnitureColors,
   skyMode = 'auto',
+  viewMode = 'interior',
   lightsOn,
   fireplaceLit,
   placedFurnitureIds,
@@ -1755,6 +1757,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     customFloorHex,
     furnitureColors,
     skyMode,
+    viewMode,
     lightsOn,
     fireplaceLit,
     placedFurnitureIds,
@@ -1785,6 +1788,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     customFloorHex,
     furnitureColors,
     skyMode,
+    viewMode,
     lightsOn,
     fireplaceLit,
     placedFurnitureIds,
@@ -1877,6 +1881,125 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     const roomGroup = new THREE.Group();
     scene.add(roomGroup);
 
+    // Exterior 360° neighborhood: lightweight surroundings plus the generated architectural GLB.
+    const exteriorGroup = new THREE.Group();
+    exteriorGroup.visible = false;
+    scene.add(exteriorGroup);
+
+    const exteriorGrass = new THREE.Mesh(
+      new THREE.PlaneGeometry(54, 54),
+      new THREE.MeshStandardMaterial({ color: 0x4f7650, roughness: 1.0 })
+    );
+    exteriorGrass.rotation.x = -Math.PI / 2;
+    exteriorGrass.position.y = -0.32;
+    exteriorGrass.receiveShadow = true;
+    exteriorGroup.add(exteriorGrass);
+
+    const pathMat = new THREE.MeshStandardMaterial({ color: 0xb7a58e, roughness: 0.92 });
+    const frontPath = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.045, 10.5), pathMat);
+    frontPath.position.set(0, -0.285, 7.0);
+    exteriorGroup.add(frontPath);
+    const gardenPath = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.04, 1.15), pathMat);
+    gardenPath.position.set(0, -0.29, 1.0);
+    exteriorGroup.add(gardenPath);
+
+    const createGardenTree = (x: number, z: number, scale = 1) => {
+      const tree = new THREE.Group();
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.13 * scale, 0.22 * scale, 2.1 * scale, 9),
+        new THREE.MeshStandardMaterial({ color: 0x68442f, roughness: 0.95 })
+      );
+      trunk.position.y = 1.05 * scale;
+      tree.add(trunk);
+      const leafMat = new THREE.MeshStandardMaterial({ color: 0x47764d, roughness: 0.92 });
+      const leafMatLight = new THREE.MeshStandardMaterial({ color: 0x6e965b, roughness: 0.94 });
+      const crowns: [number, number, number, number][] = [
+        [0, 2.55, 0, 1.0], [-0.55, 2.35, 0.18, 0.72], [0.58, 2.38, -0.12, 0.78],
+        [0.08, 3.05, 0.08, 0.72], [-0.2, 2.72, -0.55, 0.62],
+      ];
+      crowns.forEach(([cx, cy, cz, radius], index) => {
+        const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(radius * scale, 1), index % 2 ? leafMatLight : leafMat);
+        crown.position.set(cx * scale, cy * scale, cz * scale);
+        tree.add(crown);
+      });
+      tree.position.set(x, 0, z);
+      exteriorGroup.add(tree);
+    };
+
+    const createNeighborHouse = (x: number, z: number, wallColor: number, roofColor: number, rotation = 0) => {
+      const home = new THREE.Group();
+      const walls = new THREE.Mesh(
+        new THREE.BoxGeometry(5.0, 2.65, 4.2),
+        new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.88 })
+      );
+      walls.position.y = 1.325;
+      const roof = new THREE.Mesh(
+        new THREE.ConeGeometry(3.65, 1.75, 4),
+        new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.86 })
+      );
+      roof.rotation.y = Math.PI / 4;
+      roof.position.y = 3.35;
+      const door = new THREE.Mesh(
+        new THREE.BoxGeometry(0.82, 1.9, 0.08),
+        new THREE.MeshStandardMaterial({ color: 0x80543c, roughness: 0.72 })
+      );
+      door.position.set(0, 0.95, 2.14);
+      const windowMat = new THREE.MeshStandardMaterial({ color: 0x8cc9dc, roughness: 0.22, metalness: 0.08, emissive: 0x24445a, emissiveIntensity: 0.16 });
+      [-1.45, 1.45].forEach((wx) => {
+        const win = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.9, 0.07), windowMat);
+        win.position.set(wx, 1.55, 2.15);
+        home.add(win);
+      });
+      home.add(walls, roof, door);
+      home.position.set(x, 0, z);
+      home.rotation.y = rotation;
+      exteriorGroup.add(home);
+    };
+
+    createNeighborHouse(-14, -12, 0xe3d6c2, 0x754b3c, 0.25);
+    createNeighborHouse(14, -13, 0xc9d7d4, 0x4c536f, -0.35);
+    createNeighborHouse(-15, 13, 0xd7c8b5, 0x8a5a42, -0.2);
+    createNeighborHouse(15, 13, 0xd8d1e7, 0x5e557b, 0.35);
+    createNeighborHouse(0, -19, 0xe2d6c9, 0x66566d, 0);
+
+    [
+      [-8, -8, 1.1], [8, -8, 1.0], [-9, 5, 0.92], [9, 6, 1.08],
+      [-17, 0, 1.15], [17, 1, 1.12], [-6, 16, 0.92], [7, 17, 1.0],
+      [-18, -15, 0.82], [18, -15, 0.86],
+    ].forEach(([x, z, scale]) => createGardenTree(x, z, scale));
+
+    const hedgeMat = new THREE.MeshStandardMaterial({ color: 0x355f43, roughness: 1 });
+    [[-5.1, 0.52, 0.42, 5.2], [5.1, 0.52, 0.42, 5.2], [0, 0.52, 10.5, 0.42]].forEach(([x, y, z, depth]) => {
+      const hedge = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.9, depth), hedgeMat);
+      hedge.position.set(x, y, z);
+      exteriorGroup.add(hedge);
+    });
+
+    const porchLampMat = new THREE.MeshStandardMaterial({ color: 0xf9d78b, emissive: 0xf6c66a, emissiveIntensity: 1.1, roughness: 0.45 });
+    [-1.3, 1.3].forEach((x) => {
+      const lamp = new THREE.Group();
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.065, 1.55, 8), new THREE.MeshStandardMaterial({ color: 0x4d4a59, metalness: 0.55, roughness: 0.42 }));
+      post.position.y = 0.78;
+      const glow = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 12), porchLampMat);
+      glow.position.y = 1.58;
+      lamp.add(post, glow);
+      lamp.position.set(x, 0, 4.2);
+      exteriorGroup.add(lamp);
+    });
+
+    loadCachedGlbInstance('https://res.cloudinary.com/r3vmqjwx/raw/upload/v1795516155/nosso-mundo/models/nosso-mundo/models/cozy-home-exterior.glb', 4.0, true)
+      .then(({ group: houseModel }) => {
+        const bounds = new THREE.Box3().setFromObject(houseModel);
+        const center = bounds.getCenter(new THREE.Vector3());
+        houseModel.position.x -= center.x;
+        houseModel.position.z -= center.z;
+        houseModel.position.y -= bounds.min.y;
+        exteriorGroup.add(houseModel);
+      })
+      .catch(() => {
+        // Keep the neighborhood available if the remote architectural model is unavailable.
+      });
+
     const gridHelper = new THREE.GridHelper(6.0, 24, 0xf472b6, 0xd8b4fe);
     gridHelper.position.set(0, 0.008, 0.02);
     const gridMats = Array.isArray(gridHelper.material) ? gridHelper.material : [gridHelper.material];
@@ -1940,14 +2063,34 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
       slot.currentActionName = nextName;
     };
 
+    let appliedViewMode: 'interior' | 'exterior' | null = null;
     const syncTransformsAndOverlay = () => {
+      const nextViewMode = propsRef.current.viewMode || 'interior';
+      const exteriorActive = nextViewMode === 'exterior';
+      roomGroup.visible = !exteriorActive;
+      exteriorGroup.visible = exteriorActive;
+      if (appliedViewMode !== nextViewMode) {
+        if (exteriorActive) {
+          camera.position.set(14, 10, 14);
+          controls.minDistance = 8;
+          controls.maxDistance = 26;
+          controls.target.set(0, 1.0, 0);
+        } else {
+          camera.position.set(5.2, 4.4, 5.8);
+          controls.minDistance = 3.8;
+          controls.maxDistance = 12.0;
+          controls.target.set(0, 0.9, 0);
+        }
+        controls.update();
+        appliedViewMode = nextViewMode;
+      }
       const {
         furnitureTransforms: savedMap,
         isEditMode: editActive,
         selectedFurnitureId: selId,
       } = propsRef.current;
 
-      gridHelper.visible = Boolean(editActive);
+      gridHelper.visible = !exteriorActive && Boolean(editActive);
 
       furnitureRootMap.forEach(({ group, baseY }, fId) => {
         const def = DEFAULT_FURNITURE_TRANSFORMS[fId] || { x: 0, z: 0, rotY: 0 };
@@ -2723,6 +2866,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     customFloorHex,
     colorsKey,
     skyMode,
+    viewMode,
     lightsOn,
     fireplaceLit,
     placedKey,
