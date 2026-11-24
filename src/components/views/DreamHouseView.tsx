@@ -747,6 +747,58 @@ export const DreamHouseView: React.FC = () => {
                             />
                           </label>
                         ))}
+                        <div className="border-t border-purple-400/20 pt-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-bold text-white">Portas e janelas</p>
+                            <span className="text-[10px] text-purple-200">{wall.openings?.length || 0} abertura(s)</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {([
+                              { kind: 'door' as const, label: '+ Porta', width: 0.9, height: 2.1, sillHeight: 0 },
+                              { kind: 'window' as const, label: '+ Janela', width: 1.2, height: 1.0, sillHeight: 0.9 },
+                            ]).map((preset) => (
+                              <button
+                                key={preset.kind}
+                                type="button"
+                                disabled={isSpectator || length < 0.5}
+                                onClick={() => {
+                                  const openingWidth = Math.min(preset.width, Math.max(0.4, length - 0.1));
+                                  const opening = {
+                                    id: `opening-${preset.kind}-${Date.now()}`,
+                                    kind: preset.kind,
+                                    offset: Math.max(0, (length - openingWidth) / 2),
+                                    width: openingWidth,
+                                    height: Math.min(preset.height, wall.height - preset.sillHeight - 0.1),
+                                    sillHeight: preset.sillHeight,
+                                  };
+                                  setHouseCustomWalls((dreamHouse.customWalls || []).map((item) =>
+                                    item.id === wall.id ? { ...item, openings: [...(item.openings || []), opening] } : item
+                                  ));
+                                }}
+                                className="min-h-[38px] rounded-xl border border-pink-400/25 bg-pink-500/10 text-pink-100 text-xs font-bold disabled:opacity-40"
+                              >
+                                {preset.label}
+                              </button>
+                            ))}
+                          </div>
+                          {(wall.openings || []).map((opening, openingIndex) => (
+                            <div key={opening.id} className="flex items-center justify-between gap-2 rounded-lg bg-purple-950/55 px-3 py-2">
+                              <span className="text-[11px] text-purple-100">
+                                {opening.kind === 'door' ? 'Porta' : 'Janela'} {openingIndex + 1} · {opening.width.toFixed(2)} × {opening.height.toFixed(2)} m
+                              </span>
+                              <button
+                                type="button"
+                                disabled={isSpectator}
+                                onClick={() => setHouseCustomWalls((dreamHouse.customWalls || []).map((item) =>
+                                  item.id === wall.id ? { ...item, openings: (item.openings || []).filter((entry) => entry.id !== opening.id) } : item
+                                ))}
+                                className="text-[10px] font-bold text-rose-200 disabled:opacity-40"
+                              >
+                                Remover
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     );
                   })()}
