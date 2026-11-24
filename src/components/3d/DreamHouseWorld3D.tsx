@@ -326,6 +326,25 @@ export const DreamHouseWorld3D: React.FC<DreamHouseWorld3DProps> = ({
       }
     };
 
+    const onDoubleClick = (event: MouseEvent) => {
+      if (!propsRef.current.isEditMode) return;
+      setPointer(event as PointerEvent);
+      raycaster.setFromCamera(pointer, camera);
+      const hit = raycaster.intersectObjects(roomMeshes, true).find((entry) => entry.object.userData.roomId);
+      const roomId = hit?.object.userData.roomId as HouseRoomId | undefined;
+      if (!roomId) return;
+      const group = roomGroups.get(roomId);
+      if (!group) return;
+      group.rotation.y += Math.PI / 2;
+      const previous = propsRef.current.roomTransforms?.[roomId];
+      propsRef.current.onMoveRoom(roomId, {
+        x: Number(group.position.x.toFixed(2)),
+        z: Number(group.position.z.toFixed(2)),
+        rotY: Number(group.rotation.y.toFixed(2)),
+      });
+      event.preventDefault();
+    };
+    renderer.domElement.addEventListener('dblclick', onDoubleClick);
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
     renderer.domElement.addEventListener('pointermove', onPointerMove);
     renderer.domElement.addEventListener('pointerup', onPointerUp);
@@ -359,6 +378,7 @@ export const DreamHouseWorld3D: React.FC<DreamHouseWorld3DProps> = ({
 
     return () => {
       resizeObserver.disconnect();
+      renderer.domElement.removeEventListener('dblclick', onDoubleClick);
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       renderer.domElement.removeEventListener('pointermove', onPointerMove);
       renderer.domElement.removeEventListener('pointerup', onPointerUp);
@@ -376,7 +396,7 @@ export const DreamHouseWorld3D: React.FC<DreamHouseWorld3DProps> = ({
     <div className="relative w-full h-[26rem] sm:h-[34rem] rounded-3xl overflow-hidden cursor-grab active:cursor-grabbing select-none touch-none">
       <div ref={containerRef} className="w-full h-full" />
       <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-full bg-[#071126]/85 border border-sky-200/15 text-[10px] text-slate-200 pointer-events-none">
-        {isEditMode ? 'Arraste os cômodos para organizar a planta · Gire com dois dedos' : 'Arraste para girar a casa em 360° · Toque em um cômodo para entrar'}
+        {isEditMode ? 'Arraste para posicionar · Toque duas vezes para girar · Gire a câmera em 360°' : 'Arraste para girar a casa em 360° · Toque em um cômodo para entrar'}
       </div>
     </div>
   );
