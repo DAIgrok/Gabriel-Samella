@@ -5,6 +5,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import {
   AquariumLightMode,
   HouseFloorTheme,
+  HouseConstructionWall,
   HouseFurnitureTransform,
   HouseRoomId,
   HouseWallTheme,
@@ -178,6 +179,7 @@ interface DreamHouseCanvas3DProps {
   footprintWidth?: number;
   footprintDepth?: number;
   wallHeight?: number;
+  customWalls?: HouseConstructionWall[];
   showCeiling?: boolean;
   furnitureColors?: Record<string, string>;
   skyMode?: DreamHouseSkyMode;
@@ -1731,6 +1733,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
   footprintWidth = 6.4,
   footprintDepth = 5.4,
   wallHeight = 2.75,
+  customWalls = [],
   showCeiling = false,
   furnitureColors,
   skyMode = 'auto',
@@ -1770,6 +1773,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     footprintWidth,
     footprintDepth,
     wallHeight,
+    customWalls,
     showCeiling,
     furnitureColors,
     skyMode,
@@ -1806,6 +1810,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     footprintWidth,
     footprintDepth,
     wallHeight,
+    customWalls,
     furnitureColors,
     skyMode,
     viewMode,
@@ -2144,6 +2149,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
         customWallHex: cWallHex,
         customFloorHex: cFloorHex,
         customCeilingHex: cCeilingHex,
+        customWalls: savedCustomWalls,
         showCeiling: ceilingVisible,
         furnitureColors: fColors,
         skyMode: sMode,
@@ -2379,6 +2385,26 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
         winGlass.position.set(1.15, 1.56, -2.505);
         roomGroup.add(winFrame, winGlass);
       }
+
+      // User-built wall segments are persisted and rendered as solid 3D geometry.
+      (savedCustomWalls || []).forEach((wall) => {
+        try {
+          const customWall = createHouseWallMesh(
+            {
+              id: wall.id,
+              start: wall.start,
+              end: wall.end,
+              height: wall.height,
+              thickness: wall.thickness,
+            },
+            wallMat
+          );
+          customWall.userData.isUserBuiltWall = true;
+          roomGroup.add(customWall);
+        } catch (error) {
+          console.warn('Parede personalizada ignorada por geometria inválida:', wall.id, error);
+        }
+      });
 
       // Aquário Vivo Integrado na Sala de Estar
       if (room === 'sala') {
@@ -2968,7 +2994,10 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     footprintWidth,
     footprintDepth,
     wallHeight,
+    customWallsKey,
   ]);
+
+  const customWallsKey = JSON.stringify(customWalls || []);
 
   const transformsKey = JSON.stringify(furnitureTransforms || {});
   useEffect(() => {
