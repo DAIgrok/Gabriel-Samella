@@ -20,14 +20,14 @@ export interface PetAnimationCue {
 }
 
 export const PET_PAINT_SWATCHES = [
-  { hex: '#ffffff', label: 'Branco Neve' },
-  { hex: '#f472b6', label: 'Rosa Doce' },
-  { hex: '#a855f7', label: 'Roxo Mágico' },
-  { hex: '#fde047', label: 'Creme Solar' },
-  { hex: '#f59e0b', label: 'Caramelo' },
-  { hex: '#38bdf8', label: 'Azul Celeste' },
-  { hex: '#34d399', label: 'Menta' },
-  { hex: '#1e1b2e', label: 'Preto Noite' },
+  { hex: '#f8fafc', label: 'Branco Pérola' },
+  { hex: '#a78bfa', label: 'Lavanda' },
+  { hex: '#6d5bd0', label: 'Violeta Profundo' },
+  { hex: '#d6b56d', label: 'Dourado Champagne' },
+  { hex: '#f2dca3', label: 'Ouro Claro' },
+  { hex: '#60a5fa', label: 'Safira' },
+  { hex: '#7dd3c7', label: 'Menta Suave' },
+  { hex: '#172033', label: 'Azul Noite' },
 ];
 
 export const PAINT_PART_LABELS: Record<string, string> = {
