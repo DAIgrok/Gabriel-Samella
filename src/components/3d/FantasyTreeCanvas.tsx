@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { SeasonalEventId } from '../../types';
 import {
   addCozyThreePointLights,
   detectSoftwareWebGL,
@@ -11,6 +12,7 @@ import {
 
 interface FantasyTreeCanvasProps {
   level: number;
+  seasonalEvent?: SeasonalEventId;
   isWatering?: boolean;
   isSunbathing?: boolean;
   isPruning?: boolean;
@@ -69,6 +71,7 @@ function createPetalTexture(): THREE.CanvasTexture {
 
 export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
   level,
+  seasonalEvent = 'normal',
   isWatering = false,
   isSunbathing = false,
   isPruning = false,
@@ -89,6 +92,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
 
   const propsRef = useRef({
     level,
+    seasonalEvent,
     isWatering,
     isSunbathing,
     isPruning,
@@ -107,6 +111,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
   });
   propsRef.current = {
     level,
+    seasonalEvent,
     isWatering,
     isSunbathing,
     isPruning,
@@ -136,7 +141,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
 
     // --- 1. SCENE & CAMERA ---
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x1f103d, 0.014);
+    scene.fog = new THREE.FogExp2(0x17271d, 0.014);
 
     const width = container.clientWidth || 320;
     const height = container.clientHeight || 350;
@@ -181,217 +186,76 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
 
     // --- 4. COZY 3-POINT PASTEL LIGHTING ---
     const rig = addCozyThreePointLights(scene, {
-      skyColor: 0xdbeafe,
-      groundColor: 0xfde68a,
-      hemiIntensity: 1.15,
-      keyColor: 0xfff7e6,
-      keyIntensity: 2.15,
+      skyColor: 0xd8e4e8,
+      groundColor: 0x4f6748,
+      hemiIntensity: 1.2,
+      keyColor: 0xfff0d2,
+      keyIntensity: 2.0,
       keyPosition: [4.5, 9.5, 5.5],
-      rimColor: 0xf472b6,
-      rimIntensity: 1.55,
+      rimColor: 0x9fb8a2,
+      rimIntensity: 0.95,
       rimPosition: [-5.5, 4.8, -5.0],
-      fillColor: 0xc4b5fd,
-      fillIntensity: 0.72,
+      fillColor: 0xa7b9a4,
+      fillIntensity: 0.58,
       shadowMapSize: isSoftwareGl ? 512 : 1024,
       shadowExtent: 4.5,
       isSoftwareGl,
     });
     const sunLight = rig.keyLight;
 
-    const canopyLight = new THREE.PointLight(0xf9a8d4, 1.75, 12);
+    const canopyLight = new THREE.PointLight(0xd9c79a, 0.85, 12);
     canopyLight.position.set(0, 3.1, 1.5);
     scene.add(canopyLight);
 
-    const poolLight = new THREE.PointLight(0x67e8f9, 1.05, 7);
-    poolLight.position.set(0, 0.55, 1.6);
-    scene.add(poolLight);
+    const groundBounceLight = new THREE.PointLight(0x8db49a, 0.5, 7);
+    groundBounceLight.position.set(0, 0.35, 1.6);
+    scene.add(groundBounceLight);
 
-    // --- 5. FLOATING COZY SANCTUARY ISLAND & RUNED LOTUS POOL ---
+    // --- 5. CHÃO NATURAL, RAÍZES EXPOSTAS E VEGETAÇÃO ---
     const terrainGroup = new THREE.Group();
     scene.add(terrainGroup);
-
-    const islandTopGeo = new THREE.CylinderGeometry(2.98, 2.68, 0.44, 44, 3);
-    const islandPos = islandTopGeo.attributes.position;
-    for (let i = 0; i < islandPos.count; i++) {
-      const y = islandPos.getY(i);
-      const x = islandPos.getX(i);
-      const z = islandPos.getZ(i);
-      if (y > 0.1) {
-        const dist = Math.sqrt(x * x + z * z);
-        islandPos.setY(i, y + Math.max(0, 0.25 - dist * 0.085) + Math.sin(x * 1.4 + z * 0.9) * 0.032);
-      }
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x263f2b, roughness: 0.96 });
+    const ground = new THREE.Mesh(new THREE.CircleGeometry(4.65, 72), groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.24;
+    ground.receiveShadow = true;
+    terrainGroup.add(ground);
+    const soilMat = new THREE.MeshStandardMaterial({ color: 0x55402d, roughness: 0.98 });
+    const soilMound = new THREE.Mesh(new THREE.CylinderGeometry(1.95, 2.18, 0.38, 56, 3), soilMat);
+    soilMound.position.y = -0.12;
+    soilMound.receiveShadow = true;
+    terrainGroup.add(soilMound);
+    const grassGeo = new THREE.ConeGeometry(0.018, 0.22, 4);
+    const grassMat = new THREE.MeshStandardMaterial({ color: 0x5b8746, roughness: 0.9 });
+    const grassCount = isSoftwareGl ? 70 : 150;
+    const grass = new THREE.InstancedMesh(grassGeo, grassMat, grassCount);
+    const grassDummy = new THREE.Object3D();
+    const grassColor = new THREE.Color();
+    for (let i = 0; i < grassCount; i++) {
+      const angle = i * 2.399963;
+      const radius = 1.45 + (i % 13) * 0.22;
+      grassDummy.position.set(Math.cos(angle) * radius, -0.12, Math.sin(angle) * radius);
+      grassDummy.rotation.set(0, angle, (i % 2 ? 1 : -1) * 0.12);
+      grassDummy.scale.set(0.8 + (i % 4) * 0.12, 0.65 + (i % 5) * 0.12, 0.8);
+      grassDummy.updateMatrix();
+      grass.setMatrixAt(i, grassDummy.matrix);
+      grassColor.setHex(i % 3 === 0 ? 0x78934d : i % 3 === 1 ? 0x496e3d : 0x8a9b55);
+      grass.setColorAt(i, grassColor);
     }
-    islandTopGeo.computeVertexNormals();
-    const islandTopMat = new THREE.MeshStandardMaterial({
-      color: 0x266f5d,
-      roughness: 0.68,
-      metalness: 0.04,
-    });
-    const islandTop = new THREE.Mesh(islandTopGeo, islandTopMat);
-    islandTop.position.y = -0.18;
-    islandTop.receiveShadow = true;
-    terrainGroup.add(islandTop);
-
-    // Sculpted basalt stone underbelly
-    const stoneGeo = new THREE.ConeGeometry(2.62, 1.42, 24);
-    stoneGeo.rotateX(Math.PI);
-    const stoneMat = new THREE.MeshStandardMaterial({
-      color: 0x1b0b30,
-      roughness: 0.78,
-      metalness: 0.14,
-    });
-    const stoneUnder = new THREE.Mesh(stoneGeo, stoneMat);
-    stoneUnder.position.y = -1.08;
-    terrainGroup.add(stoneUnder);
-
-    // Luminous Irminsul Rune Ring around the sanctuary rim
-    const runeRingGeo = new THREE.TorusGeometry(2.58, 0.028, 10, 64);
-    runeRingGeo.rotateX(Math.PI / 2);
-    const runeRingMat = new THREE.MeshStandardMaterial({
-      color: 0xf472b6,
-      emissive: 0xc026d3,
-      emissiveIntensity: 1.4,
-      roughness: 0.2,
-      metalness: 0.4,
-    });
-    const runeRing = new THREE.Mesh(runeRingGeo, runeRingMat);
-    runeRing.position.y = 0.065;
-    terrainGroup.add(runeRing);
-
-    const innerRuneGeo = new THREE.TorusGeometry(1.75, 0.018, 8, 56);
-    innerRuneGeo.rotateX(Math.PI / 2);
-    const innerRuneMat = new THREE.MeshStandardMaterial({
-      color: 0x67e8f9,
-      emissive: 0x06b6d4,
-      emissiveIntensity: 1.15,
-      roughness: 0.2,
-    });
-    const innerRune = new THREE.Mesh(innerRuneGeo, innerRuneMat);
-    innerRune.position.y = 0.075;
-    terrainGroup.add(innerRune);
-
-    // Crystal mirror lotus pool wrapping front roots
-    const poolGeo = new THREE.CircleGeometry(1.68, 40);
-    poolGeo.rotateX(-Math.PI / 2);
-    const poolMat = new THREE.MeshStandardMaterial({
-      color: 0x164e63,
-      emissive: 0x4c1d95,
-      emissiveIntensity: 0.35,
-      roughness: 0.08,
-      metalness: 0.85,
-      transparent: true,
-      opacity: 0.86,
-    });
-    poolMat.onBeforeCompile = (shader) => {
-      shader.uniforms.uTime = shaderUniforms.uTime;
-      shader.fragmentShader = `uniform float uTime;\n` + shader.fragmentShader;
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <emissivemap_fragment>',
-        `
-        #include <emissivemap_fragment>
-        float rDist = length(vViewPosition.xz);
-        float ripple = sin(rDist * 9.0 - uTime * 2.4) * 0.5 + 0.5;
-        totalEmissiveRadiance += vec3(0.18, 0.48, 0.72) * ripple * 0.25;
-        `
-      );
-    };
-    const mirrorPool = new THREE.Mesh(poolGeo, poolMat);
-    mirrorPool.position.set(0, 0.055, 0.42);
-    terrainGroup.add(mirrorPool);
-
-    // Floating glowing lotus blossoms on the mirror pool
-    const lotusPetalGeo = new THREE.SphereGeometry(0.08, 10, 8);
-    lotusPetalGeo.scale(1.2, 0.35, 0.65);
-    const lotusMat = new THREE.MeshStandardMaterial({
-      color: 0xfbcfe8,
-      emissive: 0xf472b6,
-      emissiveIntensity: 0.8,
-      roughness: 0.25,
-    });
-    [
-      [-0.85, 0.08, 1.15],
-      [0.92, 0.08, 1.02],
-      [0.25, 0.08, 1.55],
-    ].forEach(([lx, ly, lz], idx) => {
-      const lotus = new THREE.Group();
-      lotus.position.set(lx, ly, lz);
-      for (let p = 0; p < 6; p++) {
-        const ang = (p / 6) * Math.PI * 2;
-        const pet = new THREE.Mesh(lotusPetalGeo, lotusMat);
-        pet.position.set(Math.cos(ang) * 0.075, 0, Math.sin(ang) * 0.075);
-        pet.rotation.y = -ang;
-        pet.rotation.z = 0.25;
-        lotus.add(pet);
-      }
-      lotus.rotation.y = idx * 0.7;
-      terrainGroup.add(lotus);
-    });
-
-    // Sculpted mossy earth mound beneath main trunk
-    const moundGeo = new THREE.SphereGeometry(0.96, 28, 18);
-    moundGeo.scale(1.2, 0.26, 1.15);
-    const moundMat = new THREE.MeshStandardMaterial({
-      color: 0x2f6b56,
-      roughness: 0.72,
-    });
-    const mound = new THREE.Mesh(moundGeo, moundMat);
-    mound.position.y = 0.04;
-    mound.receiveShadow = true;
-    terrainGroup.add(mound);
-
-    // Smooth rounded river pebbles rimming the island (zero angular dodecahedrons)
-    const pebbleGeo = new THREE.SphereGeometry(0.22, 18, 14);
-    const pebbleMat = new THREE.MeshStandardMaterial({ color: 0x6b5b95, roughness: 0.62, metalness: 0.05 });
-    [
-      [1.95, 0.08, 0.95, 1.2],
-      [-1.85, 0.08, 1.15, 1.05],
-      [1.35, 0.07, -1.75, 1.1],
-      [-1.45, 0.07, -1.55, 1.15],
-    ].forEach(([px, py, pz, s], i) => {
+    grass.castShadow = true;
+    terrainGroup.add(grass);
+    const pebbleGeo = new THREE.DodecahedronGeometry(0.13, 1);
+    const pebbleMat = new THREE.MeshStandardMaterial({ color: 0x77766c, roughness: 0.94 });
+    for (let i = 0; i < 12; i++) {
+      const angle = i * 2.399963;
+      const radius = 2.25 + (i % 3) * 0.24;
       const pebble = new THREE.Mesh(pebbleGeo, pebbleMat);
-      pebble.position.set(px, py, pz);
-      pebble.scale.set(s * 1.28, s * 0.62, s);
-      pebble.rotation.set(0.12, i * 1.1, 0.08);
+      pebble.position.set(Math.cos(angle) * radius, -0.13, Math.sin(angle) * radius);
+      pebble.scale.set(1.2 + (i % 2) * 0.4, 0.65, 0.8 + (i % 3) * 0.15);
+      pebble.rotation.set(0.2, angle, 0.1);
       pebble.castShadow = true;
-      pebble.receiveShadow = true;
       terrainGroup.add(pebble);
-    });
-
-    // Cozy Stylized Glowing Pastel Mushrooms around the base
-    const mushStemMat = new THREE.MeshStandardMaterial({ color: 0xfff1f2, roughness: 0.65 });
-    const mushCapMatPink = new THREE.MeshStandardMaterial({
-      color: 0xf472b6,
-      emissive: 0xec4899,
-      emissiveIntensity: 0.45,
-      roughness: 0.55,
-    });
-    const mushCapMatMint = new THREE.MeshStandardMaterial({
-      color: 0x6ee7b7,
-      emissive: 0x10b981,
-      emissiveIntensity: 0.4,
-      roughness: 0.55,
-    });
-    [
-      [-1.45, 0.08, 0.55, 1.0, true],
-      [-1.62, 0.07, 0.35, 0.72, false],
-      [1.48, 0.08, 0.45, 0.92, false],
-      [0.95, 0.08, -1.25, 0.85, true],
-    ].forEach(([mx, my, mz, sc, isPink]) => {
-      const mg = new THREE.Group();
-      mg.position.set(mx as number, my as number, mz as number);
-      mg.scale.setScalar(sc as number);
-      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.048, 0.14, 12), mushStemMat);
-      stem.position.y = 0.07;
-      const cap = new THREE.Mesh(
-        new THREE.SphereGeometry(0.11, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
-        isPink ? mushCapMatPink : mushCapMatMint
-      );
-      cap.position.y = 0.12;
-      cap.castShadow = true;
-      mg.add(stem, cap);
-      terrainGroup.add(mg);
-    });
-
+    }
     // --- 6. DYNAMIC TREE & ACCESSORY GROUP ---
     const treeGroup = new THREE.Group();
     scene.add(treeGroup);
