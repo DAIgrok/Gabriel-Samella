@@ -378,6 +378,7 @@ interface AppContextType {
   setHouseFloorTheme: (theme: HouseFloorTheme) => void;
   setHouseCustomWallHex: (hex: string) => void;
   setHouseCustomFloorHex: (hex: string) => void;
+  setHouseCustomCeilingHex: (hex: string) => void;
   setHouseFurnitureColor: (furnitureId: string, hex: string) => void;
   toggleHouseLights: () => void;
   toggleHouseFireplace: () => void;
