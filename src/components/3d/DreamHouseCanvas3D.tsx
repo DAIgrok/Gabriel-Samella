@@ -2396,6 +2396,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
               end: wall.end,
               height: wall.height,
               thickness: wall.thickness,
+              openings: wall.openings || [],
             },
             wallMat
           );
