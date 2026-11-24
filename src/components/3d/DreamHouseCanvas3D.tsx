@@ -173,6 +173,8 @@ interface DreamHouseCanvas3DProps {
   floorTheme: HouseFloorTheme;
   customWallHex?: string;
   customFloorHex?: string;
+  customCeilingHex?: string;
+  showCeiling?: boolean;
   furnitureColors?: Record<string, string>;
   skyMode?: DreamHouseSkyMode;
   viewMode?: 'interior' | 'exterior';
@@ -1721,6 +1723,8 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
   floorTheme,
   customWallHex,
   customFloorHex,
+  customCeilingHex,
+  showCeiling = false,
   furnitureColors,
   skyMode = 'auto',
   viewMode = 'interior',
@@ -1755,6 +1759,8 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     floorTheme,
     customWallHex,
     customFloorHex,
+    customCeilingHex,
+    showCeiling,
     furnitureColors,
     skyMode,
     viewMode,
@@ -2123,6 +2129,8 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
         floorTheme: fTheme,
         customWallHex: cWallHex,
         customFloorHex: cFloorHex,
+        customCeilingHex: cCeilingHex,
+        showCeiling: ceilingVisible,
         furnitureColors: fColors,
         skyMode: sMode,
         lightsOn: lOn,
@@ -2206,6 +2214,19 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
       floorMesh.position.y = -0.022;
       floorMesh.receiveShadow = true;
       roomGroup.add(floorMesh);
+
+      const ceilingMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(6.4, 5.4),
+        new THREE.MeshStandardMaterial({
+          color: cCeilingHex || '#eee7f5',
+          roughness: 0.86,
+          side: THREE.DoubleSide,
+        })
+      );
+      ceilingMesh.rotation.x = -Math.PI / 2;
+      ceilingMesh.position.y = 3.0;
+      ceilingMesh.visible = Boolean(ceilingVisible);
+      roomGroup.add(ceilingMesh);
 
       const wallMat = new THREE.MeshStandardMaterial({
         map: wallTex,
@@ -2864,6 +2885,8 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     floorTheme,
     customWallHex,
     customFloorHex,
+    customCeilingHex,
+    showCeiling,
     colorsKey,
     skyMode,
     viewMode,
