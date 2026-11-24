@@ -35,7 +35,7 @@ import {
   resolvePetGlbUrl,
 } from '../../data/initialData';
 import { HOUSE_CATEGORY_META, HOUSE_ROOM_PRICES } from '../../data/houseFurnitureCatalog';
-import { HouseFurnitureCategory, HouseRoomId } from '../../types';
+import { HouseConstructionWall, HouseFurnitureCategory, HouseRoomId } from '../../types';
 import {
   DiamondGemIcon,
   DreamHouseCrestIcon,
@@ -76,6 +76,7 @@ export const DreamHouseView: React.FC = () => {
     setHouseCustomFloorHex,
     setHouseCustomCeilingHex,
     setHouseDimensions,
+    setHouseCustomWalls,
     setHouseFurnitureColor,
     toggleHouseLights,
     toggleHouseFireplace,
@@ -101,6 +102,7 @@ export const DreamHouseView: React.FC = () => {
   const [hudExpanded, setHudExpanded] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedFurnitureId, setSelectedFurnitureId] = useState<string | null>(null);
+  const [selectedConstructionWallId, setSelectedConstructionWallId] = useState<string | null>(null);
 
   useEffect(() => {
     recordHouseVisit();
@@ -219,6 +221,7 @@ export const DreamHouseView: React.FC = () => {
             footprintWidth={dreamHouse.footprintWidth ?? 6.4}
             footprintDepth={dreamHouse.footprintDepth ?? 5.4}
             wallHeight={dreamHouse.wallHeight ?? 2.75}
+            customWalls={dreamHouse.customWalls || []}
             showCeiling={showCeiling}
             furnitureColors={dreamHouse.customColors}
             skyMode={skyMode}
@@ -640,6 +643,104 @@ export const DreamHouseView: React.FC = () => {
                   </label>
                 ))}
                 <p className="text-[10px] text-purple-300/70">Limites seguros: 4–12 m de largura/profundidade e 2,2–4,5 m de altura.</p>
+                <div className="border-t border-purple-400/20 pt-3 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-bold text-white">Paredes livres</p>
+                      <p className="text-[11px] text-purple-200/70">{dreamHouse.customWalls?.length || 0} paredes adicionadas</p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isSpectator}
+                      onClick={() => {
+                        const walls = dreamHouse.customWalls || [];
+                        const id = `custom-wall-${Date.now()}`;
+                        const z = (dreamHouse.footprintDepth ?? 5.4) / 2 - 0.65 - walls.length * 0.25;
+                        const wall: HouseConstructionWall = {
+                          id,
+                          start: { x: -1.25, z },
+                          end: { x: 1.25, z },
+                          height: dreamHouse.wallHeight ?? 2.75,
+                          thickness: 0.14,
+                        };
+                        setHouseCustomWalls([...walls, wall]);
+                        setSelectedConstructionWallId(id);
+                      }}
+                      className="min-h-[38px] px-3 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold disabled:opacity-40"
+                    >
+                      + Adicionar parede
+                    </button>
+                  </div>
+                  {(dreamHouse.customWalls || []).map((wall, index) => (
+                    <div key={wall.id} className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedConstructionWallId(wall.id)}
+                        className={`flex-1 min-h-[38px] px-3 rounded-xl border text-left text-xs font-semibold ${selectedConstructionWallId === wall.id ? 'border-pink-400 bg-pink-500/15 text-white' : 'border-purple-400/20 bg-purple-950/50 text-purple-200'}`}
+                      >
+                        Parede {index + 1} · {Math.hypot(wall.end.x - wall.start.x, wall.end.z - wall.start.z).toFixed(2)} m
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isSpectator}
+                        onClick={() => {
+                          setHouseCustomWalls((dreamHouse.customWalls || []).filter((item) => item.id !== wall.id));
+                          if (selectedConstructionWallId === wall.id) setSelectedConstructionWallId(null);
+                        }}
+                        className="min-h-[38px] px-3 rounded-xl border border-rose-400/25 bg-rose-500/10 text-rose-200 text-xs font-bold disabled:opacity-40"
+                        aria-label={`Remover parede ${index + 1}`}
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  ))}
+                  {(() => {
+                    const wall = (dreamHouse.customWalls || []).find((item) => item.id === selectedConstructionWallId);
+                    if (!wall) return <p className="text-[11px] text-purple-300/70">Selecione uma parede para ajustar posição e comprimento.</p>;
+                    const centerX = (wall.start.x + wall.end.x) / 2;
+                    const centerZ = (wall.start.z + wall.end.z) / 2;
+                    const length = Math.hypot(wall.end.x - wall.start.x, wall.end.z - wall.start.z);
+                    const angle = Math.atan2(wall.end.z - wall.start.z, wall.end.x - wall.start.x);
+                    const updateWall = (nextX: number, nextZ: number, nextLength: number) => {
+                      const half = nextLength / 2;
+                      const dx = Math.cos(angle) * half;
+                      const dz = Math.sin(angle) * half;
+                      setHouseCustomWalls((dreamHouse.customWalls || []).map((item) => item.id === wall.id ? {
+                        ...item,
+                        start: { x: nextX - dx, z: nextZ - dz },
+                        end: { x: nextX + dx, z: nextZ + dz },
+                      } : item));
+                    };
+                    return (
+                      <div className="rounded-xl border border-pink-400/20 bg-[#130927]/60 p-3 space-y-3">
+                        {[
+                          { label: 'Posição X', value: centerX, min: -6, max: 6 },
+                          { label: 'Posição Z', value: centerZ, min: -6, max: 6 },
+                          { label: 'Comprimento', value: length, min: 0.5, max: 8 },
+                        ].map((control) => (
+                          <label key={control.label} className="block space-y-1.5">
+                            <span className="flex justify-between text-[11px] font-semibold text-purple-100">
+                              <span>{control.label}</span><span className="text-pink-200 tabular-nums">{control.value.toFixed(2)} m</span>
+                            </span>
+                            <input
+                              type="range"
+                              min={control.min}
+                              max={control.max}
+                              step="0.25"
+                              value={control.value}
+                              disabled={isSpectator}
+                              onChange={(event) => {
+                                const value = Number(event.target.value);
+                                updateWall(control.label === 'Posição X' ? value : centerX, control.label === 'Posição Z' ? value : centerZ, control.label === 'Comprimento' ? value : length);
+                              }}
+                              className="w-full accent-pink-400 disabled:opacity-40"
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
             )}
 
