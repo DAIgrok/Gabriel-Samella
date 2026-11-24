@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { AQUARIUM_SPECIES_CATALOG } from '../../data/initialData';
@@ -91,7 +92,7 @@ function createCausticsTexture(): THREE.CanvasTexture {
   return tex;
 }
 
-function buildFishMesh(fishId: string): {
+function buildFishMesh(fishId: string, goldenCarpTemplate?: THREE.Object3D | null): {
   group: THREE.Group;
   tailObj: THREE.Object3D;
   finL?: THREE.Object3D;
@@ -102,6 +103,21 @@ function buildFishMesh(fishId: string): {
   const g = new THREE.Group();
   const s = spec.scale || 1;
   g.scale.setScalar(s);
+
+  if (fishId === 'koifish' && goldenCarpTemplate) {
+    const carp = goldenCarpTemplate.clone(true);
+    carp.scale.setScalar(1.7);
+    carp.userData.isWholeBodyFin = true;
+    carp.traverse((object) => {
+      if ((object as THREE.Mesh).isMesh) {
+        object.castShadow = true;
+        object.receiveShadow = true;
+      }
+      object.userData.fishName = spec.name;
+    });
+    g.add(carp);
+    return { group: g, tailObj: carp, fishName: spec.name };
+  }
 
   const mainMat = new THREE.MeshStandardMaterial({
     color: spec.colorHex,
@@ -164,24 +180,31 @@ function buildFishMesh(fishId: string): {
     tailObj = fin;
   } else {
     // Cozy Stylized Chibi Swimmer with articulated pectoral & caudal fins + catchlight eyes
-    const bodyGeo = new THREE.SphereGeometry(0.17, 22, 16);
-    bodyGeo.scale(1.55, fishId === 'angelfish' ? 1.34 : 0.94, 0.74);
+    const bodyGeo = new THREE.SphereGeometry(0.17, 32, 20);
+    bodyGeo.scale(1.82, fishId === 'angelfish' ? 1.02 : 0.78, 0.62);
     const body = new THREE.Mesh(bodyGeo, mainMat);
     body.castShadow = true;
 
-    const belly = new THREE.Mesh(new THREE.SphereGeometry(0.135, 16, 12), accMat);
-    belly.scale.set(1.22, 0.56, 0.68);
+    const belly = new THREE.Mesh(new THREE.SphereGeometry(0.135, 20, 14), accMat);
+    belly.scale.set(1.34, 0.48, 0.58);
     belly.position.set(0.02, -0.055, 0);
 
-    const dorsalGeo = new THREE.SphereGeometry(0.095, 14, 12);
-    dorsalGeo.scale(1.25, 0.9, 0.25);
-    const dorsal = new THREE.Mesh(dorsalGeo, accMat);
-    dorsal.position.set(-0.02, 0.14, 0);
-    dorsal.rotation.z = -0.35;
+    const dorsalShape = new THREE.Shape();
+    dorsalShape.moveTo(-0.16, 0);
+    dorsalShape.quadraticCurveTo(-0.04, 0.16, 0.12, 0.09);
+    dorsalShape.lineTo(0.06, 0.015);
+    dorsalShape.closePath();
+    const dorsal = new THREE.Mesh(new THREE.ShapeGeometry(dorsalShape, 16), accMat);
+    dorsal.position.set(-0.02, 0.13, 0);
+    dorsal.rotation.z = -0.12;
 
     // Articulated Pectoral Fins
-    const pectGeo = new THREE.SphereGeometry(0.075, 12, 10);
-    pectGeo.scale(1.3, 0.65, 0.18);
+    const pectShape = new THREE.Shape();
+    pectShape.moveTo(0.04, 0);
+    pectShape.quadraticCurveTo(-0.03, 0.11, -0.19, 0.08);
+    pectShape.quadraticCurveTo(-0.14, 0.005, -0.18, -0.07);
+    pectShape.quadraticCurveTo(-0.02, -0.06, 0.04, 0);
+    const pectGeo = new THREE.ShapeGeometry(pectShape, 14);
     const lFinPivot = new THREE.Group();
     lFinPivot.position.set(0.04, -0.02, 0.11);
     const lFin = new THREE.Mesh(pectGeo, accMat);
@@ -200,11 +223,17 @@ function buildFishMesh(fishId: string): {
 
     // Articulated Flowing Caudal Tail
     const tailGroup = new THREE.Group();
-    tailGroup.position.set(-0.22, 0, 0);
-    const tailGeo = new THREE.SphereGeometry(fishId === 'betta' ? 0.155 : 0.115, 14, 12);
-    tailGeo.scale(1.35, 1.1, 0.24);
-    const tailFin = new THREE.Mesh(tailGeo, accMat);
-    tailFin.position.x = -0.08;
+    tailGroup.position.set(-0.27, 0, 0);
+    const tailShape = new THREE.Shape();
+    const tailSpread = fishId === 'betta' ? 0.25 : 0.19;
+    tailShape.moveTo(0, 0);
+    tailShape.quadraticCurveTo(-0.12, tailSpread * 0.9, -0.34, tailSpread);
+    tailShape.lineTo(-0.24, 0.045);
+    tailShape.quadraticCurveTo(-0.17, 0, -0.24, -0.045);
+    tailShape.lineTo(-0.34, -tailSpread);
+    tailShape.quadraticCurveTo(-0.12, -tailSpread * 0.9, 0, 0);
+    const tailFin = new THREE.Mesh(new THREE.ShapeGeometry(tailShape, 20), accMat);
+    tailFin.position.x = -0.015;
     tailGroup.add(tailFin);
 
     // Glossy eyes with white catchlight
@@ -548,6 +577,8 @@ export const AquariumCanvas3D: React.FC<AquariumCanvas3DProps> = ({
     const dynamicGroup = new THREE.Group();
     scene.add(dynamicGroup);
     const swimActors: SwimActor[] = [];
+    let goldenCarpTemplate: THREE.Object3D | null = null;
+    const GOLDEN_CARP_MODEL_URL = 'https://res.cloudinary.com/r3vmqjwx/raw/upload/v1795515162/nosso-mundo/models/golden-carp';
 
     const rebuildAquarium = () => {
       const { activeFishIds: fishes, activeDecorIds: decors, lightMode: lMode, waterClarity: clarity } =
@@ -585,7 +616,7 @@ export const AquariumCanvas3D: React.FC<AquariumCanvas3DProps> = ({
 
       // Fish with articulated pectoral & caudal fins
       fishes.forEach((fId, idx) => {
-        const built = buildFishMesh(fId);
+        const built = buildFishMesh(fId, goldenCarpTemplate);
         dynamicGroup.add(built.group);
         swimActors.push({
           group: built.group,
@@ -605,6 +636,18 @@ export const AquariumCanvas3D: React.FC<AquariumCanvas3DProps> = ({
 
     rebuildFnRef.current = rebuildAquarium;
     rebuildAquarium();
+
+    // The realistic koi GLB replaces the procedural koi when it finishes loading.
+    // Other species keep their own meshes, now with elongated bodies and forked fins.
+    new GLTFLoader().load(
+      GOLDEN_CARP_MODEL_URL,
+      (gltf) => {
+        goldenCarpTemplate = gltf.scene;
+        rebuildFnRef.current?.();
+      },
+      undefined,
+      (error) => console.warn('Não foi possível carregar a carpa 3D aprimorada:', error)
+    );
 
     // Pointer raycasting for tapping fish
     const raycaster = new THREE.Raycaster();
@@ -699,7 +742,7 @@ export const AquariumCanvas3D: React.FC<AquariumCanvas3DProps> = ({
           a.group.rotation.x = Math.sin(ang * 1.6) * 0.08;
           a.group.rotation.z = Math.max(-0.22, Math.min(0.22, dy * 0.45));
 
-          a.tailObj.rotation.y = Math.sin(t * 10.2 * boostMult + a.phase) * 0.44;
+          a.tailObj.rotation.y = Math.sin(t * 10.2 * boostMult + a.phase) * (a.tailObj.userData.isWholeBodyFin ? 0.055 : 0.44);
           const finFlutter = Math.sin(t * 8.5 * boostMult + a.phase) * 0.36;
           if (a.finL) a.finL.rotation.y = 0.35 + finFlutter;
           if (a.finR) a.finR.rotation.y = -0.35 - finFlutter;
