@@ -35,20 +35,20 @@ export const Sidebar: React.FC = () => {
     { id: 'cartas', label: 'Cartas', icon: Mail },
     { id: 'jogos', label: 'Jogos', icon: Gamepad2 },
     { id: 'metas', label: 'Desejos', icon: Target },
-    { id: 'calendario', label: 'Calendário', icon: CalendarDays },
-    { id: 'conquistas', label: 'Conquistas', icon: Trophy },
+    { id: 'calendario', label: 'Agenda', icon: CalendarDays },
+    { id: 'conquistas', label: 'Selos', icon: Trophy },
   ];
 
   return (
     <aside
-      className="hidden md:flex flex-col items-center justify-between w-24 flex-shrink-0 min-h-screen py-5 border-r border-purple-500/20 bg-[#090314]/90 backdrop-blur-2xl z-30 select-none sticky top-0"
+      className="hidden md:flex flex-col items-center justify-between w-24 flex-shrink-0 min-h-screen py-5 border-r border-sky-300/15 bg-[#071126]/95 backdrop-blur-2xl z-30 select-none sticky top-0"
       style={{ maxHeight: '100vh' }}
     >
       {/* Top: Hamburger Menu */}
       <div className="w-full flex justify-center pb-3">
         <button
           onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-          className="w-12 h-12 rounded-2xl flex items-center justify-center text-pink-300 hover:text-white hover:bg-purple-900/40 border border-purple-500/20 transition-all cursor-pointer"
+          className="w-12 h-12 rounded-2xl flex items-center justify-center text-sky-200 hover:text-white hover:bg-violet-900/40 border border-sky-300/20 transition-all cursor-pointer"
           title="Abrir Menu Completo"
         >
           <Menu className="w-6 h-6" />
@@ -69,15 +69,15 @@ export const Sidebar: React.FC = () => {
               onClick={() => setExtendedView(item.id)}
               className={`relative w-full py-2 px-1 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all duration-200 cursor-pointer ${
                 isActive
-                  ? 'bg-gradient-to-b from-[#6b21a8] to-[#9333ea] border border-pink-400/40 shadow-[0_0_15px_rgba(236,72,153,0.35)] text-white'
-                  : 'text-purple-300/60 hover:text-white hover:bg-purple-900/30'
+                  ? 'bg-gradient-to-b from-[#1d4ed8] via-[#5141a5] to-[#6d4bd1] border border-amber-200/35 shadow-[0_0_15px_rgba(96,165,250,0.25)] text-white'
+                  : 'text-slate-300/70 hover:text-white hover:bg-sky-900/25'
               }`}
             >
               <Icon
                 className={`w-5 h-5 ${
                   isActive
                     ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]'
-                    : 'text-purple-300/70'
+                    : 'text-sky-200/70'
                 }`}
               />
               {item.id === 'conversas' && unreadChatCount > 0 && (
@@ -95,12 +95,12 @@ export const Sidebar: React.FC = () => {
 
       {/* Bottom: Romantic Vertical Handwritten Script matching photo */}
       <div className="pt-4 flex flex-col items-center text-center">
-        <div className="font-romantic text-base text-pink-300/80 leading-tight space-y-0.5 select-none drop-shadow-[0_0_8px_rgba(244,114,182,0.4)]">
+        <div className="font-romantic text-base text-amber-100/85 leading-tight space-y-0.5 select-none drop-shadow-[0_0_8px_rgba(214,181,109,0.32)]">
           <div>Você</div>
           <div>é o meu</div>
           <div>lugar</div>
           <div>favorito</div>
-          <div className="text-pink-400 text-sm">♡</div>
+          <div className="text-amber-300 text-sm">♡</div>
         </div>
       </div>
     </aside>
