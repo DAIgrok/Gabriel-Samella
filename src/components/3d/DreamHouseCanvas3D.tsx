@@ -191,6 +191,7 @@ interface DreamHouseCanvas3DProps {
   activeSeasonalEvent?: SeasonalEventId;
   furnitureTransforms?: Record<string, HouseFurnitureTransform>;
   isEditMode?: boolean;
+  wallBuildMode?: boolean;
   selectedFurnitureId?: string | null;
   furnitureGlbUrls?: Record<string, string>;
   ownedPets?: PetType[];
@@ -209,6 +210,7 @@ interface DreamHouseCanvas3DProps {
   onInteractFurniture?: (furnitureId: string) => void;
   onSelectFurniture?: (furnitureId: string | null) => void;
   onMoveFurniture?: (furnitureId: string, transform: HouseFurnitureTransform) => void;
+  onCreateWall?: (wall: HouseConstructionWall) => void;
 }
 
 function createFloorTexture(
@@ -1785,6 +1787,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     activeSeasonalEvent,
     furnitureTransforms,
     isEditMode,
+    wallBuildMode,
     selectedFurnitureId,
     furnitureGlbUrls,
     ownedPets,
@@ -1799,6 +1802,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     onInteractFurniture,
     onSelectFurniture,
     onMoveFurniture,
+    onCreateWall,
   });
   propsRef.current = {
     activeRoom,
@@ -1821,6 +1825,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     activeSeasonalEvent,
     furnitureTransforms,
     isEditMode,
+    wallBuildMode,
     selectedFurnitureId,
     furnitureGlbUrls,
     ownedPets,
@@ -1835,6 +1840,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     onInteractFurniture,
     onSelectFurniture,
     onMoveFurniture,
+    onCreateWall,
   };
 
   const rebuildFnRef = useRef<(() => void) | null>(null);
@@ -2607,6 +2613,8 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     let dragOffsetX = 0;
     let dragOffsetZ = 0;
     let activePointerId: number | null = null;
+    let drawingWallStart: THREE.Vector3 | null = null;
+    let wallDraftLine: THREE.Line | null = null;
 
     const updateMouseFromEvent = (e: PointerEvent) => {
       const rect = renderer.domElement.getBoundingClientRect();
@@ -2618,6 +2626,29 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
       downX = e.clientX;
       downY = e.clientY;
       didDrag = false;
+
+      if (propsRef.current.wallBuildMode) {
+        updateMouseFromEvent(e);
+        raycaster.setFromCamera(mouse, camera);
+        if (!raycaster.ray.intersectPlane(floorPlane, intersectPt)) return;
+        const sx = Math.round(intersectPt.x / 0.25) * 0.25;
+        const sz = Math.round(intersectPt.z / 0.25) * 0.25;
+        drawingWallStart = new THREE.Vector3(sx, 0.04, sz);
+        const draftGeometry = new THREE.BufferGeometry().setFromPoints([drawingWallStart, drawingWallStart]);
+        wallDraftLine = new THREE.Line(
+          draftGeometry,
+          new THREE.LineBasicMaterial({ color: 0xf472b6, linewidth: 3 })
+        );
+        scene.add(wallDraftLine);
+        activePointerId = e.pointerId;
+        controls.enabled = false;
+        try {
+          renderer.domElement.setPointerCapture?.(e.pointerId);
+        } catch {
+          // Safe fallback
+        }
+        return;
+      }
 
       if (!propsRef.current.isEditMode) return;
 
@@ -2654,6 +2685,19 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     };
 
     const handlePointerMove = (e: PointerEvent) => {
+      if (drawingWallStart && wallDraftLine) {
+        updateMouseFromEvent(e);
+        raycaster.setFromCamera(mouse, camera);
+        if (raycaster.ray.intersectPlane(floorPlane, intersectPt)) {
+          const ex = Math.round(intersectPt.x / 0.25) * 0.25;
+          const ez = Math.round(intersectPt.z / 0.25) * 0.25;
+          wallDraftLine.geometry.setFromPoints([
+            drawingWallStart,
+            new THREE.Vector3(ex, 0.04, ez),
+          ]);
+        }
+        return;
+      }
       if (!draggingId || !propsRef.current.isEditMode) return;
       const entry = furnitureRootMap.get(draggingId);
       if (!entry) return;
@@ -2678,6 +2722,45 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     };
 
     const finishPointer = (e: PointerEvent) => {
+      if (drawingWallStart) {
+        updateMouseFromEvent(e);
+        raycaster.setFromCamera(mouse, camera);
+        const hasEnd = raycaster.ray.intersectPlane(floorPlane, intersectPt);
+        if (hasEnd) {
+          const endX = Math.round(intersectPt.x / 0.25) * 0.25;
+          const endZ = Math.round(intersectPt.z / 0.25) * 0.25;
+          const startX = drawingWallStart.x;
+          const startZ = drawingWallStart.z;
+          if (Math.hypot(endX - startX, endZ - startZ) >= 0.5) {
+            propsRef.current.onCreateWall?.({
+              id: `custom-wall-${Date.now()}`,
+              roomId: propsRef.current.activeRoom,
+              start: { x: startX, z: startZ },
+              end: { x: endX, z: endZ },
+              height: propsRef.current.wallHeight || 2.75,
+              thickness: 0.14,
+            });
+          }
+        }
+        drawingWallStart = null;
+        if (wallDraftLine) {
+          scene.remove(wallDraftLine);
+          wallDraftLine.geometry.dispose();
+          (wallDraftLine.material as THREE.Material).dispose();
+          wallDraftLine = null;
+        }
+        if (activePointerId !== null) {
+          try {
+            renderer.domElement.releasePointerCapture?.(activePointerId);
+          } catch {
+            // Ignore
+          }
+          activePointerId = null;
+        }
+        controls.enabled = true;
+        return;
+      }
+
       if (!controls.enabled) controls.enabled = true;
 
       if (activePointerId !== null) {
