@@ -3155,6 +3155,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setChatMessages((prev) =>
         prev.map((m) => (m.id === msgId ? { ...saved, status: m.readAt ? 'read' : 'delivered' } : m))
       );
+    } else {
+      setChatMessages((prev) => prev.filter((m) => m.id !== msgId));
+      showToast('Mensagem não enviada. Verifique sua conexão e tente novamente.', 'chat');
     }
   };
 
