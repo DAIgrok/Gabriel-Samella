@@ -98,7 +98,7 @@ export const KittenView: React.FC = () => {
 
   const [currentRoom, setCurrentRoom] = useState<PetRoom>('sala');
   const [drawerModal, setDrawerModal] = useState<'none' | 'armario' | 'mascotes'>('none');
-  const [petViewMode, setPetViewMode] = useState<'design' | '3d' | '2d'>('design');
+  const petViewMode = 'design' as const;
   const [danceMove, setDanceMove] = useState<PetDanceMove>('idle');
   const [actionCue, setActionCue] = useState<PetAnimationCue>({ type: 'idle', tick: 0 });
   const danceTimerRef = useRef<number | null>(null);
@@ -1056,7 +1056,7 @@ export const KittenView: React.FC = () => {
           />
         </div>
 
-        {/* Center Pet Stage (Unified across Novo ♡, 3D, and 2D) */}
+        {/* Palco 3D principal do mascote GLB */}
         <div ref={stageRef} className="relative z-20 flex items-center justify-center my-1 min-h-[245px]">
           <AnimatePresence>
             {floatingBubbles.map((bubble) => (
