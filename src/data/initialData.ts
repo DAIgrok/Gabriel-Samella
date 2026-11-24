@@ -1208,9 +1208,9 @@ export const INITIAL_STORE_ITEMS: StoreItem[] = [
   ...HOUSE_STORE_ITEMS,
 
   // --- Aquário Mágico 3D ---
-  { id: 'item-aqua-seahorse', title: 'Cavalo-Marinho Dourado', description: 'Criatura encantada que dança delicadamente entre os corais.', price: 24, icon: 'aqua', category: 'aquario', purchased: false, slotType: 'aquarium-fish', targetId: 'seahorse' },
+  { id: 'item-aqua-seahorse', title: 'Cavalo-marinho', description: 'Criatura encantada que dança delicadamente entre os corais.', price: 24, icon: 'aqua', category: 'aquario', purchased: false, slotType: 'aquarium-fish', targetId: 'seahorse' },
   { id: 'item-aqua-jellyfish', title: 'Água-Viva Bioluminescente', description: 'Flutua em ondas rosadas e violetas iluminando o aquário à noite.', price: 32, icon: 'aqua', category: 'aquario', purchased: false, slotType: 'aquarium-fish', targetId: 'jellyfish' },
-  { id: 'item-aqua-koi', title: 'Carpa Koi Imperial', description: 'Peixe oriental elegante símbolo de amor e harmonia eterna.', price: 28, icon: 'aqua', category: 'aquario', purchased: false, slotType: 'aquarium-fish', targetId: 'koifish' },
+  { id: 'item-aqua-koi', title: 'Carpa Koi', description: 'Peixe oriental elegante símbolo de amor e harmonia eterna.', price: 28, icon: 'aqua', category: 'aquario', purchased: false, slotType: 'aquarium-fish', targetId: 'koifish' },
   { id: 'item-aqua-ship', title: 'Navio Miniatura Submerso', description: 'Navio fantástico com velas em miniatura no fundo do aquário.', price: 30, icon: 'aqua', category: 'aquario', purchased: false, slotType: 'aquarium-decor', targetId: 'ship' },
   { id: 'item-aqua-crystal', title: 'Cristal Atlante Luminoso', description: 'Aglomerado de cristais azuis e magenta que brilha sob a água.', price: 24, icon: 'diamond', category: 'aquario', purchased: false, slotType: 'aquarium-decor', targetId: 'crystal' },
 
@@ -1500,7 +1500,7 @@ export const INITIAL_DAILY_WHEEL: DailyWheelState = {
 export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
   {
     id: 'clownfish',
-    name: 'Peixe-Palhaço Laranja',
+    name: 'Peixe-palhaço',
     rarity: 'comum',
     colorHex: '#f97316',
     accentHex: '#ffffff',
@@ -1510,7 +1510,7 @@ export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
   },
   {
     id: 'betta',
-    name: 'Betta Véu Violeta',
+    name: 'Peixe Betta',
     rarity: 'raro',
     colorHex: '#a855f7',
     accentHex: '#f472b6',
@@ -1520,7 +1520,7 @@ export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
   },
   {
     id: 'angelfish',
-    name: 'Acará-Bandeira Dourado',
+    name: 'Acará-bandeira',
     rarity: 'comum',
     colorHex: '#facc15',
     accentHex: '#0f172a',
@@ -1530,7 +1530,7 @@ export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
   },
   {
     id: 'koifish',
-    name: 'Carpa Koi Imperial',
+    name: 'Carpa Koi',
     rarity: 'raro',
     colorHex: '#fb7185',
     accentHex: '#fef3c7',
@@ -1540,7 +1540,7 @@ export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
   },
   {
     id: 'seahorse',
-    name: 'Cavalo-Marinho Dourado',
+    name: 'Cavalo-marinho',
     rarity: 'raro',
     colorHex: '#fbbf24',
     accentHex: '#fde68a',
@@ -1550,7 +1550,7 @@ export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
   },
   {
     id: 'jellyfish',
-    name: 'Água-Viva Luminescente',
+    name: 'Água-viva',
     rarity: 'lendario',
     colorHex: '#e879f9',
     accentHex: '#38bdf8',
@@ -1560,7 +1560,7 @@ export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
   },
   {
     id: 'shark',
-    name: 'Tubarãozinho (Pet Aquático)',
+    name: 'Tubarão',
     rarity: 'lendario',
     colorHex: '#38bdf8',
     accentHex: '#f8fafc',
@@ -1571,7 +1571,7 @@ export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
   },
   {
     id: 'dolphin',
-    name: 'Golfinho (Pet Aquático)',
+    name: 'Golfinho',
     rarity: 'lendario',
     colorHex: '#22d3ee',
     accentHex: '#f0fdfa',
@@ -1582,7 +1582,7 @@ export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
   },
   {
     id: 'whale',
-    name: 'Baleia Azul (Pet Aquático)',
+    name: 'Baleia-azul',
     rarity: 'mitico',
     colorHex: '#60a5fa',
     accentHex: '#e0f2fe',
@@ -1596,7 +1596,7 @@ export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
 export const AQUARIUM_DECOR_CATALOG: AquariumDecorInfo[] = [
   {
     id: 'coral',
-    name: 'Recife de Corais Rosé',
+    name: 'Recife de corais',
     description: 'Corais coloridos que abrigam peixinhos.',
     unlockedByDefault: true,
     accentHex: '#f472b6',
