@@ -510,6 +510,8 @@ export const DreamHouseView: React.FC = () => {
             <button type="button" disabled={isSpectator || (dreamHouse.plotSize || 12) >= 24} onClick={expandHousePlot} className="min-h-[40px] px-3 rounded-2xl text-xs font-bold border border-amber-200/30 bg-amber-300/10 text-amber-100 disabled:opacity-40">
               Aumentar terreno · 20◆
             </button>
+            {unlockedRooms.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
               disabled={isSpectator}
@@ -567,10 +569,12 @@ export const DreamHouseView: React.FC = () => {
             >
               {hudExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
             </button>
+              </div>
+            )}
           </div>
         </div>
 
-        {hudExpanded && (
+        {unlockedRooms.length > 0 && hudExpanded && (
           <div className="p-4 space-y-4">
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
               {[
