@@ -73,7 +73,7 @@ export const INITIAL_COUPLE_CONFIG: CoupleConfig = {
   subtitle: 'Que bom ter você aqui de novo ♡',
   passcode: '120623', // 12/06/2023
   creatorPasscode: '2010', // Modo Espectador oculto do Gabriel
-  themeGlowColor: '#c084fc',
+  themeGlowColor: '#a78bfa',
   customGlbModels: {
     pets: { cat: 'https://skfb.ly/pQwNL' },
     furniture: {},
