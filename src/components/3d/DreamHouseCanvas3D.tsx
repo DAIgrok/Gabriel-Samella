@@ -2313,6 +2313,30 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
         );
         roomGroup.add(backWall, leftWall);
 
+        // Warm timber trim gives the real doorway a finished architectural edge.
+        const doorTrimMat = new THREE.MeshStandardMaterial({
+          color: 0x80502f,
+          roughness: 0.58,
+          metalness: 0.02,
+        });
+        const doorCenterZ = -2.72 + 0.72 + 0.92 / 2;
+        const doorTrimLeft = new THREE.Mesh(
+          new RoundedBoxGeometry(0.12, 2.16, 0.09, 3, 0.018),
+          doorTrimMat
+        );
+        doorTrimLeft.position.set(-3.15, 1.08, doorCenterZ - 0.49);
+        const doorTrimRight = new THREE.Mesh(
+          new RoundedBoxGeometry(0.12, 2.16, 0.09, 3, 0.018),
+          doorTrimMat
+        );
+        doorTrimRight.position.set(-3.15, 1.08, doorCenterZ + 0.49);
+        const doorTrimTop = new THREE.Mesh(
+          new RoundedBoxGeometry(0.12, 0.11, 1.07, 3, 0.018),
+          doorTrimMat
+        );
+        doorTrimTop.position.set(-3.15, 2.16, doorCenterZ);
+        roomGroup.add(doorTrimLeft, doorTrimRight, doorTrimTop);
+
         const winFrame = new THREE.Mesh(
           new RoundedBoxGeometry(1.55, 1.24, 0.09, 3, 0.03),
           new THREE.MeshStandardMaterial({ color: 0xfff5fa, roughness: 0.58 })
