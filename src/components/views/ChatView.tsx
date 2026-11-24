@@ -271,7 +271,7 @@ export const ChatView: React.FC = () => {
       className="pb-24 sm:pb-20 max-w-xl mx-auto flex flex-col h-[calc(100vh-118px)] min-h-[480px]"
     >
       {/* WhatsApp-style Top Header Bar */}
-      <div className="rounded-t-3xl px-4 py-3 bg-[#15072b]/95 border border-purple-500/30 border-b-0 flex items-center justify-between gap-2 shadow-lg flex-shrink-0">
+      <div className="rounded-t-2xl px-4 py-3 bg-[#0b1730] border border-sky-300/15 border-b-0 flex items-center justify-between gap-2 shadow-lg flex-shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <div className="relative flex-shrink-0">
             {getCouplePhotoUrl(photos, 0) ? (
@@ -369,69 +369,15 @@ export const ChatView: React.FC = () => {
         </div>
       </div>
 
-      {/* Blurred Stylized Sunset Beach Wallpaper + Messages Feed */}
-      <div className="relative flex-1 overflow-hidden border-x border-purple-500/30 bg-[#0d051a]">
-        {/* Stylized Sunset Beach SVG Illustration Layer with Artistic Blur */}
-        <svg
-          viewBox="0 0 400 700"
-          preserveAspectRatio="xMidYMid slice"
-          className="absolute inset-0 w-full h-full pointer-events-none select-none scale-105 blur-[5px] opacity-75"
-          aria-hidden="true"
-        >
-          <defs>
-            <linearGradient id="chatBeachSky" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#1e0b36" />
-              <stop offset="32%" stopColor="#581c5c" />
-              <stop offset="56%" stopColor="#be346b" />
-              <stop offset="72%" stopColor="#f97352" />
-              <stop offset="100%" stopColor="#fbbf77" />
-            </linearGradient>
-            <linearGradient id="chatBeachSea" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#431c53" />
-              <stop offset="45%" stopColor="#271242" />
-              <stop offset="100%" stopColor="#0f071f" />
-            </linearGradient>
-            <radialGradient id="chatBeachSun" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#fff3c4" />
-              <stop offset="45%" stopColor="#fca55c" />
-              <stop offset="100%" stopColor="#f43f7f" stopOpacity="0" />
-            </radialGradient>
-          </defs>
-
-          <rect width="400" height="440" fill="url(#chatBeachSky)" />
-          <circle cx="205" cy="370" r="105" fill="url(#chatBeachSun)" />
-          <circle cx="205" cy="370" r="44" fill="#ffe6a7" opacity="0.92" />
-
-          {/* Horizon & Ocean */}
-          <rect y="395" width="400" height="190" fill="url(#chatBeachSea)" />
-          {/* Shimmering sun reflection across water */}
-          <ellipse cx="205" cy="410" rx="55" ry="6" fill="#fbb67d" opacity="0.55" />
-          <ellipse cx="205" cy="432" rx="42" ry="5" fill="#f98b78" opacity="0.45" />
-          <ellipse cx="205" cy="456" rx="28" ry="4" fill="#e86f8c" opacity="0.35" />
-
-          {/* Shore Sand Curve */}
-          <path d="M0 570 Q180 545 400 585 L400 700 L0 700 Z" fill="#180a29" />
-          <path d="M0 568 Q180 542 400 583" stroke="#d9778b" strokeWidth="2.5" fill="none" opacity="0.5" />
-
-          {/* Palm Tree Silhouette */}
-          <path d="M25 700 Q48 520 75 430" stroke="#11041d" strokeWidth="14" fill="none" strokeLinecap="round" />
-          <path d="M75 430 Q15 415 -5 450" stroke="#11041d" strokeWidth="10" fill="none" strokeLinecap="round" />
-          <path d="M75 430 Q35 380 8 395" stroke="#11041d" strokeWidth="9" fill="none" strokeLinecap="round" />
-          <path d="M75 430 Q125 385 162 412" stroke="#11041d" strokeWidth="10" fill="none" strokeLinecap="round" />
-          <path d="M75 430 Q140 425 168 462" stroke="#11041d" strokeWidth="9" fill="none" strokeLinecap="round" />
-        </svg>
-
-        {/* Legibility tint veil */}
-        <div className="absolute inset-0 bg-[#0c041a]/48 backdrop-blur-[2px] pointer-events-none" />
-
-        {/* Scrollable Chat Thread */}
-        <div className="relative z-10 h-full overflow-y-auto p-3.5 sm:p-4 space-y-2.5">
+      {/* Histórico limpo: nenhuma mensagem é pré-carregada */}
+      <div className="relative flex-1 min-h-0 overflow-hidden border border-sky-300/15 rounded-b-2xl bg-[#081329]">
+        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top,rgba(96,165,250,.10),transparent_55%)]" />
+        <div className="relative z-10 h-full overflow-y-auto p-3 sm:p-4 space-y-3">
           {chatMessages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center text-purple-100/80 space-y-2 py-8">
-              <Sparkles className="w-7 h-7 text-pink-300" />
-              <p className="text-sm font-medium bg-black/35 px-4 py-2 rounded-2xl border border-white/10">
-                Envie uma mensagem, áudio ou foto para inaugurar o chat ♡
-              </p>
+            <div className="h-full min-h-[220px] flex flex-col items-center justify-center text-center text-slate-300/75 gap-2">
+              <Heart className="w-8 h-8 text-amber-200/80" />
+              <p className="text-sm font-medium text-slate-100">A conversa de vocês começa aqui.</p>
+              <p className="text-xs max-w-[250px]">Nenhuma mensagem foi colocada antes. Envie a primeira quando quiser.</p>
             </div>
           ) : (
             chatMessages.map((msg) => {
@@ -439,60 +385,23 @@ export const ChatView: React.FC = () => {
               const isGabriel = msg.sender === 'me';
               const displayName = msg.senderName || (isGabriel ? config.myName : config.partnerName);
               const isRead = msg.status === 'read' || Boolean(msg.readAt);
-
               return (
-                <motion.div
-                  key={msg.id}
-                  initial={{ opacity: 0, y: 6, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.18 }}
-                  className={`flex flex-col ${isFromMeOnScreen ? 'items-end' : 'items-start'}`}
-                >
-                  <div
-                    className={`max-w-[82%] rounded-2xl px-3.5 py-2 shadow-lg backdrop-blur-md ${
-                      isFromMeOnScreen
-                        ? 'bg-gradient-to-tr from-[#6d28d9]/92 to-[#a21caf]/92 border border-pink-300/35 text-white rounded-tr-sm'
-                        : 'bg-[#1a0b33]/92 border border-purple-400/30 text-white rounded-tl-sm'
-                    }`}
-                  >
-                    <span className="block text-[10px] font-bold text-pink-200/90 mb-0.5">
-                      {displayName}
-                    </span>
-
+                <motion.div key={msg.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }} className={isFromMeOnScreen ? 'flex flex-col items-end' : 'flex flex-col items-start'}>
+                  <div className={isFromMeOnScreen ? 'max-w-[84%] rounded-2xl rounded-tr-sm px-3.5 py-2.5 shadow-sm bg-gradient-to-br from-[#315b9d] to-[#574b99] border border-sky-200/15 text-white' : 'max-w-[84%] rounded-2xl rounded-tl-sm px-3.5 py-2.5 shadow-sm bg-[#15233d] border border-white/10 text-white'}>
+                    <span className="block text-[10px] font-semibold text-sky-100/75 mb-1">{displayName}</span>
                     {msg.msgType === 'image' && msg.mediaUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setLightboxImage(msg.mediaUrl!)}
-                        className="block rounded-xl overflow-hidden mb-1.5 border border-white/20 cursor-pointer max-w-[230px]"
-                      >
-                        <img
-                          src={msg.mediaUrl}
-                          alt="Foto no chat"
-                          className="w-full max-h-60 object-cover"
-                        />
+                      <button type="button" onClick={() => setLightboxImage(msg.mediaUrl!)} className="block rounded-xl overflow-hidden mb-1.5 border border-white/15 cursor-pointer max-w-[250px]">
+                        <img src={msg.mediaUrl} alt="Foto enviada no chat" className="w-full max-h-64 object-cover" />
                       </button>
                     )}
-
                     {msg.msgType === 'audio' && msg.mediaUrl ? (
                       <AudioBubblePlayer src={msg.mediaUrl} duration={msg.audioDuration} />
                     ) : (
-                      msg.text &&
-                      !(msg.msgType === 'image' && msg.text === 'Fotografia') && (
-                        <p className="text-xs sm:text-sm leading-relaxed break-words">{msg.text}</p>
-                      )
+                      msg.text && !(msg.msgType === 'image' && msg.text === 'Fotografia') && <p className="text-xs sm:text-sm leading-relaxed break-words">{msg.text}</p>
                     )}
-
-                    <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-white/70">
+                    <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-white/60">
                       <span>{msg.time}</span>
-                      {isFromMeOnScreen && (
-                        isRead ? (
-                          <CheckCheck className="w-3.5 h-3.5 text-cyan-300" aria-label="Visto" />
-                        ) : msg.status === 'delivered' ? (
-                          <CheckCheck className="w-3.5 h-3.5 text-white/60" aria-label="Entregue" />
-                        ) : (
-                          <Check className="w-3.5 h-3.5 text-white/60" aria-label="Enviada" />
-                        )
-                      )}
+                      {isFromMeOnScreen && (isRead ? <CheckCheck className="w-3.5 h-3.5 text-sky-200" aria-label="Visto" /> : msg.status === 'delivered' ? <CheckCheck className="w-3.5 h-3.5 text-white/60" aria-label="Entregue" /> : <Check className="w-3.5 h-3.5 text-white/60" aria-label="Enviada" />)}
                     </div>
                   </div>
                 </motion.div>
@@ -504,21 +413,7 @@ export const ChatView: React.FC = () => {
       </div>
 
       {/* Bottom Input Dock */}
-      <div className="rounded-b-3xl bg-[#15072b]/95 border border-purple-500/30 border-t-purple-500/20 p-2.5 space-y-2 flex-shrink-0">
-        {/* Quick Presets */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          {QUICK_REPLIES.map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              onClick={() => handleQuickSend(preset)}
-              className="px-3 py-1 rounded-full bg-purple-950/80 hover:bg-pink-500/25 border border-purple-400/25 text-[11px] font-medium text-purple-200 hover:text-white whitespace-nowrap transition cursor-pointer shrink-0"
-            >
-              {preset}
-            </button>
-          ))}
-        </div>
-
+      <div className="rounded-b-2xl bg-[#0b1730] border border-sky-300/15 p-2.5 flex-shrink-0">
         {/* Hidden Image Input */}
         <input
           ref={fileInputRef}
@@ -560,7 +455,7 @@ export const ChatView: React.FC = () => {
               onClick={() => fileInputRef.current?.click()}
               disabled={isSending}
               aria-label="Enviar foto"
-              className="w-11 h-11 rounded-2xl bg-purple-950/80 hover:bg-purple-900 border border-purple-400/30 flex items-center justify-center text-pink-300 flex-shrink-0 cursor-pointer transition"
+              className="w-11 h-11 rounded-xl bg-[#172747] hover:bg-[#20365d] border border-sky-300/20 flex items-center justify-center text-sky-200 flex-shrink-0 cursor-pointer transition"
             >
               <Camera className="w-5 h-5" />
             </button>
@@ -570,7 +465,7 @@ export const ChatView: React.FC = () => {
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder={`Mensagem como ${effectiveRole === 'eu' ? config.myName : config.partnerName}...`}
-              className="flex-1 min-h-[44px] px-3.5 py-2.5 rounded-2xl bg-purple-950/85 border border-purple-500/30 text-sm text-white placeholder-purple-400/50 focus:outline-none focus:border-pink-400"
+              className="flex-1 min-h-[44px] px-3.5 py-2.5 rounded-xl bg-[#101e37] border border-sky-300/15 text-sm text-white placeholder-slate-400/60 focus:outline-none focus:border-amber-200/60"
             />
 
             {inputText.trim() ? (
