@@ -3620,6 +3620,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setDreamHouse((prev) => ({ ...prev, customFloorHex: hex }));
   };
 
+  const setHouseCustomCeilingHex = (hex: string) => {
+    if (guardSpectator()) return;
+    soundEngine.playHeartPop();
+    setDreamHouse((prev) => ({ ...prev, customCeilingHex: hex }));
+  };
+
   const setHouseFurnitureColor = (furnitureId: string, hex: string) => {
     if (guardSpectator()) return;
     soundEngine.playHeartPop();
@@ -4122,6 +4128,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setHouseFloorTheme,
         setHouseCustomWallHex,
         setHouseCustomFloorHex,
+        setHouseCustomCeilingHex,
         setHouseFurnitureColor,
         toggleHouseLights,
         toggleHouseFireplace,
