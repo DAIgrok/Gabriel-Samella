@@ -107,7 +107,7 @@ export const DreamHouseView: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const unlockedRooms = dreamHouse.unlockedRooms || ['sala'];
+  const unlockedRooms = dreamHouse.unlockedRooms || [];
   const currentRoom = unlockedRooms.includes(dreamHouse.activeRoom) ? dreamHouse.activeRoom : 'sala';
   const placedInRoom = dreamHouse.placedFurniture?.[currentRoom] || [];
   const totalPlacedAllRooms = Object.values(dreamHouse.placedFurniture || {}).flat().length;
