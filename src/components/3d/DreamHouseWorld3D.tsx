@@ -121,7 +121,139 @@ export const DreamHouseWorld3D: React.FC<DreamHouseWorld3DProps> = ({
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.34;
     ground.receiveShadow = true;
+
     world.add(ground);
+
+    // Living neighborhood: landscaped garden, trees, shrubs and nearby homes.
+    const landscape = new THREE.Group();
+    world.add(landscape);
+    const bark = new THREE.MeshStandardMaterial({ color: 0x59402e, roughness: 0.96 });
+    const barkLight = new THREE.MeshStandardMaterial({ color: 0x79563a, roughness: 0.94 });
+    const leafMats = [0x315d3d, 0x3f7045, 0x527d48, 0x6d8b50].map(
+      (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.92 })
+    );
+    const shrubMat = new THREE.MeshStandardMaterial({ color: 0x416b43, roughness: 0.95 });
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x8b9294, roughness: 0.9 });
+    const houseWalls = [0xd8d0c1, 0xc8d3d5, 0xe0d6c8, 0xb9c5bd].map(
+      (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.88 })
+    );
+    const roofMats = [0x394b63, 0x765342, 0x465b50, 0x5a526e].map(
+      (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.84 })
+    );
+    const windowMat = new THREE.MeshStandardMaterial({
+      color: 0x9ac6d8, emissive: 0x28465b, emissiveIntensity: 0.22,
+      roughness: 0.24, metalness: 0.08
+    });
+    const deterministic = (n: number) => {
+      const v = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+      return v - Math.floor(v);
+    };
+
+    // Curved footpath and garden border around the player's plot.
+    const pathMat = new THREE.MeshStandardMaterial({ color: 0x9b927e, roughness: 0.98 });
+    const path = new THREE.Mesh(new THREE.RingGeometry(half + 0.65, half + 1.45, 4, 1), pathMat);
+    path.rotation.x = -Math.PI / 2;
+    path.position.y = -0.205;
+    path.scale.set(1, 1, 1);
+    landscape.add(path);
+
+    // Trees use a tapered trunk, exposed roots and branching limbs, with layered foliage.
+    const addTree = (x: number, z: number, scale: number, seed: number) => {
+      const tree = new THREE.Group();
+      tree.position.set(x, -0.2, z);
+      tree.scale.setScalar(scale);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.24, 2.05, 9), bark);
+      trunk.position.y = 1.02;
+      trunk.rotation.z = (deterministic(seed) - 0.5) * 0.18;
+      trunk.castShadow = true;
+      tree.add(trunk);
+      for (let r = 0; r < 4; r++) {
+        const root = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.12, 0.72, 7), barkLight);
+        root.position.set(Math.cos(r * Math.PI / 2) * 0.22, 0.12, Math.sin(r * Math.PI / 2) * 0.22);
+        root.rotation.z = Math.cos(r * Math.PI / 2) * 0.62;
+        root.rotation.x = Math.sin(r * Math.PI / 2) * 0.62;
+        tree.add(root);
+      }
+      for (let b = 0; b < 5; b++) {
+        const angle = b * Math.PI * 2 / 5 + deterministic(seed + b) * 0.35;
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.09, 1.05, 7), bark);
+        branch.position.set(Math.cos(angle) * 0.34, 1.82 + (b % 2) * 0.12, Math.sin(angle) * 0.34);
+        branch.rotation.z = Math.cos(angle) * -0.62;
+        branch.rotation.x = Math.sin(angle) * 0.62;
+        tree.add(branch);
+      }
+      for (let l = 0; l < 13; l++) {
+        const angle = l * 2.399 + seed;
+        const crown = new THREE.Mesh(
+          new THREE.IcosahedronGeometry(0.48 + deterministic(seed + l) * 0.22, 1),
+          leafMats[l % leafMats.length]
+        );
+        crown.position.set(Math.cos(angle) * (0.38 + deterministic(l + seed) * 0.42), 2.05 + deterministic(l + seed * 2) * 0.95, Math.sin(angle) * (0.34 + deterministic(l + seed * 3) * 0.42));
+        crown.scale.set(1.12, 0.72 + deterministic(l + 5) * 0.35, 0.92);
+        crown.castShadow = true;
+        tree.add(crown);
+      }
+      landscape.add(tree);
+    };
+
+    const addShrub = (x: number, z: number, size = 1) => {
+      const bush = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34 * size, 1), shrubMat);
+      bush.position.set(x, 0.02, z);
+      bush.scale.set(1.35, 0.72, 0.95);
+      bush.castShadow = true;
+      landscape.add(bush);
+    };
+
+    const edge = half + 2.1;
+    for (let i = 0; i < 18; i++) {
+      const side = i % 4;
+      const t = (Math.floor(i / 4) - 1.7) * 2.35;
+      const x = side === 0 ? t : side === 1 ? edge : side === 2 ? -t : -edge;
+      const z = side === 0 ? -edge : side === 1 ? t : side === 2 ? edge : -t;
+      addTree(x, z, 0.78 + deterministic(i + 30) * 0.35, i + 3);
+      addShrub(x + (side % 2 ? 0.8 : -0.8), z + (side % 2 ? -0.8 : 0.8), 0.75 + deterministic(i) * 0.5);
+    }
+
+    // A small residential street scene beyond the garden, visible while orbiting 360°.
+    const addNeighborHome = (x: number, z: number, rotation: number, index: number) => {
+      const home = new THREE.Group();
+      home.position.set(x, -0.2, z);
+      home.rotation.y = rotation;
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(3.15, 1.85, 2.75), houseWalls[index % houseWalls.length]);
+      wall.position.y = 0.93;
+      wall.castShadow = true;
+      wall.receiveShadow = true;
+      home.add(wall);
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(2.35, 1.25, 4), roofMats[index % roofMats.length]);
+      roof.position.y = 2.48;
+      roof.rotation.y = Math.PI / 4;
+      roof.scale.z = 0.86;
+      roof.castShadow = true;
+      home.add(roof);
+      const door = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.15, 0.06), barkLight);
+      door.position.set(0, 0.58, 1.405);
+      home.add(door);
+      for (const wx of [-0.92, 0.92]) {
+        const win = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.58, 0.07), windowMat);
+        win.position.set(wx, 1.15, 1.405);
+        home.add(win);
+      }
+      const porch = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.12, 0.72), stoneMat);
+      porch.position.set(0, 0.12, 1.68);
+      home.add(porch);
+      landscape.add(home);
+    };
+    const neighborhoodRadius = half + 8.2;
+    addNeighborHome(-neighborhoodRadius, -neighborhoodRadius * 0.55, Math.PI / 4, 0);
+    addNeighborHome(neighborhoodRadius * 0.72, -neighborhoodRadius, -Math.PI / 5, 1);
+    addNeighborHome(neighborhoodRadius, neighborhoodRadius * 0.48, Math.PI, 2);
+    addNeighborHome(-neighborhoodRadius * 0.72, neighborhoodRadius, Math.PI * 0.7, 3);
+
+    for (let i = 0; i < 22; i++) {
+      const angle = i * Math.PI * 2 / 22;
+      const radius = half + 1.65 + deterministic(i + 80) * 0.65;
+      addShrub(Math.cos(angle) * radius, Math.sin(angle) * radius, 0.55 + deterministic(i + 90) * 0.45);
+    }
 
     const plot = new THREE.Mesh(
       new RoundedBoxGeometry(propsRef.current.plotSize, 0.22, propsRef.current.plotSize, 5, 0.12),
