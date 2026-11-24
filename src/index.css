@@ -476,3 +476,31 @@ body {
   --progress-bar-color: #d6b56d;
   --progress-mask: #0b1730;
 }
+
+
+/* Harmonização dos botões e acentos legados sem alterar cores de erro/alerta. */
+.nm-app-shell [class~="bg-pink-500"],
+.nm-app-shell [class~="bg-pink-600"] {
+  background-color: #5b68c9 !important;
+}
+.nm-app-shell [class~="bg-rose-500"] {
+  background-color: #a78bfa !important;
+}
+.nm-app-shell [class~="from-purple-600"] {
+  --tw-gradient-from: #345eae var(--tw-gradient-from-position) !important;
+}
+.nm-app-shell [class~="from-pink-600"] {
+  --tw-gradient-from: #416fc4 var(--tw-gradient-from-position) !important;
+}
+.nm-app-shell [class~="via-pink-600"] {
+  --tw-gradient-via: #7258c7 var(--tw-gradient-via-position) !important;
+}
+.nm-app-shell [class~="to-rose-500"] {
+  --tw-gradient-to: #b79658 var(--tw-gradient-to-position) !important;
+}
+.nm-app-shell [class~="hover:border-pink-400"]:hover {
+  border-color: rgba(214,181,109,.62) !important;
+}
+.nm-app-shell [class~="text-purple-200"] {
+  color: #d8d8f5;
+}
