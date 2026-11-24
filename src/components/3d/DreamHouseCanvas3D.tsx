@@ -2396,6 +2396,62 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
         doorTrimTop.position.set(-buildWidth / 2, 2.16, doorCenterZ);
         roomGroup.add(doorTrimLeft, doorTrimRight, doorTrimTop);
 
+        // A real garden sits directly beyond the entrance, so the doorway never opens into empty space.
+        const doorGarden = new THREE.Group();
+        const gardenGround = new THREE.Mesh(
+          new THREE.PlaneGeometry(5.2, 4.6),
+          new THREE.MeshStandardMaterial({ color: 0x557b4c, roughness: 1.0 })
+        );
+        gardenGround.rotation.x = -Math.PI / 2;
+        gardenGround.position.set(-buildWidth / 2 - 2.35, -0.035, doorCenterZ);
+        gardenGround.receiveShadow = true;
+        doorGarden.add(gardenGround);
+
+        const gardenPath = new THREE.Mesh(
+          new RoundedBoxGeometry(3.8, 0.055, 1.08, 3, 0.025),
+          new THREE.MeshStandardMaterial({ color: 0xc3ad8e, roughness: 0.94 })
+        );
+        gardenPath.position.set(-buildWidth / 2 - 1.9, -0.005, doorCenterZ);
+        gardenPath.receiveShadow = true;
+        doorGarden.add(gardenPath);
+
+        const shrubMat = new THREE.MeshStandardMaterial({ color: 0x47764d, roughness: 0.96 });
+        const shrubLightMat = new THREE.MeshStandardMaterial({ color: 0x6b9658, roughness: 0.96 });
+        [-1.55, 1.55].forEach((side, index) => {
+          const shrub = new THREE.Group();
+          [[0, 0.42, 0, 0.34], [-0.22, 0.34, 0.08, 0.24], [0.2, 0.38, -0.06, 0.26]].forEach(([x, y, z, radius], leafIndex) => {
+            const leaf = new THREE.Mesh(
+              new THREE.IcosahedronGeometry(radius, 1),
+              leafIndex % 2 ? shrubLightMat : shrubMat
+            );
+            leaf.position.set(x, y, z);
+            leaf.castShadow = true;
+            shrub.add(leaf);
+          });
+          shrub.position.set(-buildWidth / 2 - 2.7, 0, doorCenterZ + side);
+          doorGarden.add(shrub);
+
+          const flowerMat = new THREE.MeshStandardMaterial({
+            color: index === 0 ? 0xe9a8c7 : 0xf0d18a,
+            roughness: 0.72,
+          });
+          for (let flowerIndex = 0; flowerIndex < 3; flowerIndex++) {
+            const stem = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.012, 0.016, 0.22, 7),
+              new THREE.MeshStandardMaterial({ color: 0x47764d, roughness: 1 })
+            );
+            stem.position.set(
+              -buildWidth / 2 - 2.25 - flowerIndex * 0.16,
+              0.11,
+              doorCenterZ + side * 0.72 + (flowerIndex - 1) * 0.12
+            );
+            const bloom = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 10), flowerMat);
+            bloom.position.set(stem.position.x, 0.25, stem.position.z);
+            doorGarden.add(stem, bloom);
+          }
+        });
+        roomGroup.add(doorGarden);
+
         const winFrame = new THREE.Mesh(
           new RoundedBoxGeometry(1.55, 1.24, 0.09, 3, 0.03),
           new THREE.MeshStandardMaterial({ color: 0xfff5fa, roughness: 0.58 })
