@@ -100,7 +100,7 @@ export const DreamHouseView: React.FC = () => {
   const [showCeiling, setShowCeiling] = useState(false);
   const [catFilter, setCatFilter] = useState<'all' | HouseFurnitureCategory>('all');
   const [skyMode, setSkyMode] = useState<DreamHouseSkyMode>('auto');
-  const [viewMode, setViewMode] = useState<'interior' | 'exterior'>('interior');
+  const [viewMode, setViewMode] = useState<'interior' | 'exterior'>('exterior');
   const [hudExpanded, setHudExpanded] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isWallBuildMode, setIsWallBuildMode] = useState(false);
@@ -271,7 +271,7 @@ export const DreamHouseView: React.FC = () => {
             onClick={() => setViewMode((current) => (current === 'interior' ? 'exterior' : 'interior'))}
             className="px-3 py-1.5 rounded-full bg-[#130627]/90 backdrop-blur-sm border border-pink-400/40 text-[11px] font-bold text-white shadow-lg cursor-pointer"
           >
-            {viewMode === 'interior' ? 'Casa por fora · 360°' : 'Voltar ao cômodo'}
+            {viewMode === 'interior' ? 'Ver bairro · 360°' : 'Entrar na casa'}
           </button>
           {viewMode === 'interior' && (
             <div className="px-3 py-1.5 rounded-full bg-[#130627]/85 backdrop-blur-sm border border-pink-400/30 text-[11px] font-bold text-white flex items-center gap-1.5 pointer-events-none">
