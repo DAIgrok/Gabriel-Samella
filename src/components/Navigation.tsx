@@ -67,8 +67,8 @@ export const Navigation: React.FC = () => {
   const allDrawerItems: { id: ExtendedView; label: string; icon: React.ElementType; color: string; badge?: string }[] = [
     { id: 'inicio', label: 'Página Inicial', icon: Home, color: 'text-pink-400' },
     { id: 'conversas', label: 'Chat do Casal', icon: MessageCircle, color: 'text-pink-300', badge: unreadChatCount > 0 ? String(unreadChatCount) : undefined },
-    { id: 'casa', label: 'Casa dos Sonhos 3D', icon: DreamHouseCrestIcon, color: 'text-pink-300', badge: '3D' },
-    { id: 'aquario', label: 'Aquário Mágico 3D', icon: AquariumCoralIcon, color: 'text-cyan-300', badge: '3D' },
+    { id: 'casa', label: 'Casa', icon: DreamHouseCrestIcon, color: 'text-pink-300' },
+    { id: 'aquario', label: 'Aquário', icon: AquariumCoralIcon, color: 'text-cyan-300' },
     { id: 'missoes', label: 'Missões & Sazonal', icon: MissionCompassIcon, color: 'text-amber-300' },
     { id: 'cartas', label: 'Cartas de Amor', icon: Mail, color: 'text-pink-400' },
     { id: 'fotos', label: 'Galeria de Fotos', icon: ImageIcon, color: 'text-purple-400' },
