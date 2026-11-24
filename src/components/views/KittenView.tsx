@@ -100,6 +100,7 @@ export const KittenView: React.FC = () => {
   const [drawerModal, setDrawerModal] = useState<'none' | 'armario' | 'mascotes'>('none');
   const [petViewMode] = useState<'design' | '3d' | '2d'>('design');
   const [danceMove, setDanceMove] = useState<PetDanceMove>('idle');
+  const [isActionWheelOpen, setIsActionWheelOpen] = useState(false);
   const [actionCue, setActionCue] = useState<PetAnimationCue>({ type: 'idle', tick: 0 });
   const danceTimerRef = useRef<number | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -1222,39 +1223,57 @@ export const KittenView: React.FC = () => {
           </button>
         </div>
 
-        {/* Compact Dance Strip */}
-        <div className="relative z-20 flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-          {[
-            { move: 'dance' as const, Icon: Music, label: 'Dançar', msg: `${displayName} dançando ao som do amor ♡` },
-            { move: 'spin' as const, Icon: RefreshCw, label: 'Pirueta', msg: `Pirueta perfeita de ${displayName}!` },
-            { move: 'jump' as const, Icon: ArrowUp, label: 'Pular', msg: `Pulo alegre de felicidade!` },
-            { move: 'wave' as const, Icon: Hand, label: 'Acenar', msg: `${displayName} está acenando pra você ♡` },
-            { move: 'kiss' as const, Icon: Heart, label: 'Beijo', msg: `Muuuack! Um beijinho pra você ♡` },
-          ].map((btn) => {
-            const active = danceMove === btn.move;
-            const BtnIcon = btn.Icon;
-            return (
-              <button
-                key={btn.move}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  triggerDanceMove(btn.move, btn.label, btn.msg);
-                }}
-                className={`px-3 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1 shrink-0 border transition cursor-pointer active:scale-95 ${
-                  active
-                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white border-pink-300'
-                    : 'bg-black/45 border-white/15 text-pink-100 hover:bg-white/10'
-                }`}
-              >
-                <BtnIcon className="w-3 h-3" />
-                <span>{btn.label}</span>
-                {cdDance > 0 && <span className="text-[9px] text-amber-300 ml-0.5">({formatCooldownMs(cdDance)})</span>}
-              </button>
-            );
-          })}
+        {/* Menu radial de ações rápidas do pet */}
+        <div className="relative z-20 flex justify-center py-1">
+          <div className="relative h-40 w-64 max-w-full">
+            <AnimatePresence>
+              {isActionWheelOpen && (
+                <>
+                  {[
+                    { move: 'dance' as const, emoji: '💃', label: 'Dançar', msg: displayName + ' dançando ao som do amor ♡', top: '2%', left: '50%' },
+                    { move: 'spin' as const, emoji: '🌀', label: 'Pirueta', msg: 'Pirueta perfeita de ' + displayName + '!', top: '24%', left: '88%' },
+                    { move: 'jump' as const, emoji: '🐾', label: 'Pular', msg: 'Um pulinho de felicidade!', top: '76%', left: '76%' },
+                    { move: 'wave' as const, emoji: '🐕', label: currentPetType === 'dog' ? 'Dar a pata' : 'Acenar', msg: displayName + ' está mandando um carinho pra você ♡', top: '76%', left: '24%' },
+                    { move: 'kiss' as const, emoji: '💋', label: 'Beijo', msg: 'Um beijinho só seu ♡', top: '24%', left: '12%' },
+                  ].map((action) => (
+                    <motion.button
+                      key={action.move}
+                      type="button"
+                      initial={{ opacity: 0, scale: 0.35, x: '-50%', y: '-50%' }}
+                      animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+                      exit={{ opacity: 0, scale: 0.35, x: '-50%', y: '-50%' }}
+                      transition={{ type: 'spring', stiffness: 420, damping: 24 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        triggerDanceMove(action.move, action.label, action.msg);
+                        setIsActionWheelOpen(false);
+                      }}
+                      style={{ position: 'absolute', top: action.top, left: action.left }}
+                      className={danceMove === action.move
+                        ? "w-[68px] min-h-[62px] rounded-2xl border border-amber-200/70 bg-gradient-to-br from-blue-500/85 to-violet-600/90 text-white backdrop-blur-xl shadow-xl flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95"
+                        : "w-[68px] min-h-[62px] rounded-2xl border border-white/20 bg-[#0b1730]/95 text-white hover:border-amber-200/60 backdrop-blur-xl shadow-xl flex flex-col items-center justify-center gap-0.5 cursor-pointer active:scale-95"}
+                    >
+                      <span className="text-xl leading-none">{action.emoji}</span>
+                      <span className="text-[9px] font-bold leading-tight">{action.label}</span>
+                      {cdDance > 0 && <span className="text-[8px] text-amber-200">{formatCooldownMs(cdDance)}</span>}
+                    </motion.button>
+                  ))}
+                </>
+              )}
+            </AnimatePresence>
+            <motion.button
+              type="button"
+              aria-expanded={isActionWheelOpen}
+              aria-label={isActionWheelOpen ? 'Fechar ações do pet' : 'Abrir ações do pet'}
+              onClick={() => setIsActionWheelOpen((open) => !open)}
+              whileTap={{ scale: 0.92 }}
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-[70px] h-[70px] rounded-full bg-gradient-to-br from-sky-500 via-violet-600 to-[#b79658] border-2 border-amber-100/70 text-white shadow-[0_8px_28px_rgba(96,165,250,.35)] flex flex-col items-center justify-center gap-0.5"
+            >
+              <PawPrint className="w-6 h-6" />
+              <span className="text-[9px] font-extrabold">{isActionWheelOpen ? 'Fechar' : 'Ações'}</span>
+            </motion.button>
+          </div>
         </div>
-
         {/* Room Action Tray */}
         <div className="relative z-20 pt-2">
           {currentRoom === 'sala' && (
