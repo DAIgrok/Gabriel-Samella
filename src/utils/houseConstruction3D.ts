@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { HouseConstructionWall } from '../types';
 
 /**
  * Building primitives for the free-layout house editor.
@@ -21,14 +22,9 @@ export interface HouseWallOpening {
   sillHeight?: number;
 }
 
-export interface HouseWallSegment {
-  id: string;
-  start: { x: number; z: number };
-  end: { x: number; z: number };
-  height: number;
-  thickness: number;
+export type HouseWallSegment = HouseConstructionWall & {
   openings?: HouseWallOpening[];
-}
+};
 
 export interface HouseFloorDimensions {
   width: number;
