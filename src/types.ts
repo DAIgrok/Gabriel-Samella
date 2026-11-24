@@ -395,6 +395,7 @@ export interface DreamHouseState {
   activeRoom: HouseRoomId;
   unlockedRooms?: HouseRoomId[];
   plotSize?: number;
+  roomTransforms?: Partial<Record<HouseRoomId, HouseFurnitureTransform>>;
   wallTheme: HouseWallTheme;
   floorTheme: HouseFloorTheme;
   customWallHex?: string;
