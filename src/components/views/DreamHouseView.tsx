@@ -173,7 +173,7 @@ export const DreamHouseView: React.FC = () => {
           </div>
           <div className="min-w-0">
             <h2 className="text-lg sm:text-xl font-bold text-white truncate">
-              Casa dos Sonhos 3D
+              Casa
             </h2>
             <p className="text-xs text-purple-200/75 truncate">
               {isSpectator
