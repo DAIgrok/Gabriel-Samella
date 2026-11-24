@@ -34,7 +34,7 @@ import {
   resolveFurnitureGlbUrl,
   resolvePetGlbUrl,
 } from '../../data/initialData';
-import { HOUSE_CATEGORY_META, HOUSE_ROOM_PRICES } from '../../data/houseFurnitureCatalog';
+import { HOUSE_CATEGORY_META } from '../../data/houseFurnitureCatalog';
 import { HouseConstructionWall, HouseFurnitureCategory, HouseRoomId } from '../../types';
 import {
   DiamondGemIcon,
@@ -69,7 +69,6 @@ export const DreamHouseView: React.FC = () => {
     treeState,
     activeSeasonalEvent,
     setHouseRoom,
-    unlockHouseRoom,
     setHouseWallTheme,
     setHouseFloorTheme,
     setHouseCustomWallHex,
@@ -94,7 +93,7 @@ export const DreamHouseView: React.FC = () => {
   } = useApp();
 
   const stageRef = useRef<HTMLDivElement>(null);
-  const [dockTab, setDockTab] = useState<'moveis' | 'paredes' | 'pisos' | 'tetos' | 'construcao'>('moveis');
+  const [dockTab, setDockTab] = useState<'moveis' | 'paredes' | 'pisos' | 'tetos' | 'construcao'>('construcao');
   const [showCeiling, setShowCeiling] = useState(false);
   const [catFilter, setCatFilter] = useState<'all' | HouseFurnitureCategory>('all');
   const [skyMode, setSkyMode] = useState<DreamHouseSkyMode>('auto');
