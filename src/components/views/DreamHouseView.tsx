@@ -586,7 +586,7 @@ export const DreamHouseView: React.FC = () => {
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
               {[
                 { id: 'moveis' as const, label: 'Móveis', icon: Sofa },
-                { id: 'paredes' as const, label: 'Paredes', icon: Palette },
+                { id: 'paredes' as const, label: 'Paredes', icon: Square },
                 { id: 'pisos' as const, label: 'Pisos', icon: Palette },
                 { id: 'telhados' as const, label: 'Telhados', icon: Triangle },
                 { id: 'construcao' as const, label: 'Planta', icon: Move },
