@@ -196,7 +196,7 @@ function buildFishMesh(fishId: string): {
     dorsal.material.side = THREE.DoubleSide;
 
     // Fine lateral stripe and gill arc give the body a recognisable fish anatomy.
-    const stripeMat = new THREE.LineBasicMaterial({ color: spec.accentHex, transparent: true, opacity: 0.72 });
+    const stripeMat = new THREE.MeshBasicMaterial({ color: spec.accentHex, transparent: true, opacity: 0.72 });
     const stripeCurve = new THREE.CatmullRomCurve3([
       new THREE.Vector3(0.17, -0.005, 0.105),
       new THREE.Vector3(0.05, -0.012, 0.125),
@@ -256,7 +256,7 @@ function buildFishMesh(fishId: string): {
     const eyeR = eyeL.clone();
     eyeR.position.set(0.225, 0.042, -0.085);
 
-    g.add(body, belly, dorsal, lFinPivot, rFinPivot, tailGroup, eyeL, eyeR);
+    g.add(body, belly, dorsal, stripe, gill, lFinPivot, rFinPivot, tailGroup, eyeL, eyeR);
     tailObj = tailGroup;
   }
 
