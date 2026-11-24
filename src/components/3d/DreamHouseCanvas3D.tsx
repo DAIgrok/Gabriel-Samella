@@ -2994,10 +2994,8 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     footprintWidth,
     footprintDepth,
     wallHeight,
-    customWallsKey,
+    JSON.stringify(customWalls || []),
   ]);
-
-  const customWallsKey = JSON.stringify(customWalls || []);
 
   const transformsKey = JSON.stringify(furnitureTransforms || {});
   useEffect(() => {
