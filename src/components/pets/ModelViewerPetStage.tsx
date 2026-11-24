@@ -903,7 +903,7 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
           <button
             type="button"
             onClick={handlePetAction}
-            className="min-h-[46px] px-3 py-2.5 rounded-2xl bg-gradient-to-r from-pink-500/85 to-rose-500/85 hover:brightness-110 border border-pink-300/45 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-[0_6px_20px_rgba(236,72,153,0.3)] cursor-pointer transition active:scale-95"
+            className="min-h-[46px] px-3 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500/85 to-amber-500/85 hover:brightness-110 border border-sky-300/45 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-[0_6px_20px_rgba(236,72,153,0.3)] cursor-pointer transition active:scale-95"
           >
             <Heart className="w-4 h-4 fill-current" />
             <span>{cdPet > 0 ? `Carinho (${formatCooldownMs(cdPet)})` : 'Fazer Carinho'}</span>
