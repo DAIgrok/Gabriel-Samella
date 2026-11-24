@@ -2728,7 +2728,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
         updateMouseFromEvent(e);
         raycaster.setFromCamera(mouse, camera);
         const hasEnd = raycaster.ray.intersectPlane(floorPlane, intersectPt);
-        if (hasEnd) {
+        if (hasEnd && e.type !== 'pointercancel') {
           const endX = Math.round(intersectPt.x / 0.25) * 0.25;
           const endZ = Math.round(intersectPt.z / 0.25) * 0.25;
           const startX = drawingWallStart.x;
