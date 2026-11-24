@@ -1747,6 +1747,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
   activeSeasonalEvent = 'normal',
   furnitureTransforms,
   isEditMode = false,
+  wallBuildMode = false,
   selectedFurnitureId = null,
   furnitureGlbUrls,
   ownedPets,
@@ -1761,6 +1762,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
   onInteractFurniture,
   onSelectFurniture,
   onMoveFurniture,
+  onCreateWall,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [contextLost, setContextLost] = useState(false);
