@@ -96,8 +96,8 @@ export const CoupleCallPanel: React.FC<{ isSpectator: boolean; peerName: string 
   }, [isSpectator]);
 
   useEffect(() => {
-    if (remoteAudioRef.current) remoteAudioRef.current.srcObject = remoteStream;
-    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
+    if (remoteAudioRef.current) remoteAudioRef.current.srcObject = kind === 'audio' ? remoteStream : null;
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = kind === 'video' ? remoteStream : null;
   }, [remoteStream, kind]);
 
   useEffect(() => {
