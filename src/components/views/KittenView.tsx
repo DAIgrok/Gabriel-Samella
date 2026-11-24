@@ -1225,7 +1225,7 @@ export const KittenView: React.FC = () => {
 
         {/* Menu radial de ações rápidas do pet */}
         <div className="relative z-20 flex justify-center py-1">
-          <div className="relative h-40 w-64 max-w-full">
+          <div className="relative h-44 w-64 max-w-full">
             <AnimatePresence>
               {isActionWheelOpen && (
                 <>
@@ -1235,6 +1235,7 @@ export const KittenView: React.FC = () => {
                     { move: 'jump' as const, emoji: '🐾', label: 'Pular', msg: 'Um pulinho de felicidade!', top: '76%', left: '76%' },
                     { move: 'wave' as const, emoji: '🐕', label: currentPetType === 'dog' ? 'Dar a pata' : 'Acenar', msg: displayName + ' está mandando um carinho pra você ♡', top: '76%', left: '24%' },
                     { move: 'kiss' as const, emoji: '💋', label: 'Beijo', msg: 'Um beijinho só seu ♡', top: '24%', left: '12%' },
+                    { move: 'special' as const, emoji: currentPetType === 'dog' ? '🐶' : '🔊', label: currentPetType === 'dog' ? 'Latir' : currentPetType === 'cat' ? 'Ronronar' : 'Fazer som', msg: displayName + ' respondeu ao seu chamado!', top: '98%', left: '50%' },
                   ].map((action) => (
                     <motion.button
                       key={action.move}
@@ -1245,7 +1246,15 @@ export const KittenView: React.FC = () => {
                       transition={{ type: 'spring', stiffness: 420, damping: 24 }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        triggerDanceMove(action.move, action.label, action.msg);
+                        if (action.move === 'special') {
+                          if (currentPetType === 'dog') soundEngine.playBark();
+                          else if (currentPetType === 'cat') soundEngine.playPurr();
+                          else playSpeciesSound();
+                          triggerCue('pet');
+                          setPetReaction(action.msg);
+                        } else {
+                          triggerDanceMove(action.move, action.label, action.msg);
+                        }
                         setIsActionWheelOpen(false);
                       }}
                       style={{ position: 'absolute', top: action.top, left: action.left }}
