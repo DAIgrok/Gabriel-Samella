@@ -1004,45 +1004,7 @@ export const KittenView: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            <div
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center bg-black/50 border border-pink-400/30 rounded-full p-0.5 text-[10px] font-bold"
-            >
-              <button
-                type="button"
-                onClick={() => setPetViewMode('design')}
-                className={`px-2 py-0.5 rounded-full transition cursor-pointer ${
-                  petViewMode === 'design'
-                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow'
-                    : 'text-purple-200/75 hover:text-white'
-                }`}
-              >
-                Novo ♡
-              </button>
-              <button
-                type="button"
-                onClick={() => setPetViewMode('3d')}
-                className={`px-2 py-0.5 rounded-full flex items-center gap-1 transition cursor-pointer ${
-                  petViewMode === '3d'
-                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow'
-                    : 'text-purple-200/75 hover:text-white'
-                }`}
-              >
-                <Orbit className="w-3 h-3" />
-                <span>3D</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setPetViewMode('2d')}
-                className={`px-2 py-0.5 rounded-full transition cursor-pointer ${
-                  petViewMode === '2d'
-                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow'
-                    : 'text-purple-200/75 hover:text-white'
-                }`}
-              >
-                2D
-              </button>
-            </div>
+
 
             <button
               onClick={(e) => {
