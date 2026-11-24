@@ -88,9 +88,13 @@ export const KittenView: React.FC = () => {
     setActiveTab: setNavTab,
     setExtendedView,
     captureVirtualPhoto,
+    updateConfig,
+    showToast,
   } = useApp();
 
   const prefersReducedMotion = useReducedMotion();
+  const petGlbInputRef = useRef<HTMLInputElement | null>(null);
+  const [isUploadingPetGlb, setIsUploadingPetGlb] = useState(false);
 
   const [currentRoom, setCurrentRoom] = useState<PetRoom>('sala');
   const [drawerModal, setDrawerModal] = useState<'none' | 'armario' | 'mascotes'>('none');
@@ -470,6 +474,26 @@ export const KittenView: React.FC = () => {
   const hygieneVal = kitten.hygiene ?? 80;
   const energyVal = kitten.energy ?? 80;
   const funVal = kitten.fun ?? 80;
+  const handlePetGlbUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || isSpectator || currentPetType !== 'cat') return;
+    setIsUploadingPetGlb(true);
+    try {
+      const publicUrl = await uploadPetModel(file);
+      updateConfig({
+        customGlbModels: {
+          pets: { ...(config.customGlbModels?.pets || {}), cat: publicUrl },
+          furniture: { ...(config.customGlbModels?.furniture || {}) },
+        },
+      });
+      showToast('Novo gatinho 3D carregado com sucesso!', 'sparkles');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Não foi possível carregar o GLB.', 'chat');
+    } finally {
+      setIsUploadingPetGlb(false);
+    }
+  };
   const resolvedGlbUrl = resolvePetGlbUrl(currentPetType, config);
   const currentWholeColor = kitten.petColors?.[currentPetType];
   const currentPartColors = kitten.petPartColors?.[currentPetType] || {};
@@ -1144,6 +1168,14 @@ export const KittenView: React.FC = () => {
 
           {petViewMode === 'design' ? (
             <div className="w-full relative">
+              {!isSpectator && currentPetType === 'cat' && (
+                <>
+                  <input ref={petGlbInputRef} type="file" accept=".glb,model/gltf-binary" onChange={handlePetGlbUpload} className="hidden" />
+                  <button type="button" disabled={isUploadingPetGlb} onClick={() => petGlbInputRef.current?.click()} className="absolute top-2 right-2 z-40 px-3 py-2 rounded-xl bg-[#0b1730]/90 border border-amber-200/35 text-amber-100 text-[10px] font-bold shadow-lg disabled:opacity-50">
+                    {isUploadingPetGlb ? 'Carregando GLB…' : 'Atualizar gatinho GLB'}
+                  </button>
+                </>
+              )}
               <ModelViewerPetStage
                 embedded
                 src={resolvedGlbUrl}
