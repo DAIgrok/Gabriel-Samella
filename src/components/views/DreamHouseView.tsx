@@ -18,6 +18,7 @@ import {
   RotateCw,
   ShoppingBag,
   Sofa,
+  Square,
   Sparkles,
   Utensils,
 } from 'lucide-react';
@@ -138,7 +139,9 @@ export const DreamHouseView: React.FC = () => {
 
   useEffect(() => {
     if (isSpectator && isEditMode) setIsEditMode(false);
-  }, [isSpectator, isEditMode]);
+    if (isSpectator && isWallBuildMode) setIsWallBuildMode(false);
+    if (viewMode === 'exterior' && isWallBuildMode) setIsWallBuildMode(false);
+  }, [isSpectator, isEditMode, isWallBuildMode, viewMode]);
 
   const furnitureGlbUrls = useMemo(() => {
     const map: Record<string, string> = {};
@@ -579,11 +582,11 @@ export const DreamHouseView: React.FC = () => {
           <div className="p-4 space-y-4">
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
               {[
-                { id: 'moveis' as const, label: 'Móveis do Cômodo', icon: Sofa },
+                { id: 'moveis' as const, label: 'Móveis', icon: Sofa },
                 { id: 'paredes' as const, label: 'Paredes', icon: Palette },
                 { id: 'pisos' as const, label: 'Pisos', icon: Palette },
                 { id: 'tetos' as const, label: 'Teto', icon: Palette },
-                { id: 'construcao' as const, label: 'Construção', icon: Move },
+                { id: 'construcao' as const, label: 'Construir', icon: Move },
               ].map((t) => {
                 const Icon = t.icon;
                 return (
@@ -613,7 +616,7 @@ export const DreamHouseView: React.FC = () => {
                   </div>
                   <button
                     type="button"
-                    disabled={isSpectator}
+                    disabled={isSpectator || viewMode === 'exterior'}
                     onClick={() => {
                       setIsEditMode(false);
                       setSelectedFurnitureId(null);
@@ -621,10 +624,10 @@ export const DreamHouseView: React.FC = () => {
                     }}
                     className={`w-full min-h-[58px] rounded-2xl border px-4 flex items-center gap-3 text-left transition disabled:opacity-40 ${isWallBuildMode ? 'bg-pink-500/25 border-pink-300 text-white' : 'bg-purple-950/65 border-purple-400/25 text-purple-100 hover:border-pink-400/60'}`}
                   >
-                    <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-2xl">▱</span>
+                    <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center"><Square className="w-5 h-5" /></span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-bold">Parede</span>
-                      <span className="block text-[11px] opacity-75">{isWallBuildMode ? 'Toque e arraste no chão para desenhar · Toque novamente para sair' : 'Desenhe paredes no chão com o dedo'}</span>
+                      <span className="block text-[11px] opacity-75">{viewMode === 'exterior' ? 'Entre na casa para desenhar paredes' : isWallBuildMode ? 'Toque e arraste no chão para desenhar · Toque novamente para sair' : 'Desenhe paredes no chão com o dedo'}</span>
                     </span>
                     {isWallBuildMode && <Check className="w-4 h-4 text-pink-200" />}
                   </button>
