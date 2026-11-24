@@ -336,7 +336,6 @@ export const DreamHouseWorld3D: React.FC<DreamHouseWorld3DProps> = ({
       const group = roomGroups.get(roomId);
       if (!group) return;
       group.rotation.y += Math.PI / 2;
-      const previous = propsRef.current.roomTransforms?.[roomId];
       propsRef.current.onMoveRoom(roomId, {
         x: Number(group.position.x.toFixed(2)),
         z: Number(group.position.z.toFixed(2)),
