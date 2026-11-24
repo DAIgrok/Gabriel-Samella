@@ -7,6 +7,8 @@ import {
   CheckCheck,
   Heart,
   Mic,
+  Phone,
+  Video,
   Pause,
   Play,
   Send,
@@ -19,46 +21,29 @@ import { useApp } from '../../context/AppContext';
 import { AnimatePresence, motion } from 'motion/react';
 import { soundEngine } from '../../utils/audioSynth';
 import { getCouplePhotoUrl, REAL_PHOTO_SLOTS } from '../../data/mediaAssets';
+import { uploadChatMedia } from '../../services/supabaseSync';
 
-const QUICK_REPLIES = [
-  'Te amo demais ♡',
-  'Tô com saudade de você!',
-  'Pensei em você agora ♡',
-  'Você é meu lugar favorito ♡',
-];
-
-async function compressChatImage(file: File): Promise<string> {
+async function compressChatImage(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
-        const maxDim = 820;
-        let { width, height } = img;
-        if (width > maxDim || height > maxDim) {
-          if (width > height) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          } else {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
-        }
+        const maxDim = 1280;
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
         const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = width; canvas.height = height;
         const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve(reader.result as string);
-          return;
-        }
+        if (!ctx) { resolve(file); return; }
         ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.78));
+        canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Falha ao comprimir foto.')), 'image/jpeg', 0.84);
       };
-      img.onerror = reject;
+      img.onerror = () => reject(new Error('Imagem inválida.'));
       img.src = reader.result as string;
     };
-    reader.onerror = reject;
+    reader.onerror = () => reject(new Error('Falha ao ler foto.'));
     reader.readAsDataURL(file);
   });
 }
@@ -74,8 +59,7 @@ const AudioBubblePlayer: React.FC<{ src: string; duration?: string }> = ({ src, 
       el.pause();
       setPlaying(false);
     } else {
-      el.play().catch(() => {});
-      setPlaying(true);
+      el.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
     }
   };
 
@@ -201,7 +185,8 @@ export const ChatView: React.FC = () => {
     if (!file) return;
     setIsSending(true);
     try {
-      const compressedUrl = await compressChatImage(file);
+      const compressedBlob = await compressChatImage(file);
+      const compressedUrl = await uploadChatMedia(compressedBlob, 'image');
       await sendChatMessage({
         text: 'Fotografia',
         senderRole: effectiveRole,
