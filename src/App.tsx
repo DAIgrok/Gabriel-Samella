@@ -35,6 +35,27 @@ import { ArrowLeft, MessageCircle, X } from 'lucide-react';
 import { DiamondGemIcon, VectorGlyphIcon } from './components/icons/CustomIcons';
 
 const MainAppContent: React.FC = () => {
+  const navigationHistory = React.useRef<typeof extendedView[]>([]);
+  const lastExtendedView = React.useRef(extendedView);
+  const navigatingBack = React.useRef(false);
+
+  React.useEffect(() => {
+    if (lastExtendedView.current !== extendedView) {
+      if (navigatingBack.current) {
+        navigatingBack.current = false;
+      } else {
+        navigationHistory.current.push(lastExtendedView.current);
+      }
+      lastExtendedView.current = extendedView;
+    }
+  }, [extendedView]);
+
+  const handleBackNavigation = () => {
+    const previousView = navigationHistory.current.pop();
+    navigatingBack.current = true;
+    setExtendedView(previousView || 'inicio');
+  };
+
   const {
     isLoading,
     isLocked,
@@ -81,11 +102,11 @@ const MainAppContent: React.FC = () => {
         {extendedView !== 'inicio' && (
           <div className="flex items-center justify-between py-2 mb-2">
             <button
-              onClick={() => setExtendedView('inicio')}
+              onClick={handleBackNavigation}
               className="flex items-center gap-1.5 px-3.5 min-h-[44px] rounded-2xl glass-panel-interactive text-purple-200 hover:text-white text-xs font-semibold border border-purple-500/30 shadow-md cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Voltar ao Início</span>
+              <span>Voltar</span>
             </button>
 
             <span className="text-sm font-script text-pink-300">Nosso Mundo ♡</span>
