@@ -164,8 +164,19 @@ function buildFishMesh(fishId: string): {
     tailObj = fin;
   } else {
     // Cozy Stylized Chibi Swimmer with articulated pectoral & caudal fins + catchlight eyes
-    const bodyGeo = new THREE.SphereGeometry(0.17, 22, 16);
-    bodyGeo.scale(1.55, fishId === 'angelfish' ? 1.34 : 0.94, 0.74);
+    // Corpo hidrodinâmico alongado e afilado, em vez de uma esfera redonda.
+    const bodyProfile = [
+      new THREE.Vector2(0, -0.28),
+      new THREE.Vector2(0.055, -0.25),
+      new THREE.Vector2(0.105, -0.16),
+      new THREE.Vector2(0.13, -0.02),
+      new THREE.Vector2(0.115, 0.12),
+      new THREE.Vector2(0.07, 0.22),
+      new THREE.Vector2(0, 0.28),
+    ];
+    const bodyGeo = new THREE.LatheGeometry(bodyProfile, 24);
+    bodyGeo.rotateZ(-Math.PI / 2);
+    if (fishId === 'angelfish') bodyGeo.scale(0.86, 1.35, 1);
     const body = new THREE.Mesh(bodyGeo, mainMat);
     body.castShadow = true;
 
@@ -200,7 +211,7 @@ function buildFishMesh(fishId: string): {
 
     // Articulated Flowing Caudal Tail
     const tailGroup = new THREE.Group();
-    tailGroup.position.set(-0.22, 0, 0);
+    tailGroup.position.set(-0.29, 0, 0);
     const tailGeo = new THREE.SphereGeometry(fishId === 'betta' ? 0.155 : 0.115, 14, 12);
     tailGeo.scale(1.35, 1.1, 0.24);
     const tailFin = new THREE.Mesh(tailGeo, accMat);
@@ -209,12 +220,12 @@ function buildFishMesh(fishId: string): {
 
     // Glossy eyes with white catchlight
     const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 12), eyeMat);
-    eyeL.position.set(0.16, 0.042, 0.085);
+    eyeL.position.set(0.225, 0.042, 0.085);
     const hlL = new THREE.Mesh(new THREE.SphereGeometry(0.011, 8, 8), catchlightMat);
     hlL.position.set(0.01, 0.01, 0.022);
     eyeL.add(hlL);
     const eyeR = eyeL.clone();
-    eyeR.position.z = -0.085;
+    eyeR.position.set(0.225, 0.042, -0.085);
 
     g.add(body, belly, dorsal, lFinPivot, rFinPivot, tailGroup, eyeL, eyeR);
     tailObj = tailGroup;
