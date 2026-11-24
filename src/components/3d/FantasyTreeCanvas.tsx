@@ -137,7 +137,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
 
     // --- 1. SCENE & CAMERA ---
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x1f103d, 0.014);
+    scene.fog = new THREE.FogExp2(0x657653, 0.006);
 
     const width = container.clientWidth || 320;
     const height = container.clientHeight || 350;
@@ -199,8 +199,8 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
     });
     const sunLight = rig.keyLight;
 
-    const canopyLight = new THREE.PointLight(0xf9a8d4, 1.75, 12);
-    canopyLight.position.set(0, 3.1, 1.5);
+    const canopyLight = new THREE.PointLight(0xd9c69a, 0.72, 10);
+    canopyLight.position.set(0, 2.8, 1.2);
     scene.add(canopyLight);
 
     const groundBounceLight = new THREE.PointLight(0x9b8058, 0.48, 9);
@@ -1008,8 +1008,28 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
         matureTree.position.set(0, 0.02, 0);
         matureTree.traverse((object) => {
           if ((object as THREE.Mesh).isMesh) {
-            object.castShadow = true;
-            object.receiveShadow = true;
+            const mesh = object as THREE.Mesh;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+
+            // Keep the generated model's texture maps, but remove artificial
+            // emission and metallic shine so bark and foliage read naturally.
+            const naturalizeMaterial = (source: THREE.Material) => {
+              const material = source.clone() as THREE.MeshStandardMaterial;
+              if (material.emissive?.isColor) {
+                material.emissive.set(0x000000);
+                material.emissiveIntensity = 0;
+              }
+              if (typeof material.metalness === 'number') material.metalness = 0;
+              if (typeof material.roughness === 'number') {
+                material.roughness = Math.max(material.roughness, 0.78);
+              }
+              material.needsUpdate = true;
+              return material;
+            };
+            mesh.material = Array.isArray(mesh.material)
+              ? mesh.material.map(naturalizeMaterial)
+              : naturalizeMaterial(mesh.material);
           }
         });
         mainTreeGroup.add(matureTree);
@@ -1281,7 +1301,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
         canopyLight.color.setHex(0x6ee7b7);
       } else {
         sunLight.intensity = 2.15;
-        canopyLight.color.setHex(0xf9a8d4);
+        canopyLight.color.setHex(propsRef.current.hasSakuraTheme ? 0xf9a8d4 : 0xd9c69a);
       }
 
       controls.update();
