@@ -79,6 +79,7 @@ export const LoveTreeView: React.FC = () => {
     storeItems,
     captureVirtualPhoto,
     isSpectator,
+    activeSeasonalEvent,
   } = useApp();
 
   const stageRef = useRef<HTMLDivElement>(null);
@@ -473,6 +474,7 @@ export const LoveTreeView: React.FC = () => {
             <div ref={stageRef} className="w-full relative">
               <FantasyTreeCanvas
                 level={currentLevel}
+                seasonalEvent={activeSeasonalEvent}
                 isWatering={isWatering}
                 isSunbathing={isSunbathing}
                 isPruning={isPruning}
