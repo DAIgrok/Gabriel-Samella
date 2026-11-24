@@ -84,7 +84,7 @@ export const Navigation: React.FC = () => {
     { id: 'config', label: 'Configurações (Criador)', icon: Settings, color: 'text-slate-300' },
   ];
 
-  const drawerItems = allDrawerItems;
+  const drawerItems = allDrawerItems.filter((item) => item.id !== 'config' || isSpectator);
 
   return (
     <>
