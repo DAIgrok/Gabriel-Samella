@@ -378,14 +378,14 @@ export const INITIAL_LETTERS: Letter[] = [];
 // Galeria começa limpa (zero fotos estáticas ou de IA); apenas fotos reais adicionadas pelo casal permanecem salvas para sempre
 export const INITIAL_PHOTOS: MemoryPhoto[] = [];
 
-// Playlist starts empty; Gabriel & Samella add YouTube links or audio files via MusicView or Settings
+// Seleção inicial: somente as músicas que a Samella pediu, com capas oficiais do YouTube
 export const INITIAL_SONGS: Song[] = [
   {
     id: 'song-incondicional-luan',
     title: 'Incondicional',
     artist: 'Luan Santana',
-    duration: 212,
-    durationFormatted: '3:32',
+    duration: 190,
+    durationFormatted: '3:10',
     coverUrl: 'https://img.youtube.com/vi/36W_wRuPYbs/hqdefault.jpg',
     audioUrl: 'https://www.youtube.com/watch?v=36W_wRuPYbs',
     youtubeId: '36W_wRuPYbs',
@@ -432,8 +432,8 @@ export const INITIAL_SONGS: Song[] = [
     id: 'song-te-vivo',
     title: 'Te Vivo',
     artist: 'Luan Santana',
-    duration: 194,
-    durationFormatted: '3:14',
+    duration: 210,
+    durationFormatted: '3:30',
     coverUrl: 'https://img.youtube.com/vi/dWpGsK8Md28/hqdefault.jpg',
     audioUrl: 'https://www.youtube.com/watch?v=dWpGsK8Md28',
     youtubeId: 'dWpGsK8Md28',
@@ -446,9 +446,9 @@ export const INITIAL_SONGS: Song[] = [
     artist: 'Luan Santana',
     duration: 203,
     durationFormatted: '3:23',
-    coverUrl: 'https://img.youtube.com/vi/xfwXJxf839w/hqdefault.jpg',
-    audioUrl: 'https://www.youtube.com/watch?v=xfwXJxf839w',
-    youtubeId: 'xfwXJxf839w',
+    coverUrl: 'https://img.youtube.com/vi/rTsbSY04s1Y/hqdefault.jpg',
+    audioUrl: 'https://www.youtube.com/watch?v=rTsbSY04s1Y',
+    youtubeId: 'rTsbSY04s1Y',
     sourceType: 'youtube',
     lyrics: [],
   },
