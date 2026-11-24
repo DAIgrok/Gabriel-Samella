@@ -202,67 +202,43 @@ export const ChatView: React.FC = () => {
   };
 
   const startVoiceRecording = async () => {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      showToast('Microfone não suportado neste navegador.', 'chat');
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      showToast('Gravação de voz não é compatível com este navegador.', 'chat');
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : MediaRecorder.isTypeSupported('audio/mp4')
-        ? 'audio/mp4'
-        : 'audio/webm';
-      const recorder = new MediaRecorder(stream, { mimeType });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1, sampleRate: 48000 },
+      });
+      const preferredType = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4'].find((type) => MediaRecorder.isTypeSupported(type));
+      const recorder = new MediaRecorder(stream, preferredType ? { mimeType: preferredType, audioBitsPerSecond: 64000 } : { audioBitsPerSecond: 64000 });
+      const mimeType = recorder.mimeType || preferredType || 'audio/webm';
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
       recordCancelledRef.current = false;
       setRecordSeconds(0);
       setIsRecording(true);
-
       const startedAt = Date.now();
-      recordTimerRef.current = window.setInterval(() => {
-        setRecordSeconds(Math.floor((Date.now() - startedAt) / 1000));
-      }, 400);
-
-      recorder.ondataavailable = (ev) => {
-        if (ev.data.size > 0) audioChunksRef.current.push(ev.data);
-      };
-
-      recorder.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop());
-        if (recordTimerRef.current) {
-          window.clearInterval(recordTimerRef.current);
-          recordTimerRef.current = null;
-        }
+      recordTimerRef.current = window.setInterval(() => setRecordSeconds(Math.floor((Date.now() - startedAt) / 1000)), 400);
+      recorder.ondataavailable = (event) => { if (event.data.size > 0) audioChunksRef.current.push(event.data); };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+        if (recordTimerRef.current) { window.clearInterval(recordTimerRef.current); recordTimerRef.current = null; }
         setIsRecording(false);
         if (recordCancelledRef.current) return;
-
         const blob = new Blob(audioChunksRef.current, { type: mimeType });
-        if (blob.size < 400) return;
-
-        const durSec = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
-        const durLabel = `0:${durSec < 10 ? '0' : ''}${durSec}`;
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-          const base64Audio = reader.result as string;
-          setIsSending(true);
-          try {
-            await sendChatMessage({
-              text: 'Mensagem de voz',
-              senderRole: effectiveRole,
-              msgType: 'audio',
-              mediaUrl: base64Audio,
-              audioDuration: durLabel,
-            });
-          } finally {
-            setIsSending(false);
-          }
-        };
-        reader.readAsDataURL(blob);
+        if (blob.size < 900) { showToast('O áudio ficou muito curto. Grave novamente.', 'chat'); return; }
+        const seconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+        const duration = Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
+        setIsSending(true);
+        try {
+          const mediaUrl = await uploadChatMedia(blob, 'audio');
+          await sendChatMessage({ text: 'Mensagem de voz', senderRole: effectiveRole, msgType: 'audio', mediaUrl, audioDuration: duration });
+        } catch {
+          showToast('Não foi possível enviar o áudio. Tente novamente.', 'chat');
+        } finally { setIsSending(false); }
       };
-
-      recorder.start();
+      recorder.start(250);
     } catch {
       showToast('Permita o acesso ao microfone para enviar áudio.', 'chat');
       setIsRecording(false);
