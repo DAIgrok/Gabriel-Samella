@@ -543,20 +543,6 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
           idx++;
         }
 
-        // Soft glowing volumetric halo sprite inside major canopy clusters
-        const auraMat = new THREE.SpriteMaterial({
-          map: cIdx % 2 === 0 ? auraTexPink : auraTexViolet,
-          transparent: true,
-          opacity: 0.45,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-        });
-        const sprite = new THREE.Sprite(auraMat);
-        sprite.position.set(cx * growth, cy * growth, cz * growth);
-        const baseScale = rad * growth * 2.4;
-        sprite.scale.set(baseScale, baseScale * 0.85, 1);
-        treeGroup.add(sprite);
-        auraSpriteRefs.push({ sprite, baseScale, phase: cIdx * 0.9 });
       });
 
       instMesh.instanceMatrix.needsUpdate = true;
@@ -598,44 +584,20 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
 
       // Smooth Cozy Stylized Cinnamon-Violet Bark with glowing Leyline Spirit Veins shader
       const barkMat = new THREE.MeshStandardMaterial({
-        color: 0x5c374c,
-        roughness: 0.68,
-        metalness: 0.03,
+        color: 0x62452f,
+        roughness: 0.94,
+        metalness: 0,
       });
-      barkMat.onBeforeCompile = (shader) => {
-        shader.uniforms.uTime = shaderUniforms.uTime;
-        shader.vertexShader = `varying vec3 vWorldBarkPos;\n` + shader.vertexShader;
-        shader.vertexShader = shader.vertexShader.replace(
-          '#include <worldpos_vertex>',
-          `
-          #include <worldpos_vertex>
-          vWorldBarkPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
-          `
-        );
-        shader.fragmentShader =
-          `uniform float uTime;\nvarying vec3 vWorldBarkPos;\n` + shader.fragmentShader;
-        shader.fragmentShader = shader.fragmentShader.replace(
-          '#include <emissivemap_fragment>',
-          `
-          #include <emissivemap_fragment>
-          float veinWave = sin(vWorldBarkPos.y * 7.5 - uTime * 1.9 + sin(vWorldBarkPos.x * 12.0) * 1.8);
-          float veinMask = smoothstep(0.86, 0.99, veinWave);
-          totalEmissiveRadiance += vec3(0.82, 0.68, 0.38) * veinMask * 0.42;
-          `
-        );
-      };
-
       const isCelestialMax = curLevel >= 10 && !sakura;
       const showSakura = sakura;
 
-      const paletteHex = sakura || showSakura
-        ? [0xf472b6, 0xfbcfe8, 0xf9a8d4, 0xe879f9, 0xfdf2f8]
-        : isCelestialMax
-        ? [0x60a5fa, 0x93c5fd, 0xa78bfa, 0xd6b56d]
-        : [0x3f7d42, 0x5f944e, 0x82a85f, 0xb4a66a];
+      const paletteHex = showSakura
+        ? [0xf3c4d8, 0xf7dce8, 0xe8b7d0, 0xf9eaf1]
+        : [0x315d32, 0x3f7138, 0x568546, 0x71964f, 0x8ba85d];
 
-      const canopyEmissiveHex = isCelestialMax ? 0x5141a5 : showSakura ? 0xbe185d : 0x8b6b32;
-      const canopyEmissiveStr = showSakura || isCelestialMax ? 0.34 : 0.22;
+      // Natural foliage stays non-emissive; special color appears only when Sakura is explicitly equipped.
+      const canopyEmissiveHex = 0x000000;
+      const canopyEmissiveStr = 0;
 
       if (curLevel <= 1) {
         // --- STAGE 1: LUMINOUS SACRED SPROUT ---
