@@ -730,7 +730,7 @@ export const DreamHouseView: React.FC = () => {
                               type="range"
                               min={control.min}
                               max={control.max}
-                              step="0.25"
+                              step={control.label === 'Rotação' ? 15 : 0.25}
                               value={control.value}
                               disabled={isSpectator}
                               onChange={(event) => {
