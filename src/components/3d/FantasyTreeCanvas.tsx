@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import {
   addCozyThreePointLights,
@@ -395,6 +396,10 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
     // --- 6. DYNAMIC TREE & ACCESSORY GROUP ---
     const treeGroup = new THREE.Group();
     scene.add(treeGroup);
+    const mainTreeGroup = new THREE.Group();
+    treeGroup.add(mainTreeGroup);
+    let loadedTreeModel: THREE.Group | null = null;
+    const TREE_MODEL_URL = 'https://res.cloudinary.com/r3vmqjwx/raw/upload/v1795514824/nosso-mundo/models/tree-love';
 
     const fruitRefs: { mesh: THREE.Object3D; baseY: number; phase: number; index: number }[] = [];
     const fairyLightRefs: { mesh: THREE.Mesh; phase: number }[] = [];
@@ -441,7 +446,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
       const mesh = new THREE.Mesh(geo, mat);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
-      treeGroup.add(mesh);
+      mainTreeGroup.add(mesh);
       return mesh;
     };
 
@@ -545,7 +550,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
 
       instMesh.instanceMatrix.needsUpdate = true;
       if (instMesh.instanceColor) instMesh.instanceColor.needsUpdate = true;
-      treeGroup.add(instMesh);
+      mainTreeGroup.add(instMesh);
     };
 
     const rebuildTree = () => {
@@ -566,8 +571,14 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
       while (treeGroup.children.length > 0) {
         const child = treeGroup.children[0];
         treeGroup.remove(child);
+        if (child !== mainTreeGroup) disposeObject3D(child);
+      }
+      while (mainTreeGroup.children.length > 0) {
+        const child = mainTreeGroup.children[0];
+        mainTreeGroup.remove(child);
         disposeObject3D(child);
       }
+      treeGroup.add(mainTreeGroup);
       fruitRefs.length = 0;
       fairyLightRefs.length = 0;
       lanternRefs.length = 0;
@@ -650,7 +661,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
           leaf.position.set(dir * 0.29, 1.06 + idx * 0.08, 0);
           leaf.rotation.set(0.15, dir * 0.3, dir * -0.45);
           leaf.castShadow = true;
-          treeGroup.add(leaf);
+          mainTreeGroup.add(leaf);
           sproutLeafMeshes.push(leaf);
         });
 
@@ -662,7 +673,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
         });
         const bud = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 16), budMat);
         bud.position.set(0, 1.26, 0);
-        treeGroup.add(bud);
+        mainTreeGroup.add(bud);
       } else {
         // --- STAGE 2..10: SACRED SAKURA / IRMINSUL SANCTUARY TREE ---
         const growth = curLevel <= 3 ? 0.82 : curLevel <= 6 ? 1.02 : 1.2;
@@ -1083,10 +1094,43 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
         butterflyWingL = wL;
         butterflyWingR = wR;
       }
+      // Use the generated high-detail GLB as the mature tree while keeping the
+      // original sprout for level 1 and all existing fruit/ribbon interactions.
+      if (loadedTreeModel && curLevel > 1) {
+        while (mainTreeGroup.children.length > 0) {
+          const child = mainTreeGroup.children[0];
+          mainTreeGroup.remove(child);
+          disposeObject3D(child);
+        }
+        const matureTree = loadedTreeModel.clone(true);
+        const stage = Math.max(2, Math.min(10, curLevel));
+        const growthScale = 0.46 + ((stage - 2) / 8) * 0.34;
+        matureTree.scale.setScalar(growthScale);
+        matureTree.position.set(0, 0.02, 0);
+        matureTree.traverse((object) => {
+          if ((object as THREE.Mesh).isMesh) {
+            object.castShadow = true;
+            object.receiveShadow = true;
+          }
+        });
+        mainTreeGroup.add(matureTree);
+      }
     };
 
     rebuildFnRef.current = rebuildTree;
     rebuildTree();
+
+    // Load the generated, optimized GLB once. If loading fails, the procedural
+    // tree remains as a safe fallback and all existing interactions keep working.
+    new GLTFLoader().load(
+      TREE_MODEL_URL,
+      (gltf) => {
+        loadedTreeModel = gltf.scene;
+        rebuildFnRef.current?.();
+      },
+      undefined,
+      (error) => console.warn('Não foi possível carregar a árvore 3D aprimorada:', error)
+    );
 
     // --- 7. SACRED SAKURA PETALS + SPIRIT FIREFLIES + WATER DROPLETS ---
     const fireflyCount = isSoftwareGl ? 36 : 72;
