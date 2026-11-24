@@ -936,13 +936,13 @@ export const KittenView: React.FC = () => {
       )}
 
       {/* Compact 5 Gauges */}
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         {[
           { label: 'Fome', value: hungerVal, icon: Utensils, targetRoom: 'cozinha' as PetRoom },
           { label: 'Sede', value: thirstVal, icon: Droplets, targetRoom: 'cozinha' as PetRoom },
-          { label: 'Banho', value: hygieneVal, icon: Bath, targetRoom: 'banheiro' as PetRoom },
-          { label: 'Sono', value: energyVal, icon: Moon, targetRoom: 'quarto' as PetRoom },
-          { label: 'Feliz', value: funVal, icon: Heart, targetRoom: 'sala' as PetRoom },
+          { label: 'Higiene', value: hygieneVal, icon: Bath, targetRoom: 'banheiro' as PetRoom },
+          { label: 'Energia', value: energyVal, icon: Moon, targetRoom: 'quarto' as PetRoom },
+          { label: 'Diversão', value: funVal, icon: Heart, targetRoom: 'sala' as PetRoom },
         ].map((meter) => {
           const Icon = meter.icon;
           const isRoomActive = currentRoom === meter.targetRoom;
@@ -954,15 +954,15 @@ export const KittenView: React.FC = () => {
                 setSpongeMode(false);
                 soundEngine.playHeartPop();
               }}
-              className={`min-h-[52px] p-1.5 rounded-2xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${getNeedColor(
+              className={`min-h-[68px] p-2 rounded-2xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${getNeedColor(
                 meter.value
               )} ${isRoomActive ? 'ring-1 ring-pink-400/80' : 'opacity-85 hover:opacity-100'}`}
             >
-              <div className="flex items-center gap-1 text-[10px] font-bold">
+              <div className="flex items-center gap-1 text-[11px] font-bold">
                 <Icon className="w-3 h-3" />
                 <span>{meter.label}</span>
               </div>
-              <div className="w-full bg-black/40 h-1 rounded-full overflow-hidden">
+              <div className="w-full bg-black/40 h-1.5 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full bg-gradient-to-r ${getNeedBarFill(meter.value)} transition-all duration-500`}
                   style={{ width: `${meter.value}%` }}
