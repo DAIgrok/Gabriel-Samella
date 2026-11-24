@@ -658,6 +658,7 @@ export const DreamHouseView: React.FC = () => {
                         const z = (dreamHouse.footprintDepth ?? 5.4) / 2 - 0.65 - walls.length * 0.25;
                         const wall: HouseConstructionWall = {
                           id,
+                          roomId: currentRoom,
                           start: { x: -1.25, z },
                           end: { x: 1.25, z },
                           height: dreamHouse.wallHeight ?? 2.75,
