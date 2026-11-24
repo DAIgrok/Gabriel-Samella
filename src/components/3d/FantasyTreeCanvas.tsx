@@ -522,8 +522,11 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
             cz * growth + Math.sin(phi) * Math.sin(theta) * dist * 1.2
           );
           dummy.rotation.set(nextRand() * 1.4, nextRand() * Math.PI * 2, nextRand() * 1.4);
-          const puffScale = (0.58 + nextRand() * 0.72) * (0.85 + scaledR * 0.35);
-          dummy.scale.set(puffScale, puffScale * 0.82, puffScale);
+          const puffScale = (0.72 + nextRand() * 0.72) * (0.85 + scaledR * 0.35);
+          dummy.scale.set(puffScale, puffScale, 0.72 + nextRand() * 0.45);
+          // Inclinações variadas evitam um padrão plano ou repetitivo na copa.
+          dummy.rotation.x += (nextRand() - 0.5) * 0.8;
+          dummy.rotation.z += (nextRand() - 0.5) * 1.1;
           dummy.updateMatrix();
 
           instMesh.setMatrixAt(idx, dummy.matrix);
