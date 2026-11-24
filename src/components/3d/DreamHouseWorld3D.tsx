@@ -270,7 +270,6 @@ export const DreamHouseWorld3D: React.FC<DreamHouseWorld3DProps> = ({
     let draggingRoom: HouseRoomId | null = null;
     let dragOffset = new THREE.Vector3();
     let pointerDownAt = { x: 0, y: 0 };
-    let activePointer: number | null = null;
 
     const setPointer = (event: PointerEvent) => {
       const rect = renderer.domElement.getBoundingClientRect();
@@ -286,7 +285,6 @@ export const DreamHouseWorld3D: React.FC<DreamHouseWorld3DProps> = ({
       const hit = raycaster.intersectObjects(roomMeshes, true).find((entry) => entry.object.userData.roomId);
       if (!hit) return;
       draggingRoom = hit.object.userData.roomId as HouseRoomId;
-      activePointer = event.pointerId;
       controls.enabled = false;
       const group = roomGroups.get(draggingRoom);
       if (group && raycaster.ray.intersectPlane(dragPlane, hitPoint)) {
@@ -326,7 +324,6 @@ export const DreamHouseWorld3D: React.FC<DreamHouseWorld3DProps> = ({
         const hit = raycaster.intersectObjects(roomMeshes, true).find((entry) => entry.object.userData.roomId);
         if (hit?.object.userData.roomId) propsRef.current.onOpenRoom(hit.object.userData.roomId as HouseRoomId);
       }
-      activePointer = null;
     };
 
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
