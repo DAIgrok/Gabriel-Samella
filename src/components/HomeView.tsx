@@ -179,14 +179,9 @@ export const HomeView: React.FC = () => {
             </span>
           </h2>
 
-          <div className="text-xs sm:text-sm text-purple-200/85 font-normal leading-relaxed space-y-0.5">
-            <p>Que bom ter você aqui...</p>
-            <p>Cada dia com você é um presente</p>
-            <p className="flex items-center gap-1.5">
-              <span>e eu sou muito grato por tudo que construímos juntos.</span>
-              <Heart className="w-4 h-4 text-pink-400 fill-pink-400 shrink-0" />
-            </p>
-          </div>
+          <p className="text-xs sm:text-sm text-purple-200/85 font-normal leading-relaxed">
+            Que bom ter você aqui. Este cantinho é nosso.
+          </p>
         </div>
       </section>
 
