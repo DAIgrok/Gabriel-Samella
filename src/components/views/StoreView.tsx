@@ -20,16 +20,8 @@ import { DiamondGemIcon, VectorGlyphIcon } from '../icons/CustomIcons';
 import { StoreItemArtwork } from '../store/StoreItemArtwork';
 
 const COLOR_PRESETS = [
-  '#f472b6',
-  '#c084fc',
-  '#fbbf24',
-  '#38bdf8',
-  '#34d399',
-  '#f87171',
-  '#ffffff',
-  '#1e1b4b',
-  '#f97316',
-  '#fb7185',
+  '#1d4ed8', '#2563eb', '#60a5fa', '#7c3aed', '#a78bfa',
+  '#d6b56d', '#f3e5bd', '#ffffff', '#334155', '#0b1224',
 ];
 
 export const StoreView: React.FC = () => {
@@ -69,9 +61,6 @@ export const StoreView: React.FC = () => {
     { id: 'vales', label: 'Vales do Amor', icon: 'gift' },
     { id: 'aquario', label: 'Aquário 3D', icon: 'aqua' },
     { id: 'arvore', label: 'Árvore do Amor', icon: 'tree' },
-    { id: 'sazonal', label: 'Sazonal', icon: 'snow' },
-    { id: 'molduras', label: 'Molduras', icon: 'camera' },
-    { id: 'temas', label: 'Temas & Efeitos', icon: 'moon' },
   ];
 
   const getActiveItemColor = (item: StoreItem): string => {
@@ -112,9 +101,7 @@ export const StoreView: React.FC = () => {
       if (selectedCategory === 'roupas') {
         return item.category === 'roupas' || item.category === 'acessorios' || item.category === 'gatinho';
       }
-      if (selectedCategory === 'temas') {
-        return item.category === 'temas' || item.category === 'efeitos';
-      }
+      if (['sazonal', 'molduras', 'temas', 'efeitos'].includes(item.category)) return false;
       return item.category === selectedCategory;
     });
   }, [storeItems, selectedCategory, selectedHouseCat, searchQuery]);
@@ -181,7 +168,7 @@ export const StoreView: React.FC = () => {
         <button
           type="button"
           onClick={handleStoreIconClick}
-          className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-rose-500/20 border border-rose-400/30 text-xs font-semibold text-rose-300 mb-1 cursor-pointer hover:scale-105 transition-transform"
+          className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/20 border border-amber-400/30 text-xs font-semibold text-amber-300 mb-1 cursor-pointer hover:scale-105 transition-transform"
           title="Toque para uma surpresa"
         >
           <Gift className="w-3.5 h-3.5" />
@@ -197,8 +184,8 @@ export const StoreView: React.FC = () => {
 
       {/* Spectator Guard Notice */}
       {isSpectator && (
-        <div className="rounded-2xl p-3.5 bg-purple-950/70 border border-pink-400/35 text-xs text-pink-200 flex items-center gap-2.5">
-          <Lock className="w-4 h-4 text-pink-300 shrink-0" />
+        <div className="rounded-2xl p-3.5 bg-purple-950/70 border border-sky-400/35 text-xs text-sky-200 flex items-center gap-2.5">
+          <Lock className="w-4 h-4 text-sky-300 shrink-0" />
           <span>
             Modo Espectador (Gabriel): você pode explorar toda a boutique, mas apenas a Samella pode comprar ou equipar itens.
           </span>
@@ -206,14 +193,14 @@ export const StoreView: React.FC = () => {
       )}
 
       {/* Balance & Search Card */}
-      <div className="glass-card-glow rounded-3xl p-4 sm:p-5 border border-pink-400/30 shadow-lg flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+      <div className="glass-card-glow rounded-3xl p-4 sm:p-5 border border-sky-400/30 shadow-lg flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 via-pink-600 to-rose-500 flex items-center justify-center shadow-md shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 via-sky-600 to-amber-500 flex items-center justify-center shadow-md shrink-0">
             <DiamondGemIcon className="w-6 h-6 text-white" />
           </div>
           <div>
             <span className="text-xs text-purple-300 block font-medium">Tesouro Disponível</span>
-            <h3 className="text-2xl font-bold text-pink-100 font-display tabular-nums">
+            <h3 className="text-2xl font-bold text-sky-100 font-display tabular-nums">
               {coins} Diamantes
             </h3>
             <span className="text-[11px] text-purple-200/70 tabular-nums">
@@ -229,7 +216,7 @@ export const StoreView: React.FC = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar sofá, TV, PC, parede, pet..."
-            className="w-full min-h-[42px] pl-10 pr-3 rounded-2xl bg-purple-950/80 border border-purple-500/30 text-xs text-white placeholder:text-purple-300/50 focus:outline-none focus:border-pink-400"
+            className="w-full min-h-[42px] pl-10 pr-3 rounded-2xl bg-purple-950/80 border border-purple-500/30 text-xs text-white placeholder:text-purple-300/50 focus:outline-none focus:border-sky-400"
           />
         </div>
       </div>
@@ -246,7 +233,7 @@ export const StoreView: React.FC = () => {
             }}
             className={`px-3.5 min-h-[40px] py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
               selectedCategory === cat.id
-                ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-md border border-pink-400/40'
+                ? 'bg-gradient-to-r from-sky-600 to-purple-600 text-white shadow-md border border-sky-400/40'
                 : 'glass-panel text-purple-200/80 hover:text-white border border-purple-500/20'
             }`}
           >
@@ -268,7 +255,7 @@ export const StoreView: React.FC = () => {
               onClick={() => setSelectedHouseCat('todas')}
               className={`px-3 min-h-[36px] rounded-xl text-[11px] font-bold whitespace-nowrap cursor-pointer transition ${
                 selectedHouseCat === 'todas'
-                  ? 'bg-pink-500/35 border border-pink-400 text-white'
+                  ? 'bg-sky-500/35 border border-sky-400 text-white'
                   : 'bg-purple-900/40 border border-purple-500/20 text-purple-200/80'
               }`}
             >
@@ -281,7 +268,7 @@ export const StoreView: React.FC = () => {
                 onClick={() => setSelectedHouseCat(sub.id)}
                 className={`px-3 min-h-[36px] rounded-xl text-[11px] font-bold whitespace-nowrap cursor-pointer flex items-center gap-1.5 transition ${
                   selectedHouseCat === sub.id
-                    ? 'bg-pink-500/35 border border-pink-400 text-white'
+                    ? 'bg-sky-500/35 border border-sky-400 text-white'
                     : 'bg-purple-900/40 border border-purple-500/20 text-purple-200/80 hover:text-white'
                 }`}
               >
@@ -296,7 +283,7 @@ export const StoreView: React.FC = () => {
       {/* Store Grid */}
       {filteredItems.length === 0 ? (
         <div className="rounded-3xl p-8 glass-panel border border-purple-500/20 text-center space-y-2">
-          <Sparkles className="w-6 h-6 text-pink-300 mx-auto" />
+          <Sparkles className="w-6 h-6 text-sky-300 mx-auto" />
           <p className="text-sm font-bold text-white">Nenhum item encontrado</p>
           <p className="text-xs text-purple-200/70">
             Tente outro termo de busca ou mude o filtro de categoria.
@@ -335,8 +322,8 @@ export const StoreView: React.FC = () => {
                       ? 'border-indigo-500/30 bg-purple-950/30'
                       : 'border-emerald-500/40 bg-purple-950/40 shadow-[0_0_20px_rgba(16,185,129,0.12)]'
                     : isDeadPet
-                    ? 'border-rose-400/45 bg-rose-950/20'
-                    : 'border-purple-500/25 hover:border-pink-400/50 bg-purple-950/25'
+                    ? 'border-amber-400/45 bg-amber-950/20'
+                    : 'border-purple-500/25 hover:border-sky-400/50 bg-purple-950/25'
                 }`}
               >
                 <div className="space-y-3">
@@ -356,7 +343,7 @@ export const StoreView: React.FC = () => {
                     )}
                     {item.supportsCustomColor && (
                       <span
-                        className="absolute bottom-2 right-2 z-20 px-2 py-0.5 rounded-full bg-black/65 border border-white/20 text-[10px] font-semibold text-pink-100 flex items-center gap-1.5"
+                        className="absolute bottom-2 right-2 z-20 px-2 py-0.5 rounded-full bg-black/65 border border-white/20 text-[10px] font-semibold text-sky-100 flex items-center gap-1.5"
                       >
                         <span
                           className="w-3 h-3 rounded-full border border-white/50"
@@ -382,8 +369,8 @@ export const StoreView: React.FC = () => {
 
                 <div className="pt-3 border-t border-purple-500/20 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5">
-                    <DiamondGemIcon className="w-4 h-4 text-pink-300" />
-                    <span className="text-sm font-bold text-pink-200 font-mono tabular-nums">
+                    <DiamondGemIcon className="w-4 h-4 text-sky-300" />
+                    <span className="text-sm font-bold text-sky-200 font-mono tabular-nums">
                       {item.price}
                     </span>
                   </div>
@@ -421,10 +408,10 @@ export const StoreView: React.FC = () => {
                           : isVoucher
                           ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
                           : isEquipped
-                          ? 'bg-pink-600 hover:bg-pink-500 text-white'
+                          ? 'bg-sky-600 hover:bg-sky-500 text-white'
                           : 'bg-purple-600 hover:bg-purple-500 text-white'
                         : coins >= item.price
-                        ? 'bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white'
+                        ? 'bg-gradient-to-r from-sky-600 to-purple-600 hover:from-sky-500 hover:to-purple-500 text-white'
                         : 'bg-purple-950/60 text-purple-400/60 border border-purple-500/20'
                     }`}
                   >
@@ -467,11 +454,11 @@ export const StoreView: React.FC = () => {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   onClick={(e) => e.stopPropagation()}
-                  className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl glass-card-glow border border-pink-400/40 p-5 sm:p-6 space-y-4 bg-[#120626]"
+                  className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl glass-card-glow border border-sky-400/40 p-5 sm:p-6 space-y-4 bg-[#120626]"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-800 to-pink-700 flex items-center justify-center text-white shadow-lg shrink-0 relative">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-800 to-sky-700 flex items-center justify-center text-white shadow-lg shrink-0 relative">
                         <VectorGlyphIcon name={activeModalItem.icon} className="w-6 h-6" />
                         {activeModalItem.supportsCustomColor && (
                           <span
@@ -507,10 +494,10 @@ export const StoreView: React.FC = () => {
 
                   {/* Unlimited Hex Color Picker for pets, clothes, accessories & 3D furniture */}
                   {activeModalItem.supportsCustomColor && (
-                    <div className="p-3.5 rounded-2xl bg-purple-950/75 border border-pink-400/30 space-y-3">
+                    <div className="p-3.5 rounded-2xl bg-purple-950/75 border border-sky-400/30 space-y-3">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-pink-200 flex items-center gap-1.5">
-                          <Palette className="w-4 h-4 text-pink-400" />
+                        <span className="text-xs font-bold text-sky-200 flex items-center gap-1.5">
+                          <Palette className="w-4 h-4 text-sky-400" />
                           <span>Qualquer Cor (Paleta Livre RGB)</span>
                         </span>
                         <span className="text-[11px] font-mono text-purple-200 uppercase">
@@ -520,7 +507,7 @@ export const StoreView: React.FC = () => {
 
                       <div className="flex items-center gap-2.5 flex-wrap">
                         <label
-                          className={`relative flex items-center gap-2 px-3 py-2 rounded-xl bg-black/45 border border-pink-400/40 text-xs font-semibold text-white ${
+                          className={`relative flex items-center gap-2 px-3 py-2 rounded-xl bg-black/45 border border-sky-400/40 text-xs font-semibold text-white ${
                             isSpectator ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                           }`}
                         >
@@ -572,7 +559,7 @@ export const StoreView: React.FC = () => {
 
                   {activeModalItem.category === 'pets' && (
                     <div className="space-y-3">
-                      <div className="p-3 rounded-2xl bg-gradient-to-r from-pink-950/60 to-purple-950/60 border border-pink-500/30 text-xs text-pink-200 flex items-center gap-2.5">
+                      <div className="p-3 rounded-2xl bg-gradient-to-r from-sky-950/60 to-purple-950/60 border border-sky-500/30 text-xs text-sky-200 flex items-center gap-2.5">
                         <VectorGlyphIcon name={activeModalItem.icon} className="w-6 h-6 shrink-0" />
                         <div>
                           <span className="font-bold text-white block">Mascote 3D 360° Interativo</span>
@@ -584,7 +571,7 @@ export const StoreView: React.FC = () => {
 
                       {!activeModalItem.purchased && !isSpectator && (
                         <div className="p-3.5 rounded-2xl bg-purple-950/80 border border-purple-500/30 space-y-1.5 text-left">
-                          <label className="text-xs font-semibold text-pink-200 block">
+                          <label className="text-xs font-semibold text-sky-200 block">
                             Como vai se chamar seu novo mascote? ♡
                           </label>
                           <input
@@ -592,7 +579,7 @@ export const StoreView: React.FC = () => {
                             value={petCustomName}
                             onChange={(e) => setPetCustomName(e.target.value)}
                             placeholder="Digite o nome que você escolher..."
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-purple-500/40 text-white text-xs focus:outline-none focus:border-pink-400 font-medium"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-purple-500/40 text-white text-xs focus:outline-none focus:border-sky-400 font-medium"
                           />
                         </div>
                       )}
@@ -616,13 +603,13 @@ export const StoreView: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleCopyCode(activeModalItem.voucherCode!)}
-                          className="flex items-center gap-1 text-pink-300 hover:text-pink-200 font-bold cursor-pointer"
+                          className="flex items-center gap-1 text-sky-300 hover:text-sky-200 font-bold cursor-pointer"
                         >
                           <Copy className="w-3.5 h-3.5" />
                           <span>Copiar</span>
                         </button>
                       </div>
-                      <div className="font-mono text-center text-sm font-bold text-pink-200 bg-black/40 py-2 rounded-xl border border-purple-500/20 tracking-wider">
+                      <div className="font-mono text-center text-sm font-bold text-sky-200 bg-black/40 py-2 rounded-xl border border-purple-500/20 tracking-wider">
                         {activeModalItem.voucherCode}
                       </div>
                       {activeModalItem.redeemedAt && (
@@ -645,7 +632,7 @@ export const StoreView: React.FC = () => {
 
                     {isSpectator ? (
                       <div className="flex-1 min-h-[44px] rounded-xl bg-purple-950/70 border border-purple-500/25 text-[11px] text-purple-300 flex items-center justify-center gap-1.5 px-3">
-                        <Lock className="w-3.5 h-3.5 text-pink-300" />
+                        <Lock className="w-3.5 h-3.5 text-sky-300" />
                         <span>Somente Samella</span>
                       </div>
                     ) : !(
@@ -670,7 +657,7 @@ export const StoreView: React.FC = () => {
                           }
                         }}
                         disabled={coins < activeModalItem.price}
-                        className="flex-1 min-h-[44px] py-2.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow-md disabled:opacity-50 cursor-pointer inline-flex items-center justify-center gap-1.5"
+                        className="flex-1 min-h-[44px] py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-purple-600 text-white text-xs font-bold shadow-md disabled:opacity-50 cursor-pointer inline-flex items-center justify-center gap-1.5"
                       >
                         <span>Adquirir por</span>
                         <DiamondGemIcon className="w-3.5 h-3.5" />
@@ -696,7 +683,7 @@ export const StoreView: React.FC = () => {
                             activeModalItem.slotType as 'hat' | 'outfit' | 'collar' | 'glasses' | 'accessory'
                           );
                         }}
-                        className="flex-1 min-h-[44px] py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold shadow-md cursor-pointer"
+                        className="flex-1 min-h-[44px] py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-purple-600 text-white text-xs font-bold shadow-md cursor-pointer"
                       >
                         {[
                           kitten.equippedHat,
@@ -715,7 +702,7 @@ export const StoreView: React.FC = () => {
                           setActiveModalItem(null);
                           setExtendedView('casa');
                         }}
-                        className="flex-1 min-h-[44px] py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold shadow-md cursor-pointer"
+                        className="flex-1 min-h-[44px] py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-sky-600 text-white text-xs font-bold shadow-md cursor-pointer"
                       >
                         Decorar Casa 3D →
                       </button>
