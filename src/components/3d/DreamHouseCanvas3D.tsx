@@ -2309,7 +2309,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
       roofGroup.name = 'house-roof-preview';
       if (currentRoofStyle === 'gable') {
         const slope = 0.42;
-        const rise = (buildWidth / 4) * Math.tan(slope);
+        const rise = (buildWidth / 2) * Math.tan(slope);
         const panelWidth = Math.hypot(buildWidth / 2, rise);
         const leftRoof = new THREE.Mesh(
           new THREE.BoxGeometry(panelWidth + 0.22, 0.16, buildDepth + 0.34),
