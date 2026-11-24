@@ -610,18 +610,19 @@ export const HOUSE_ROOM_PRICES: Record<DreamHouseState['activeRoom'], number> = 
   varanda: 30,
 };
 
-// Casa dos Sonhos começa do zero: Sala vazia gratuita e demais cômodos comprados separadamente
+// Terreno da Casa dos Sonhos começa vazio; Samella constrói cada espaço do zero.
 export const INITIAL_DREAM_HOUSE: DreamHouseState = {
   activeRoom: 'sala',
-  unlockedRooms: ['sala'],
+  unlockedRooms: [],
+  plotSize: 12,
   wallTheme: 'lavender',
   floorTheme: 'wood',
   customWallHex: '#3b1c6d',
   customFloorHex: '#5c3419',
   customColors: {},
-  lightsOn: true,
-  fireplaceLit: true,
-  musicNoteGlow: true,
+  lightsOn: false,
+  fireplaceLit: false,
+  musicNoteGlow: false,
   unlockedFurnitureIds: [],
   placedFurniture: {
     sala: [],
@@ -631,7 +632,7 @@ export const INITIAL_DREAM_HOUSE: DreamHouseState = {
     banheiro: [],
   },
   furnitureTransforms: {},
-  comfortLevel: 1,
+  comfortLevel: 0,
 };
 
 function iconForHouseCategory(cat: HouseFurnitureCategory): string {
