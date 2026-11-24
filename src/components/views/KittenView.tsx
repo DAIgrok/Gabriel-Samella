@@ -98,7 +98,7 @@ export const KittenView: React.FC = () => {
 
   const [currentRoom, setCurrentRoom] = useState<PetRoom>('sala');
   const [drawerModal, setDrawerModal] = useState<'none' | 'armario' | 'mascotes'>('none');
-  const petViewMode = 'design' as const;
+  const [petViewMode] = useState<'design' | '3d' | '2d'>('design');
   const [danceMove, setDanceMove] = useState<PetDanceMove>('idle');
   const [actionCue, setActionCue] = useState<PetAnimationCue>({ type: 'idle', tick: 0 });
   const danceTimerRef = useRef<number | null>(null);
