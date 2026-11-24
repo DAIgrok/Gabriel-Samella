@@ -782,20 +782,60 @@ export const DreamHouseView: React.FC = () => {
                             ))}
                           </div>
                           {(wall.openings || []).map((opening, openingIndex) => (
-                            <div key={opening.id} className="flex items-center justify-between gap-2 rounded-lg bg-purple-950/55 px-3 py-2">
-                              <span className="text-[11px] text-purple-100">
-                                {opening.kind === 'door' ? 'Porta' : 'Janela'} {openingIndex + 1} · {opening.width.toFixed(2)} × {opening.height.toFixed(2)} m
-                              </span>
-                              <button
-                                type="button"
-                                disabled={isSpectator}
-                                onClick={() => setHouseCustomWalls((dreamHouse.customWalls || []).map((item) =>
-                                  item.id === wall.id ? { ...item, openings: (item.openings || []).filter((entry) => entry.id !== opening.id) } : item
-                                ))}
-                                className="text-[10px] font-bold text-rose-200 disabled:opacity-40"
-                              >
-                                Remover
-                              </button>
+                            <div key={opening.id} className="rounded-lg bg-purple-950/55 px-3 py-3 space-y-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[11px] font-semibold text-purple-100">
+                                  {opening.kind === 'door' ? 'Porta' : 'Janela'} {openingIndex + 1}
+                                </span>
+                                <button
+                                  type="button"
+                                  disabled={isSpectator}
+                                  onClick={() => setHouseCustomWalls((dreamHouse.customWalls || []).map((item) =>
+                                    item.id === wall.id ? { ...item, openings: (item.openings || []).filter((entry) => entry.id !== opening.id) } : item
+                                  ))}
+                                  className="text-[10px] font-bold text-rose-200 disabled:opacity-40"
+                                >
+                                  Remover
+                                </button>
+                              </div>
+                              {[
+                                { label: 'Largura', value: opening.width, min: 0.4, max: Math.max(0.4, Math.min(3, length - 0.1)) },
+                                { label: 'Altura', value: opening.height, min: 0.4, max: Math.max(0.4, wall.height - 0.1) },
+                                { label: 'Posição na parede', value: opening.offset, min: 0, max: Math.max(0, length - opening.width) },
+                                ...(opening.kind === 'window' ? [{ label: 'Altura do peitoril', value: opening.sillHeight ?? 0.9, min: 0, max: Math.max(0, wall.height - opening.height) }] : []),
+                              ].map((control) => (
+                                <label key={control.label} className="block space-y-1">
+                                  <span className="flex justify-between text-[10px] text-purple-200">
+                                    <span>{control.label}</span><span className="tabular-nums">{control.value.toFixed(2)} m</span>
+                                  </span>
+                                  <input
+                                    type="range"
+                                    min={control.min}
+                                    max={control.max}
+                                    step="0.1"
+                                    value={Math.min(control.value, control.max)}
+                                    disabled={isSpectator}
+                                    onChange={(event) => {
+                                      const value = Number(event.target.value);
+                                      setHouseCustomWalls((dreamHouse.customWalls || []).map((item) =>
+                                        item.id === wall.id
+                                          ? {
+                                              ...item,
+                                              openings: (item.openings || []).map((entry) => {
+                                                if (entry.id !== opening.id) return entry;
+                                                const next = { ...entry, [control.label === 'Largura' ? 'width' : control.label === 'Altura' ? 'height' : control.label === 'Posição na parede' ? 'offset' : 'sillHeight']: value };
+                                                if (control.label === 'Largura') next.offset = Math.min(next.offset, length - value);
+                                                if (control.label === 'Altura') next.sillHeight = Math.min(next.sillHeight ?? 0, wall.height - value);
+                                                return next;
+                                              }),
+                                            }
+                                          : item
+                                      ));
+                                    }}
+                                    className="w-full accent-pink-400 disabled:opacity-40"
+                                  />
+                                </label>
+                              ))}
                             </div>
                           ))}
                         </div>
