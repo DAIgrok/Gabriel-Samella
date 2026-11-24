@@ -379,7 +379,80 @@ export const INITIAL_LETTERS: Letter[] = [];
 export const INITIAL_PHOTOS: MemoryPhoto[] = [];
 
 // Playlist starts empty; Gabriel & Samella add YouTube links or audio files via MusicView or Settings
-export const INITIAL_SONGS: Song[] = [];
+export const INITIAL_SONGS: Song[] = [
+  {
+    id: 'song-incondicional-luan',
+    title: 'Incondicional',
+    artist: 'Luan Santana',
+    duration: 212,
+    durationFormatted: '3:32',
+    coverUrl: 'https://img.youtube.com/vi/36W_wRuPYbs/hqdefault.jpg',
+    audioUrl: 'https://www.youtube.com/watch?v=36W_wRuPYbs',
+    youtubeId: '36W_wRuPYbs',
+    sourceType: 'youtube',
+    lyrics: [],
+  },
+  {
+    id: 'song-na-hora-da-raiva',
+    title: 'Na Hora da Raiva',
+    artist: 'Henrique & Juliano',
+    duration: 205,
+    durationFormatted: '3:25',
+    coverUrl: 'https://img.youtube.com/vi/dkmMD_FDO1s/hqdefault.jpg',
+    audioUrl: 'https://www.youtube.com/watch?v=dkmMD_FDO1s',
+    youtubeId: 'dkmMD_FDO1s',
+    sourceType: 'youtube',
+    lyrics: [],
+  },
+  {
+    id: 'song-na-linha-do-tempo',
+    title: 'Na Linha do Tempo',
+    artist: 'Victor & Leo',
+    duration: 227,
+    durationFormatted: '3:47',
+    coverUrl: 'https://img.youtube.com/vi/DULQudMe7vA/hqdefault.jpg',
+    audioUrl: 'https://www.youtube.com/watch?v=DULQudMe7vA',
+    youtubeId: 'DULQudMe7vA',
+    sourceType: 'youtube',
+    lyrics: [],
+  },
+  {
+    id: 'song-te-esperando',
+    title: 'Te Esperando',
+    artist: 'Luan Santana',
+    duration: 246,
+    durationFormatted: '4:06',
+    coverUrl: 'https://img.youtube.com/vi/Z5pWz_OR5Sg/hqdefault.jpg',
+    audioUrl: 'https://www.youtube.com/watch?v=Z5pWz_OR5Sg',
+    youtubeId: 'Z5pWz_OR5Sg',
+    sourceType: 'youtube',
+    lyrics: [],
+  },
+  {
+    id: 'song-te-vivo',
+    title: 'Te Vivo',
+    artist: 'Luan Santana',
+    duration: 194,
+    durationFormatted: '3:14',
+    coverUrl: 'https://img.youtube.com/vi/dWpGsK8Md28/hqdefault.jpg',
+    audioUrl: 'https://www.youtube.com/watch?v=dWpGsK8Md28',
+    youtubeId: 'dWpGsK8Md28',
+    sourceType: 'youtube',
+    lyrics: [],
+  },
+  {
+    id: 'song-chuva-de-arroz',
+    title: 'Chuva de Arroz',
+    artist: 'Luan Santana',
+    duration: 203,
+    durationFormatted: '3:23',
+    coverUrl: 'https://img.youtube.com/vi/L2DpGzjT1dI/hqdefault.jpg',
+    audioUrl: 'https://www.youtube.com/watch?v=L2DpGzjT1dI',
+    youtubeId: 'L2DpGzjT1dI',
+    sourceType: 'youtube',
+    lyrics: [],
+  },
+];
 
 // Initial Achievements — 50 balanced milestones without emojis
 export const INITIAL_ACHIEVEMENTS: Achievement[] = [
