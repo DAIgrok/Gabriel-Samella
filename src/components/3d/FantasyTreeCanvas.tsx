@@ -203,195 +203,119 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
     canopyLight.position.set(0, 3.1, 1.5);
     scene.add(canopyLight);
 
-    const poolLight = new THREE.PointLight(0x67e8f9, 1.05, 7);
-    poolLight.position.set(0, 0.55, 1.6);
-    scene.add(poolLight);
+    const groundBounceLight = new THREE.PointLight(0x9b8058, 0.48, 9);
+    groundBounceLight.position.set(0, 0.42, 0.8);
+    scene.add(groundBounceLight);
 
-    // --- 5. FLOATING COZY SANCTUARY ISLAND & RUNED LOTUS POOL ---
+    // --- 5. NATURAL FOREST FLOOR --- 
     const terrainGroup = new THREE.Group();
     scene.add(terrainGroup);
 
-    const islandTopGeo = new THREE.CylinderGeometry(2.98, 2.68, 0.44, 44, 3);
-    const islandPos = islandTopGeo.attributes.position;
-    for (let i = 0; i < islandPos.count; i++) {
-      const y = islandPos.getY(i);
-      const x = islandPos.getX(i);
-      const z = islandPos.getZ(i);
-      if (y > 0.1) {
-        const dist = Math.sqrt(x * x + z * z);
-        islandPos.setY(i, y + Math.max(0, 0.25 - dist * 0.085) + Math.sin(x * 1.4 + z * 0.9) * 0.032);
+    // A broad continuous ground plane replaces the floating island: the tree now
+    // grows from a believable patch of earth instead of a suspended game platform.
+    const grassCanvas = document.createElement('canvas');
+    grassCanvas.width = 512;
+    grassCanvas.height = 512;
+    const grassCtx = grassCanvas.getContext('2d');
+    if (grassCtx) {
+      grassCtx.fillStyle = '#526d3c';
+      grassCtx.fillRect(0, 0, 512, 512);
+      let seed = 28417;
+      const random = () => {
+        seed = (seed * 1664525 + 1013904223) % 4294967296;
+        return seed / 4294967296;
+      };
+      for (let i = 0; i < 14500; i++) {
+        const x = random() * 512;
+        const y = random() * 512;
+        const shade = random() > 0.52 ? 'rgba(28,55,27,0.20)' : 'rgba(177,157,91,0.13)';
+        grassCtx.strokeStyle = shade;
+        grassCtx.lineWidth = 0.6 + random() * 1.1;
+        grassCtx.beginPath();
+        grassCtx.moveTo(x, y);
+        grassCtx.lineTo(x + (random() - 0.5) * 3, y - 1.5 - random() * 5);
+        grassCtx.stroke();
       }
     }
-    islandTopGeo.computeVertexNormals();
-    const islandTopMat = new THREE.MeshStandardMaterial({
-      color: 0x266f5d,
-      roughness: 0.68,
-      metalness: 0.04,
-    });
-    const islandTop = new THREE.Mesh(islandTopGeo, islandTopMat);
-    islandTop.position.y = -0.18;
-    islandTop.receiveShadow = true;
-    terrainGroup.add(islandTop);
+    const grassTexture = new THREE.CanvasTexture(grassCanvas);
+    grassTexture.colorSpace = THREE.SRGBColorSpace;
+    grassTexture.wrapS = THREE.RepeatWrapping;
+    grassTexture.wrapT = THREE.RepeatWrapping;
+    grassTexture.repeat.set(18, 18);
+    grassTexture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
 
-    // Sculpted basalt stone underbelly
-    const stoneGeo = new THREE.ConeGeometry(2.62, 1.42, 24);
-    stoneGeo.rotateX(Math.PI);
-    const stoneMat = new THREE.MeshStandardMaterial({
-      color: 0x1b0b30,
-      roughness: 0.78,
-      metalness: 0.14,
-    });
-    const stoneUnder = new THREE.Mesh(stoneGeo, stoneMat);
-    stoneUnder.position.y = -1.08;
-    terrainGroup.add(stoneUnder);
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(80, 80),
+      new THREE.MeshStandardMaterial({ map: grassTexture, color: 0xffffff, roughness: 0.98 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.16;
+    ground.receiveShadow = true;
+    terrainGroup.add(ground);
 
-    // Luminous Irminsul Rune Ring around the sanctuary rim
-    const runeRingGeo = new THREE.TorusGeometry(2.58, 0.028, 10, 64);
-    runeRingGeo.rotateX(Math.PI / 2);
-    const runeRingMat = new THREE.MeshStandardMaterial({
-      color: 0xf472b6,
-      emissive: 0xc026d3,
-      emissiveIntensity: 1.4,
-      roughness: 0.2,
-      metalness: 0.4,
-    });
-    const runeRing = new THREE.Mesh(runeRingGeo, runeRingMat);
-    runeRing.position.y = 0.065;
-    terrainGroup.add(runeRing);
+    // Uneven soil collar and moss around the trunk base.
+    const soilMat = new THREE.MeshStandardMaterial({ color: 0x493526, roughness: 1 });
+    const soil = new THREE.Mesh(new THREE.CylinderGeometry(2.55, 2.78, 0.24, 56, 2), soilMat);
+    soil.position.y = -0.19;
+    soil.receiveShadow = true;
+    terrainGroup.add(soil);
 
-    const innerRuneGeo = new THREE.TorusGeometry(1.75, 0.018, 8, 56);
-    innerRuneGeo.rotateX(Math.PI / 2);
-    const innerRuneMat = new THREE.MeshStandardMaterial({
-      color: 0x67e8f9,
-      emissive: 0x06b6d4,
-      emissiveIntensity: 1.15,
-      roughness: 0.2,
-    });
-    const innerRune = new THREE.Mesh(innerRuneGeo, innerRuneMat);
-    innerRune.position.y = 0.075;
-    terrainGroup.add(innerRune);
-
-    // Crystal mirror lotus pool wrapping front roots
-    const poolGeo = new THREE.CircleGeometry(1.68, 40);
-    poolGeo.rotateX(-Math.PI / 2);
-    const poolMat = new THREE.MeshStandardMaterial({
-      color: 0x164e63,
-      emissive: 0x4c1d95,
-      emissiveIntensity: 0.35,
-      roughness: 0.08,
-      metalness: 0.85,
-      transparent: true,
-      opacity: 0.86,
-    });
-    poolMat.onBeforeCompile = (shader) => {
-      shader.uniforms.uTime = shaderUniforms.uTime;
-      shader.fragmentShader = `uniform float uTime;\n` + shader.fragmentShader;
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <emissivemap_fragment>',
-        `
-        #include <emissivemap_fragment>
-        float rDist = length(vViewPosition.xz);
-        float ripple = sin(rDist * 9.0 - uTime * 2.4) * 0.5 + 0.5;
-        totalEmissiveRadiance += vec3(0.18, 0.48, 0.72) * ripple * 0.25;
-        `
-      );
-    };
-    const mirrorPool = new THREE.Mesh(poolGeo, poolMat);
-    mirrorPool.position.set(0, 0.055, 0.42);
-    terrainGroup.add(mirrorPool);
-
-    // Floating glowing lotus blossoms on the mirror pool
-    const lotusPetalGeo = new THREE.SphereGeometry(0.08, 10, 8);
-    lotusPetalGeo.scale(1.2, 0.35, 0.65);
-    const lotusMat = new THREE.MeshStandardMaterial({
-      color: 0xfbcfe8,
-      emissive: 0xf472b6,
-      emissiveIntensity: 0.8,
-      roughness: 0.25,
-    });
-    [
-      [-0.85, 0.08, 1.15],
-      [0.92, 0.08, 1.02],
-      [0.25, 0.08, 1.55],
-    ].forEach(([lx, ly, lz], idx) => {
-      const lotus = new THREE.Group();
-      lotus.position.set(lx, ly, lz);
-      for (let p = 0; p < 6; p++) {
-        const ang = (p / 6) * Math.PI * 2;
-        const pet = new THREE.Mesh(lotusPetalGeo, lotusMat);
-        pet.position.set(Math.cos(ang) * 0.075, 0, Math.sin(ang) * 0.075);
-        pet.rotation.y = -ang;
-        pet.rotation.z = 0.25;
-        lotus.add(pet);
-      }
-      lotus.rotation.y = idx * 0.7;
-      terrainGroup.add(lotus);
-    });
-
-    // Sculpted mossy earth mound beneath main trunk
-    const moundGeo = new THREE.SphereGeometry(0.96, 28, 18);
-    moundGeo.scale(1.2, 0.26, 1.15);
-    const moundMat = new THREE.MeshStandardMaterial({
-      color: 0x2f6b56,
-      roughness: 0.72,
-    });
+    const moundGeo = new THREE.SphereGeometry(1, 28, 18);
+    moundGeo.scale(1.42, 0.22, 1.28);
+    const moundMat = new THREE.MeshStandardMaterial({ color: 0x3d6540, roughness: 0.96 });
     const mound = new THREE.Mesh(moundGeo, moundMat);
-    mound.position.y = 0.04;
+    mound.position.y = -0.015;
     mound.receiveShadow = true;
     terrainGroup.add(mound);
 
-    // Smooth rounded river pebbles rimming the island (zero angular dodecahedrons)
-    const pebbleGeo = new THREE.SphereGeometry(0.22, 18, 14);
-    const pebbleMat = new THREE.MeshStandardMaterial({ color: 0x6b5b95, roughness: 0.62, metalness: 0.05 });
-    [
-      [1.95, 0.08, 0.95, 1.2],
-      [-1.85, 0.08, 1.15, 1.05],
-      [1.35, 0.07, -1.75, 1.1],
-      [-1.45, 0.07, -1.55, 1.15],
-    ].forEach(([px, py, pz, s], i) => {
-      const pebble = new THREE.Mesh(pebbleGeo, pebbleMat);
-      pebble.position.set(px, py, pz);
-      pebble.scale.set(s * 1.28, s * 0.62, s);
-      pebble.rotation.set(0.12, i * 1.1, 0.08);
-      pebble.castShadow = true;
-      pebble.receiveShadow = true;
-      terrainGroup.add(pebble);
-    });
+    // Scattered, irregular river stones and small grass clumps add scale without
+    // turning the base into a decorative pedestal.
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x777568, roughness: 0.92 });
+    const stoneGeo = new THREE.DodecahedronGeometry(0.19, 1);
+    for (let i = 0; i < 26; i++) {
+      const angle = i * 2.399963;
+      const radius = 1.7 + ((i * 17) % 19) / 10;
+      const stone = new THREE.Mesh(stoneGeo, stoneMat);
+      stone.position.set(Math.cos(angle) * radius, -0.025, Math.sin(angle) * radius);
+      stone.scale.set(0.65 + (i % 4) * 0.16, 0.48 + (i % 3) * 0.14, 0.72 + (i % 5) * 0.1);
+      stone.rotation.set(i * 0.31, angle, i * 0.17);
+      stone.castShadow = true;
+      stone.receiveShadow = true;
+      terrainGroup.add(stone);
+    }
 
-    // Cozy Stylized Glowing Pastel Mushrooms around the base
-    const mushStemMat = new THREE.MeshStandardMaterial({ color: 0xfff1f2, roughness: 0.65 });
-    const mushCapMatPink = new THREE.MeshStandardMaterial({
-      color: 0xf472b6,
-      emissive: 0xec4899,
-      emissiveIntensity: 0.45,
-      roughness: 0.55,
-    });
-    const mushCapMatMint = new THREE.MeshStandardMaterial({
-      color: 0x6ee7b7,
-      emissive: 0x10b981,
-      emissiveIntensity: 0.4,
-      roughness: 0.55,
-    });
-    [
-      [-1.45, 0.08, 0.55, 1.0, true],
-      [-1.62, 0.07, 0.35, 0.72, false],
-      [1.48, 0.08, 0.45, 0.92, false],
-      [0.95, 0.08, -1.25, 0.85, true],
-    ].forEach(([mx, my, mz, sc, isPink]) => {
-      const mg = new THREE.Group();
-      mg.position.set(mx as number, my as number, mz as number);
-      mg.scale.setScalar(sc as number);
-      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.048, 0.14, 12), mushStemMat);
-      stem.position.y = 0.07;
-      const cap = new THREE.Mesh(
-        new THREE.SphereGeometry(0.11, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
-        isPink ? mushCapMatPink : mushCapMatMint
-      );
-      cap.position.y = 0.12;
-      cap.castShadow = true;
-      mg.add(stem, cap);
-      terrainGroup.add(mg);
-    });
+    const grassBladeGeo = new THREE.ConeGeometry(0.025, 0.24, 4);
+    const grassBladeMat = new THREE.MeshStandardMaterial({ color: 0x78934b, roughness: 0.88 });
+    const grassTufts = new THREE.InstancedMesh(grassBladeGeo, grassBladeMat, 210);
+    const bladeDummy = new THREE.Object3D();
+    for (let i = 0; i < 210; i++) {
+      const angle = i * 2.399963;
+      const radius = 1.45 + ((i * 29) % 310) / 100;
+      bladeDummy.position.set(Math.cos(angle) * radius, -0.015, Math.sin(angle) * radius);
+      bladeDummy.rotation.set((i % 7) * 0.035, angle, ((i % 5) - 2) * 0.07);
+      bladeDummy.scale.set(0.7 + (i % 4) * 0.12, 0.65 + (i % 6) * 0.16, 0.7 + (i % 3) * 0.14);
+      bladeDummy.updateMatrix();
+      grassTufts.setMatrixAt(i, bladeDummy.matrix);
+    }
+    grassTufts.castShadow = true;
+    grassTufts.receiveShadow = true;
+    terrainGroup.add(grassTufts);
+
+    const fernMat = new THREE.MeshStandardMaterial({ color: 0x426d3d, roughness: 0.9, side: THREE.DoubleSide });
+    for (let i = 0; i < 7; i++) {
+      const angle = i * 2.399963 + 0.5;
+      const fern = new THREE.Group();
+      fern.position.set(Math.cos(angle) * (2.45 + (i % 2) * 0.38), -0.04, Math.sin(angle) * (2.45 + (i % 2) * 0.38));
+      fern.rotation.y = -angle;
+      for (let leaf = 0; leaf < 7; leaf++) {
+        const blade = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 7), fernMat);
+        blade.scale.set(0.2, 0.045, 0.72);
+        blade.position.set((leaf - 3) * 0.075, leaf * 0.025, 0.14 + Math.abs(leaf - 3) * 0.035);
+        blade.rotation.y = (leaf - 3) * 0.22;
+        fern.add(blade);
+      }
+      terrainGroup.add(fern);
+    }
 
     // --- 6. DYNAMIC TREE & ACCESSORY GROUP ---
     const treeGroup = new THREE.Group();
@@ -591,46 +515,21 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
       butterflyWingR = null;
       songbirdGroup = null;
 
-      // Smooth Cozy Stylized Cinnamon-Violet Bark with glowing Leyline Spirit Veins shader
+      // Natural, non-emissive bark for the procedural fallback tree.
       const barkMat = new THREE.MeshStandardMaterial({
-        color: 0x5c374c,
-        roughness: 0.68,
-        metalness: 0.03,
+        color: 0x62452f,
+        roughness: 0.94,
+        metalness: 0,
       });
-      barkMat.onBeforeCompile = (shader) => {
-        shader.uniforms.uTime = shaderUniforms.uTime;
-        shader.vertexShader = `varying vec3 vWorldBarkPos;\n` + shader.vertexShader;
-        shader.vertexShader = shader.vertexShader.replace(
-          '#include <worldpos_vertex>',
-          `
-          #include <worldpos_vertex>
-          vWorldBarkPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
-          `
-        );
-        shader.fragmentShader =
-          `uniform float uTime;\nvarying vec3 vWorldBarkPos;\n` + shader.fragmentShader;
-        shader.fragmentShader = shader.fragmentShader.replace(
-          '#include <emissivemap_fragment>',
-          `
-          #include <emissivemap_fragment>
-          float veinWave = sin(vWorldBarkPos.y * 7.5 - uTime * 1.9 + sin(vWorldBarkPos.x * 12.0) * 1.8);
-          float veinMask = smoothstep(0.86, 0.99, veinWave);
-          totalEmissiveRadiance += vec3(0.94, 0.45, 0.76) * veinMask * 0.65;
-          `
-        );
-      };
 
-      const isCelestialMax = curLevel >= 10 && !sakura;
-      const showSakura = sakura || curLevel >= 5;
+      const showSakura = sakura;
 
-      const paletteHex = sakura || showSakura
-        ? [0xf472b6, 0xfbcfe8, 0xf9a8d4, 0xe879f9, 0xfdf2f8]
-        : isCelestialMax
-        ? [0x5eead4, 0x7dd3fc, 0xc4b5fd, 0x6ee7b7]
-        : [0x4ade80, 0x86efac, 0x34d399, 0xf9a8d4];
+      const paletteHex = showSakura
+        ? [0xf0a8c8, 0xf6c8dc, 0xe88eae, 0xf7dce8, 0xd978a5]
+        : [0x315f35, 0x477c3f, 0x65964b, 0x7fa85b, 0x9ab66c];
 
-      const canopyEmissiveHex = isCelestialMax ? 0x0f766e : showSakura ? 0xbe185d : 0x047857;
-      const canopyEmissiveStr = showSakura || isCelestialMax ? 0.34 : 0.22;
+      const canopyEmissiveHex = 0x000000;
+      const canopyEmissiveStr = 0;
 
       if (curLevel <= 1) {
         // --- STAGE 1: LUMINOUS SACRED SPROUT ---
@@ -1283,10 +1182,6 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
           const pulse = 1.0 + Math.sin(t * 1.8 + a.phase) * 0.1;
           a.sprite.scale.set(a.baseScale * pulse, a.baseScale * 0.85 * pulse, 1);
         }
-
-        // Rune ring subtle glow pulse
-        runeRingMat.emissiveIntensity = 1.2 + Math.sin(t * 2.1) * 0.35;
-        innerRuneMat.emissiveIntensity = 0.95 + Math.cos(t * 2.4) * 0.3;
 
         // Ribbons fluttering
         for (let i = 0; i < ribbonRefs.length; i++) {
