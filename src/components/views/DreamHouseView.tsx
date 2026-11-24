@@ -6,7 +6,7 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  CloudSun,
+  ArrowLeft,
   Droplets,
   Flame,
   Lightbulb,
@@ -40,8 +40,7 @@ import { DreamHouseWorld3D } from '../3d/DreamHouseWorld3D';
 import {
   DiamondGemIcon,
   DreamHouseCrestIcon,
-  EclipseSkyIcon,
-  VectorGlyphIcon,
+    VectorGlyphIcon,
 } from '../icons/CustomIcons';
 
 const ROOMS: { id: HouseRoomId; label: string }[] = [
@@ -258,6 +257,17 @@ export const DreamHouseView: React.FC = () => {
 
         {/* Top-Left Room & Sky Spec Badge */}
         <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5">
+          {!isWorldView && (
+            <button
+              type="button"
+              onClick={() => { setIsWorldView(true); setIsEditMode(false); setSelectedFurnitureId(null); }}
+              aria-label="Voltar à planta da casa"
+              title="Planta da casa"
+              className="w-8 h-8 rounded-full bg-[#071126]/90 border border-sky-300/30 text-sky-100 flex items-center justify-center shadow-lg"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          )}
           <div className="px-3 py-1.5 rounded-full bg-[#130627]/85 backdrop-blur-sm border border-pink-400/30 text-[11px] font-bold text-white flex items-center gap-1.5 pointer-events-none">
             <Sparkles className="w-3.5 h-3.5 text-pink-300" />
             <span>{isWorldView ? 'Planta da Casa · 360°' : roomLabel}</span>
@@ -473,11 +483,7 @@ export const DreamHouseView: React.FC = () => {
             <span className="px-3 py-2 rounded-xl bg-[#142440] border border-sky-300/15 text-slate-200 text-[11px] font-semibold">
               {unlockedRooms.length} {unlockedRooms.length === 1 ? 'espaço construído' : 'espaços construídos'}
             </span>
-            {!isWorldView && (
-              <button type="button" onClick={() => { setIsWorldView(true); setIsEditMode(false); setSelectedFurnitureId(null); }} className="min-h-[40px] px-3.5 rounded-2xl text-xs font-bold bg-sky-500/15 border border-sky-300/25 text-sky-100">
-                ← Voltar à planta 360°
-              </button>
-            )}
+
             {!isSpectator && (
               <button type="button" onClick={() => setIsBuildMenuOpen((open) => !open)} className="min-h-[40px] px-3.5 rounded-2xl text-xs font-bold bg-amber-300/15 border border-amber-200/35 text-amber-100">
                 + Construir
