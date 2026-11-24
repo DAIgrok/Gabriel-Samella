@@ -177,7 +177,7 @@ export const DreamHouseView: React.FC = () => {
           </div>
           <div className="min-w-0">
             <h2 className="text-lg sm:text-xl font-bold text-white truncate">
-              Casa dos Sonhos 3D
+              Casa
             </h2>
             <p className="text-xs text-purple-200/75 truncate">
               {isSpectator
@@ -270,7 +270,7 @@ export const DreamHouseView: React.FC = () => {
           )}
           <div className="px-3 py-1.5 rounded-full bg-[#130627]/85 backdrop-blur-sm border border-pink-400/30 text-[11px] font-bold text-white flex items-center gap-1.5 pointer-events-none">
             <Sparkles className="w-3.5 h-3.5 text-pink-300" />
-            <span>{isWorldView ? 'Planta da Casa · 360°' : roomLabel}</span>
+            <span>{isWorldView ? 'Casa · visão 360°' : roomLabel}</span>
             {currentRoom === 'varanda' && (
               <span className="text-teal-300">· Árvore Nv.{treeState.level || 1}</span>
             )}
