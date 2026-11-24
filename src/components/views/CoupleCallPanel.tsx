@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Phone, PhoneOff, Video, VideoOff, Check, X, Mic } from 'lucide-react';
+import { Phone, PhoneOff, Video, Check, X, Mic } from 'lucide-react';
 import { subscribeCoupleCalls, type CoupleCallSignal } from '../../services/supabaseSync';
 import { useApp } from '../../context/AppContext';
 
