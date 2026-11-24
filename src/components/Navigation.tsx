@@ -84,16 +84,16 @@ export const Navigation: React.FC = () => {
     { id: 'config', label: 'Configurações (Criador)', icon: Settings, color: 'text-slate-300' },
   ];
 
-  const drawerItems = allDrawerItems.filter((item) => item.id !== 'config' || isSpectator);
+  const drawerItems = allDrawerItems.filter((item) => item.id !== 'config' || !isSpectator);
 
   return (
     <>
       {/* Bottom Floating Navigation Bar (Mobile Only) */}
       <div className="fixed bottom-0 left-0 right-0 z-30 pointer-events-auto select-none md:hidden">
         <div className="max-w-lg mx-auto px-3 pb-safe pb-2 pt-1">
-          <div className="relative glass rounded-[28px] px-2 py-2 border border-white/10 shadow-[0_-8px_30px_rgba(0,0,0,0.8)] backdrop-blur-2xl">
+          <div className="nm-bottom-nav relative glass rounded-[28px] px-2 py-2 border border-white/10 shadow-[0_-8px_30px_rgba(0,0,0,0.8)] backdrop-blur-2xl">
             {/* Top Floating Glow Heart indicator */}
-            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 pointer-events-none">
+            <div className="nm-nav-orbit absolute -top-3.5 left-1/2 -translate-x-1/2 pointer-events-none">
               <motion.div
                 animate={{
                   y: [-2, 2, -2],
@@ -128,7 +128,7 @@ export const Navigation: React.FC = () => {
                     {isActive && (
                       <motion.div
                         layoutId="activeNavBubble"
-                        className="absolute inset-0 bg-white/10 rounded-2xl border border-white/10 shadow-[0_0_12px_rgba(168,85,247,0.3)]"
+                        className="nm-nav-active absolute inset-0 bg-white/10 rounded-2xl border border-white/10 shadow-[0_0_12px_rgba(168,85,247,0.3)]"
                         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                       />
                     )}
@@ -180,7 +180,7 @@ export const Navigation: React.FC = () => {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="absolute top-0 bottom-0 left-0 w-80 max-w-[85vw] bg-[#050208] border-r border-white/10 shadow-2xl flex flex-col p-5 z-10 overflow-y-auto"
+              className="nm-drawer absolute top-0 bottom-0 left-0 w-80 max-w-[85vw] bg-[#050208] border-r border-white/10 shadow-2xl flex flex-col p-5 z-10 overflow-y-auto"
             >
               {/* Drawer Header */}
               <div className="flex items-center justify-between pb-4 border-b border-purple-500/20">
