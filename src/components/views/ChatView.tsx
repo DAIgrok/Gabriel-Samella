@@ -194,10 +194,21 @@ export const ChatView: React.FC = () => {
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1, sampleRate: 48000 },
+        audio: {
+          echoCancellation: { ideal: true },
+          noiseSuppression: { ideal: true },
+          autoGainControl: { ideal: true },
+          channelCount: { ideal: 1 },
+          sampleRate: { ideal: 48000 },
+        },
       });
       const preferredType = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4'].find((type) => MediaRecorder.isTypeSupported(type));
-      const recorder = new MediaRecorder(stream, preferredType ? { mimeType: preferredType, audioBitsPerSecond: 64000 } : { audioBitsPerSecond: 64000 });
+      // Mais taxa de bits para preservar melhor a voz sem criar arquivos excessivamente pesados.
+      const recorderOptions: MediaRecorderOptions = {
+        ...(preferredType ? { mimeType: preferredType } : {}),
+        audioBitsPerSecond: 96000,
+      };
+      const recorder = new MediaRecorder(stream, recorderOptions);
       const mimeType = recorder.mimeType || preferredType || 'audio/webm';
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
