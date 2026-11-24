@@ -117,7 +117,7 @@ export const LoveTreeView: React.FC = () => {
   }, [config.anniversaryDate]);
 
   // Store unlocks
-  const hasSakuraTheme = Boolean(storeItems.find((i) => i.id === 'item-tree-sakura')?.purchased);
+  const hasSakuraTheme = false;
   const hasGoldenApples = Boolean(storeItems.find((i) => i.id === 'item-tree-golden-apples')?.purchased);
   const hasFairyLights = Boolean(storeItems.find((i) => i.id === 'item-tree-fairy-lights')?.purchased);
   const hasSwing = Boolean(storeItems.find((i) => i.id === 'item-tree-swing')?.purchased);
@@ -133,7 +133,7 @@ export const LoveTreeView: React.FC = () => {
   const getStageLabel = (lvl: number) => {
     if (lvl === 1) return 'Semente do Amor';
     if (lvl <= 3) return 'Muda em Crescimento';
-    if (lvl <= 6) return 'Cerejeira Florida';
+    if (lvl <= 6) return 'Árvore em Desenvolvimento';
     if (lvl <= 9) return 'Árvore das Promessas';
     return 'Árvore da Eternidade';
   };
@@ -203,7 +203,7 @@ export const LoveTreeView: React.FC = () => {
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.92, y: 16 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-3xl glass-card-glow p-6 border border-pink-400/40 shadow-2xl relative text-center space-y-4 bg-[#120624]"
+            className="w-full max-w-md rounded-3xl glass-card-glow p-6 border border-sky-400/40 shadow-2xl relative text-center space-y-4 bg-[#120624]"
           >
             <button
               onClick={() => setIsAddingRibbon(false)}
@@ -211,7 +211,7 @@ export const LoveTreeView: React.FC = () => {
             >
               <X className="w-4 h-4" />
             </button>
-            <div className="w-12 h-12 mx-auto rounded-2xl bg-pink-500/30 border border-pink-400/40 flex items-center justify-center text-pink-300">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-sky-500/30 border border-sky-400/40 flex items-center justify-center text-sky-300">
               <Ribbon className="w-6 h-6" />
             </div>
             <h4 className="text-lg font-bold text-white font-display">Amarre uma Nova Promessa ♡</h4>
@@ -222,12 +222,12 @@ export const LoveTreeView: React.FC = () => {
                 placeholder="Escreva uma promessa sincera para ficar gravada nos galhos..."
                 rows={3}
                 maxLength={200}
-                className="w-full p-3 rounded-2xl bg-purple-950/60 border border-pink-500/40 text-white text-xs md:text-sm placeholder-purple-400/50 outline-none focus:border-pink-400"
+                className="w-full p-3 rounded-2xl bg-purple-950/60 border border-sky-500/40 text-white text-xs md:text-sm placeholder-purple-400/50 outline-none focus:border-sky-400"
               />
               <button
                 type="submit"
                 disabled={!newRibbonText.trim() || cdRibbon > 0}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold shadow-md hover:brightness-110 disabled:opacity-50 cursor-pointer"
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-purple-600 text-white text-xs font-bold shadow-md hover:brightness-110 disabled:opacity-50 cursor-pointer"
               >
                 {cdRibbon > 0
                   ? `Aguarde ${formatCooldownMs(cdRibbon)}`
@@ -251,7 +251,7 @@ export const LoveTreeView: React.FC = () => {
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.92, y: 16 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-3xl glass-card-glow p-6 border border-pink-400/40 shadow-2xl relative text-center space-y-4 bg-[#120624]"
+            className="w-full max-w-md rounded-3xl glass-card-glow p-6 border border-sky-400/40 shadow-2xl relative text-center space-y-4 bg-[#120624]"
           >
             <button
               onClick={() => setSelectedRibbon(null)}
@@ -294,7 +294,7 @@ export const LoveTreeView: React.FC = () => {
             >
               <X className="w-4 h-4" />
             </button>
-            <div className="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white shadow-lg">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-500 flex items-center justify-center text-white shadow-lg">
               <Apple className="w-6 h-6" />
             </div>
             <h4 className="text-lg font-bold text-white font-display">Fruto do Amor Colhido ♡</h4>
@@ -303,7 +303,7 @@ export const LoveTreeView: React.FC = () => {
             </div>
             <button
               onClick={() => setHarvestedFruitMsg(null)}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 text-white text-xs font-bold shadow-md hover:brightness-110 cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-500 text-white text-xs font-bold shadow-md hover:brightness-110 cursor-pointer"
             >
               Guardar no Coração ♡
             </button>
@@ -327,7 +327,7 @@ export const LoveTreeView: React.FC = () => {
             <button
               type="button"
               onClick={() => setTreeViewMode('design')}
-              className="px-2.5 py-1 rounded-full bg-gradient-to-r from-teal-500 to-pink-500 text-white shadow cursor-pointer"
+              className="px-2.5 py-1 rounded-full bg-gradient-to-r from-teal-500 to-sky-500 text-white shadow cursor-pointer"
             >
               Novo ♡
             </button>
@@ -411,7 +411,7 @@ export const LoveTreeView: React.FC = () => {
         <div
           className={`absolute inset-0 transition-opacity duration-700 pointer-events-none ${
             isSunbathing
-              ? 'bg-gradient-to-b from-amber-500/15 via-pink-600/10 to-transparent'
+              ? 'bg-gradient-to-b from-amber-500/15 via-sky-600/10 to-transparent'
               : isWatering
               ? 'bg-gradient-to-b from-cyan-600/15 via-teal-900/20 to-black/50'
               : isPruning
@@ -447,7 +447,7 @@ export const LoveTreeView: React.FC = () => {
               onClick={() => setTreeViewMode('3d')}
               className={`px-2.5 py-1 rounded-full flex items-center gap-1 transition cursor-pointer ${
                 treeViewMode === '3d'
-                  ? 'bg-gradient-to-r from-teal-500 to-pink-500 text-white shadow'
+                  ? 'bg-gradient-to-r from-teal-500 to-sky-500 text-white shadow'
                   : 'text-purple-200/75 hover:text-white'
               }`}
             >
@@ -459,7 +459,7 @@ export const LoveTreeView: React.FC = () => {
               onClick={() => setTreeViewMode('2d')}
               className={`px-2.5 py-1 rounded-full transition cursor-pointer ${
                 treeViewMode === '2d'
-                  ? 'bg-gradient-to-r from-teal-500 to-pink-500 text-white shadow'
+                  ? 'bg-gradient-to-r from-teal-500 to-sky-500 text-white shadow'
                   : 'text-purple-200/75 hover:text-white'
               }`}
             >
@@ -541,7 +541,7 @@ export const LoveTreeView: React.FC = () => {
               type="button"
               onClick={() => handleHarvestFruit(harvestedFruits.length % 5)}
               disabled={isSpectator || cdFruit > 0}
-              className="absolute top-3 right-3 z-20 px-3 min-h-[36px] rounded-full bg-gradient-to-r from-amber-500 to-rose-500 text-white text-[11px] font-bold shadow-lg flex items-center gap-1.5 cursor-pointer border border-amber-300/40 disabled:opacity-65"
+              className="absolute top-3 right-3 z-20 px-3 min-h-[36px] rounded-full bg-gradient-to-r from-amber-500 to-amber-500 text-white text-[11px] font-bold shadow-lg flex items-center gap-1.5 cursor-pointer border border-amber-300/40 disabled:opacity-65"
             >
               <Apple className="w-3.5 h-3.5 fill-amber-200" />
               <span>{cdFruit > 0 ? formatCooldownMs(cdFruit) : 'Colher Fruto'}</span>
@@ -553,7 +553,7 @@ export const LoveTreeView: React.FC = () => {
         <div className="w-full space-y-1.5 mt-2 z-10 px-1">
           <div className="h-2 w-full bg-purple-950 rounded-full overflow-hidden border border-teal-500/25">
             <div
-              className="h-full bg-gradient-to-r from-teal-400 via-pink-400 to-rose-400 rounded-full transition-all duration-500"
+              className="h-full bg-gradient-to-r from-teal-400 via-sky-400 to-amber-400 rounded-full transition-all duration-500"
               style={{ width: `${xpPercent}%` }}
             />
           </div>
@@ -579,7 +579,7 @@ export const LoveTreeView: React.FC = () => {
             type="button"
             onClick={handleSun}
             disabled={isSpectator || isSunbathing || cdSun > 0}
-            className="min-h-[56px] p-2.5 rounded-2xl bg-gradient-to-r from-amber-600/80 to-rose-600/80 text-white font-bold text-xs shadow-md flex flex-col items-center justify-center gap-1 hover:brightness-110 transition-all disabled:opacity-55 cursor-pointer"
+            className="min-h-[56px] p-2.5 rounded-2xl bg-gradient-to-r from-amber-600/80 to-amber-600/80 text-white font-bold text-xs shadow-md flex flex-col items-center justify-center gap-1 hover:brightness-110 transition-all disabled:opacity-55 cursor-pointer"
           >
             <Sun className="w-4 h-4 text-amber-100" />
             <span>{cdSun > 0 ? formatCooldownMs(cdSun) : 'Sol'}</span>
@@ -601,13 +601,13 @@ export const LoveTreeView: React.FC = () => {
       <div className="glass-card-glow rounded-3xl p-4 sm:p-5 border border-purple-500/25 text-left space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Ribbon className="w-4 h-4 text-pink-400" />
+            <Ribbon className="w-4 h-4 text-sky-400" />
             <h3 className="text-sm font-bold text-white">Fitas de Promessas ({allRibbons.length})</h3>
           </div>
           {!isSpectator && (
             <button
               onClick={() => setIsAddingRibbon(true)}
-              className="px-3 py-1.5 rounded-xl bg-pink-500/20 text-pink-300 border border-pink-400/40 text-xs font-bold flex items-center gap-1 hover:bg-pink-500/30 transition cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-sky-500/20 text-sky-300 border border-sky-400/40 text-xs font-bold flex items-center gap-1 hover:bg-sky-500/30 transition cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>{cdRibbon > 0 ? formatCooldownMs(cdRibbon) : 'Nova Fita'}</span>
@@ -623,14 +623,14 @@ export const LoveTreeView: React.FC = () => {
                 soundEngine.playEnvelopeOpen();
                 setSelectedRibbon(ribbon);
               }}
-              className="p-3 rounded-2xl glass-panel border border-purple-500/20 hover:border-pink-400/40 flex items-center justify-between text-left group transition-all cursor-pointer"
+              className="p-3 rounded-2xl glass-panel border border-purple-500/20 hover:border-sky-400/40 flex items-center justify-between text-left group transition-all cursor-pointer"
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <div
                   className="w-2.5 h-2.5 rounded-full shrink-0"
                   style={{ backgroundColor: ribbon.color }}
                 />
-                <span className="text-xs font-semibold text-purple-100 group-hover:text-pink-300 truncate">
+                <span className="text-xs font-semibold text-purple-100 group-hover:text-sky-300 truncate">
                   {ribbon.title}
                 </span>
               </div>
