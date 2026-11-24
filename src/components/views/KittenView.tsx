@@ -386,13 +386,13 @@ export const KittenView: React.FC = () => {
   const getNeedColor = (value: number) => {
     if (value >= 65) return 'text-emerald-300 border-emerald-400/35 bg-emerald-500/10';
     if (value >= 35) return 'text-amber-300 border-amber-400/35 bg-amber-500/10';
-    return 'text-rose-300 border-rose-500/50 bg-rose-500/20 animate-pulse';
+    return 'text-amber-300 border-amber-500/50 bg-amber-500/20 animate-pulse';
   };
 
   const getNeedBarFill = (value: number) => {
     if (value >= 65) return 'from-emerald-400 to-teal-400';
     if (value >= 35) return 'from-amber-400 to-yellow-400';
-    return 'from-rose-500 to-pink-500';
+    return 'from-amber-500 to-sky-500';
   };
 
   const getFoodMenu = () => {
@@ -511,12 +511,12 @@ export const KittenView: React.FC = () => {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 40, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 bg-gradient-to-b from-[#1e0c36] to-[#0a0317] border border-pink-400/35 shadow-2xl max-h-[82vh] overflow-y-auto space-y-4"
+            className="w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 bg-gradient-to-b from-[#1e0c36] to-[#0a0317] border border-sky-400/35 shadow-2xl max-h-[82vh] overflow-y-auto space-y-4"
           >
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Shirt className="w-4 h-4 text-pink-400" />
+                  <Shirt className="w-4 h-4 text-sky-400" />
                   Armário de {displayName}
                 </h3>
                 <p className="text-[11px] text-purple-200/75">
@@ -546,7 +546,7 @@ export const KittenView: React.FC = () => {
                   onClick={() => setWardrobeSlotFilter(f.id)}
                   className={`px-3 py-1.5 rounded-full text-[11px] font-bold shrink-0 border transition cursor-pointer ${
                     wardrobeSlotFilter === f.id
-                      ? 'bg-pink-500 text-white border-pink-300 shadow'
+                      ? 'bg-sky-500 text-white border-sky-300 shadow'
                       : 'bg-purple-950/60 text-purple-200/80 border-purple-500/30 hover:text-white'
                   }`}
                 >
@@ -571,11 +571,11 @@ export const KittenView: React.FC = () => {
                       !item.purchased
                         ? 'bg-purple-950/30 border-white/5 opacity-60'
                         : equipped
-                        ? 'bg-pink-500/25 border-pink-400 shadow-md'
+                        ? 'bg-sky-500/25 border-sky-400 shadow-md'
                         : 'glass-panel-interactive border-purple-500/30'
                     }`}
                   >
-                    <div className="w-10 h-10 rounded-xl bg-purple-950/70 border border-pink-400/25 flex items-center justify-center text-pink-300">
+                    <div className="w-10 h-10 rounded-xl bg-purple-950/70 border border-sky-400/25 flex items-center justify-center text-sky-300">
                       <VectorGlyphIcon name={item.icon} className="w-5 h-5" />
                     </div>
                     <span className="text-xs font-bold text-white line-clamp-1">{item.title}</span>
@@ -597,7 +597,7 @@ export const KittenView: React.FC = () => {
                       type="button"
                       disabled={!item.purchased || isSpectator}
                       onClick={() => item.purchased && equipKittenItem(item.id, slot)}
-                      className="w-full min-h-[32px] rounded-xl bg-purple-900/70 border border-pink-400/25 text-[10px] font-bold text-pink-200 flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                      className="w-full min-h-[32px] rounded-xl bg-purple-900/70 border border-sky-400/25 text-[10px] font-bold text-sky-200 flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
                     >
                       {item.purchased ? (
                         equipped ? (
@@ -623,7 +623,7 @@ export const KittenView: React.FC = () => {
                 setDrawerModal('none');
                 setNavTab('loja');
               }}
-              className="w-full min-h-[44px] py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-pink-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full min-h-[44px] py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-sky-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <ShoppingBag className="w-4 h-4" />
               Ir para a Loja
@@ -642,7 +642,7 @@ export const KittenView: React.FC = () => {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 40, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 bg-gradient-to-b from-[#1e0c36] to-[#0a0317] border border-pink-400/35 shadow-2xl max-h-[82vh] overflow-y-auto space-y-4"
+            className="w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 bg-gradient-to-b from-[#1e0c36] to-[#0a0317] border border-sky-400/35 shadow-2xl max-h-[82vh] overflow-y-auto space-y-4"
           >
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-white">
@@ -673,14 +673,14 @@ export const KittenView: React.FC = () => {
                     }}
                     className={`p-3 rounded-2xl border flex items-center justify-between gap-2 transition-all ${
                       isActive
-                        ? 'bg-gradient-to-r from-pink-500/30 to-purple-500/30 border-pink-400'
+                        ? 'bg-gradient-to-r from-sky-500/30 to-purple-500/30 border-sky-400'
                         : isOwned
                         ? 'glass-panel-interactive border-purple-500/30 cursor-pointer'
                         : 'bg-purple-950/20 border-white/5 opacity-60'
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-purple-950/60 border border-purple-500/30 flex items-center justify-center text-pink-300 shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-purple-950/60 border border-purple-500/30 flex items-center justify-center text-sky-300 shrink-0">
                         <VectorGlyphIcon name={species.emoji} className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
@@ -689,7 +689,7 @@ export const KittenView: React.FC = () => {
                             {savedCustomName || species.name}
                           </span>
                           {isActive && (
-                            <span className="bg-pink-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase">
+                            <span className="bg-sky-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase">
                               Ativo
                             </span>
                           )}
@@ -728,13 +728,13 @@ export const KittenView: React.FC = () => {
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.92, opacity: 0, y: 12 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-3xl p-5 bg-gradient-to-b from-[#1b0a2f] via-[#120622] to-[#080214] border border-pink-400/40 shadow-2xl space-y-4 text-center"
+            className="w-full max-w-sm rounded-3xl p-5 bg-gradient-to-b from-[#1b0a2f] via-[#120622] to-[#080214] border border-sky-400/40 shadow-2xl space-y-4 text-center"
           >
             <div className="flex justify-center gap-3 pt-1">
               <span className="w-12 h-12 rounded-2xl bg-purple-950/80 border border-purple-500/30 shadow-md flex items-center justify-center text-purple-200">
                 <VectorGlyphIcon name={currentSpecies.emoji} className="w-6 h-6" />
               </span>
-              <span className="w-12 h-12 rounded-2xl bg-pink-950/80 border border-pink-500/30 shadow-md flex items-center justify-center text-pink-300">
+              <span className="w-12 h-12 rounded-2xl bg-sky-950/80 border border-sky-500/30 shadow-md flex items-center justify-center text-sky-300">
                 <VectorGlyphIcon name={farewellPetTarget.emoji} className="w-6 h-6" />
               </span>
             </div>
@@ -749,7 +749,7 @@ export const KittenView: React.FC = () => {
               onChange={(e) => setSwitchPetName(e.target.value)}
               placeholder={`Nome para ${farewellPetTarget.name.toLowerCase()} (opcional)`}
               maxLength={18}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-purple-950/80 border border-pink-500/40 text-white text-xs font-semibold focus:outline-none focus:border-pink-400 placeholder-purple-400/50"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-purple-950/80 border border-sky-500/40 text-white text-xs font-semibold focus:outline-none focus:border-sky-400 placeholder-purple-400/50"
             />
 
             <div className="flex gap-2.5">
@@ -772,7 +772,7 @@ export const KittenView: React.FC = () => {
                   soundEngine.playSparkle();
                   triggerHeartExplosion(0.5, 0.4);
                 }}
-                className="flex-1 min-h-[44px] rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow-md cursor-pointer"
+                className="flex-1 min-h-[44px] rounded-xl bg-gradient-to-r from-sky-600 to-purple-600 text-white text-xs font-bold shadow-md cursor-pointer"
               >
                 Trocar ♡
               </button>
@@ -792,9 +792,9 @@ export const KittenView: React.FC = () => {
       className="space-y-3 pb-32 sm:pb-24 max-w-xl mx-auto"
     >
       {/* Compact Unified Talking Tom Header */}
-      <div className="glass-panel px-3.5 py-2.5 rounded-2xl border border-pink-500/20 flex items-center justify-between gap-2">
+      <div className="glass-panel px-3.5 py-2.5 rounded-2xl border border-sky-500/20 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-white shadow relative shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-purple-600 flex items-center justify-center text-white shadow relative shrink-0">
             <VectorGlyphIcon name={currentSpecies.emoji} className="w-5 h-5" />
             <span className="absolute -bottom-1 -right-1 bg-amber-400 text-purple-950 font-black text-[9px] px-1 py-0.2 rounded-full border border-purple-950">
               {kitten.level || 1}
@@ -811,11 +811,11 @@ export const KittenView: React.FC = () => {
                   placeholder="Nome do pet..."
                   maxLength={18}
                   autoFocus
-                  className="bg-purple-950/90 text-white text-xs font-bold px-2.5 py-1 rounded-lg border border-pink-400/60 outline-none w-28"
+                  className="bg-purple-950/90 text-white text-xs font-bold px-2.5 py-1 rounded-lg border border-sky-400/60 outline-none w-28"
                 />
                 <button
                   type="submit"
-                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-pink-500 text-white cursor-pointer"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-sky-500 text-white cursor-pointer"
                 >
                   <Check className="w-3.5 h-3.5" />
                 </button>
@@ -829,7 +829,7 @@ export const KittenView: React.FC = () => {
                       setCustomNameInput(kitten.name || '');
                       setIsEditingName(true);
                     }}
-                    className="p-1 text-pink-300/75 hover:text-white cursor-pointer"
+                    className="p-1 text-sky-300/75 hover:text-white cursor-pointer"
                     title="Renomear"
                   >
                     <Edit2 className="w-3 h-3" />
@@ -841,7 +841,7 @@ export const KittenView: React.FC = () => {
             <div className="flex items-center gap-2">
               <div className="w-20 bg-purple-950/70 h-1.5 rounded-full overflow-hidden">
                 <div
-                  className="bg-gradient-to-r from-pink-400 to-purple-400 h-full transition-all duration-500 rounded-full"
+                  className="bg-gradient-to-r from-sky-400 to-purple-400 h-full transition-all duration-500 rounded-full"
                   style={{ width: `${Math.min(100, ((kitten.xp || 0) / (kitten.maxXp || 100)) * 100)}%` }}
                 />
               </div>
@@ -859,7 +859,7 @@ export const KittenView: React.FC = () => {
           </div>
           <button
             onClick={() => setDrawerModal('armario')}
-            className="min-w-[40px] min-h-[40px] px-2.5 rounded-xl glass-panel border border-pink-500/25 text-pink-200 hover:text-white flex items-center justify-center gap-1 text-xs font-bold cursor-pointer"
+            className="min-w-[40px] min-h-[40px] px-2.5 rounded-xl glass-panel border border-sky-500/25 text-sky-200 hover:text-white flex items-center justify-center gap-1 text-xs font-bold cursor-pointer"
             title="Armário"
           >
             <Shirt className="w-4 h-4" />
@@ -878,7 +878,7 @@ export const KittenView: React.FC = () => {
               triggerCue('pet');
               setPetReaction(`${displayName} mandou um som fofo ♡`);
             }}
-            className="min-w-[40px] min-h-[40px] rounded-xl glass-panel border border-pink-500/25 text-pink-300 hover:text-white flex items-center justify-center cursor-pointer"
+            className="min-w-[40px] min-h-[40px] rounded-xl glass-panel border border-sky-500/25 text-sky-300 hover:text-white flex items-center justify-center cursor-pointer"
             title="Ouvir Som"
           >
             <Volume2 className="w-4 h-4" />
@@ -894,7 +894,7 @@ export const KittenView: React.FC = () => {
       )}
 
       {isPetDead && (
-        <div className="p-4 rounded-2xl bg-rose-950/60 border border-rose-400/40 text-center space-y-2">
+        <div className="p-4 rounded-2xl bg-amber-950/60 border border-amber-400/40 text-center space-y-2">
           <p className="text-sm font-bold text-white">{displayName} virou uma estrelinha ♡</p>
           <p className="text-xs text-purple-200/80">
             Adote um novo mascote na Loja para cuidar novamente com a Cozinha e o Pote!
@@ -903,7 +903,7 @@ export const KittenView: React.FC = () => {
             <button
               type="button"
               onClick={() => setExtendedView('loja')}
-              className="min-h-[38px] px-4 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold cursor-pointer"
+              className="min-h-[38px] px-4 rounded-xl bg-gradient-to-r from-sky-600 to-purple-600 text-white text-xs font-bold cursor-pointer"
             >
               Ir para a Loja ♡
             </button>
@@ -914,7 +914,7 @@ export const KittenView: React.FC = () => {
       {needsNaming && !isEditingName && !isSpectator && (
         <form
           onSubmit={handleSaveName}
-          className="flex items-center gap-2 p-2 rounded-2xl bg-pink-500/15 border border-pink-400/35"
+          className="flex items-center gap-2 p-2 rounded-2xl bg-sky-500/15 border border-sky-400/35"
         >
           <input
             type="text"
@@ -922,11 +922,11 @@ export const KittenView: React.FC = () => {
             onChange={(e) => setCustomNameInput(e.target.value)}
             placeholder={`Dê um nome para ${currentSpecies.name.toLowerCase()} ♡`}
             maxLength={18}
-            className="flex-1 bg-purple-950/70 text-white text-xs font-semibold px-3 py-2 rounded-xl border border-pink-400/35 outline-none"
+            className="flex-1 bg-purple-950/70 text-white text-xs font-semibold px-3 py-2 rounded-xl border border-sky-400/35 outline-none"
           />
           <button
             type="submit"
-            className="min-h-[36px] px-3.5 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold cursor-pointer"
+            className="min-h-[36px] px-3.5 rounded-xl bg-gradient-to-r from-sky-500 to-purple-600 text-white text-xs font-bold cursor-pointer"
           >
             Salvar
           </button>
@@ -954,7 +954,7 @@ export const KittenView: React.FC = () => {
               }}
               className={`min-h-[68px] p-2 rounded-2xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${getNeedColor(
                 meter.value
-              )} ${isRoomActive ? 'ring-1 ring-pink-400/80' : 'opacity-85 hover:opacity-100'}`}
+              )} ${isRoomActive ? 'ring-1 ring-sky-400/80' : 'opacity-85 hover:opacity-100'}`}
             >
               <div className="flex items-center gap-1 text-[11px] font-bold">
                 <Icon className="w-3 h-3" />
@@ -997,7 +997,7 @@ export const KittenView: React.FC = () => {
           </button>
 
           <div className="px-3 py-1 rounded-full bg-black/45 border border-white/10 text-xs font-bold text-white flex items-center gap-1.5">
-            <VectorGlyphIcon name={ROOM_META[currentRoom].iconKey} className="w-3.5 h-3.5 text-pink-300" />
+            <VectorGlyphIcon name={ROOM_META[currentRoom].iconKey} className="w-3.5 h-3.5 text-sky-300" />
             <span>{ROOM_META[currentRoom].title}</span>
           </div>
 
@@ -1081,7 +1081,7 @@ export const KittenView: React.FC = () => {
                 initial={{ y: 90, scale: 1.3, opacity: 1 }}
                 animate={{ y: -5, scale: 0.5, opacity: 0 }}
                 transition={{ duration: 0.75, ease: 'easeInOut' }}
-                className="absolute z-40 p-3 rounded-full bg-pink-500/80 text-white shadow-lg pointer-events-none"
+                className="absolute z-40 p-3 rounded-full bg-sky-500/80 text-white shadow-lg pointer-events-none"
               >
                 <VectorGlyphIcon name={flyingFood.iconKey} className="w-7 h-7" />
               </motion.div>
@@ -1096,7 +1096,7 @@ export const KittenView: React.FC = () => {
                   : { rotate: [0, 360], x: [-24, 24, -24], y: [0, -24, 0] }
               }
               transition={{ duration: 1.4, repeat: Infinity }}
-              className="absolute z-30 top-6 left-8 p-2.5 rounded-full bg-purple-600/80 text-pink-200 pointer-events-none"
+              className="absolute z-30 top-6 left-8 p-2.5 rounded-full bg-purple-600/80 text-sky-200 pointer-events-none"
             >
               <VectorGlyphIcon name={activeToyIcon} className="w-6 h-6" />
             </motion.div>
@@ -1212,10 +1212,10 @@ export const KittenView: React.FC = () => {
                 `${currentSpecies.name} · Nível ${kitten.level || 1}`
               );
             }}
-            className="absolute bottom-2 right-2 z-30 min-h-[36px] px-3 rounded-full bg-black/70 border border-pink-400/40 text-pink-200 hover:text-white text-[11px] font-bold flex items-center gap-1.5 shadow-lg cursor-pointer"
+            className="absolute bottom-2 right-2 z-30 min-h-[36px] px-3 rounded-full bg-black/70 border border-sky-400/40 text-sky-200 hover:text-white text-[11px] font-bold flex items-center gap-1.5 shadow-lg cursor-pointer"
             title="Fotografar Mascote para Galeria"
           >
-            <Camera className="w-3.5 h-3.5 text-pink-400" />
+            <Camera className="w-3.5 h-3.5 text-sky-400" />
             <span>Foto Virtual</span>
           </button>
         </div>
@@ -1287,9 +1287,9 @@ export const KittenView: React.FC = () => {
               <button
                 disabled={isSpectator}
                 onClick={() => handleBodyClick('head')}
-                className="min-h-[58px] p-2 rounded-2xl bg-pink-500/20 hover:bg-pink-500/30 border border-pink-400/30 flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition disabled:opacity-50"
+                className="min-h-[58px] p-2 rounded-2xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/30 flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition disabled:opacity-50"
               >
-                <Heart className="w-5 h-5 text-pink-300" />
+                <Heart className="w-5 h-5 text-sky-300" />
                 <span className="text-[10px] font-bold text-white">
                   {cdPet > 0 ? formatCooldownMs(cdPet) : 'Carinho'}
                 </span>
@@ -1446,7 +1446,7 @@ export const KittenView: React.FC = () => {
       </div>
 
       {/* Bottom 4-Room Dock */}
-      <div className="grid grid-cols-4 gap-2 glass-panel p-1.5 rounded-2xl border border-pink-500/20">
+      <div className="grid grid-cols-4 gap-2 glass-panel p-1.5 rounded-2xl border border-sky-500/20">
         {ROOM_ORDER.map((room) => {
           const meta = ROOM_META[room];
           const isActive = currentRoom === room;
@@ -1462,7 +1462,7 @@ export const KittenView: React.FC = () => {
               }}
               className={`min-h-[46px] rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all cursor-pointer ${
                 isActive
-                  ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-md'
+                  ? 'bg-gradient-to-r from-sky-600 to-purple-600 text-white shadow-md'
                   : 'text-purple-200/75 hover:text-white hover:bg-white/5'
               }`}
             >
