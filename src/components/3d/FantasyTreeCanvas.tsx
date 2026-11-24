@@ -489,14 +489,16 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
         ? [0x783b25, 0xa34d28, 0xc47735, 0xd6a34d, 0x4d5b35]
         : season === 'natal'
         ? [0x174b31, 0x276342, 0x3d7b4b, 0xd6b56d, 0xf2dca3]
+        : season === 'aniversario'
+        ? [0x526f3e, 0x81964d, 0xc49a45, 0xd6b56d, 0xf2dca3]
         : showSakura
         ? [0xc66b91, 0xe7a6b8, 0xf2c8d2, 0x9f668c, 0xf5dce4]
         : isCelestialMax
         ? [0x527d4c, 0x799b57, 0xa3b56a, 0xd6b56d]
         : [0x1f5b36, 0x2f7444, 0x4f8b50, 0x7ba65c, 0x9bb36b];
 
-      const canopyEmissiveHex = season === 'natal' ? 0xd6b56d : showSakura ? 0x7c3152 : 0x21452c;
-      const canopyEmissiveStr = showSakura ? 0.12 : season === 'natal' ? 0.16 : 0.035;
+      const canopyEmissiveHex = season === 'natal' || season === 'aniversario' ? 0xd6b56d : showSakura ? 0x7c3152 : 0x21452c;
+      const canopyEmissiveStr = showSakura ? 0.12 : season === 'natal' || season === 'aniversario' ? 0.16 : 0.035;
 
       if (curLevel <= 1) {
         // --- STAGE 1: LUMINOUS SACRED SPROUT ---
@@ -654,6 +656,11 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
             { pts: [[-0.12, 1.35, 0.02], [-0.72, 1.72, 0.38], [-1.08, 2.12, 0.68]], r0: 0.095, r1: 0.03 },
             { pts: [[0.1, 1.55, -0.02], [0.7, 1.86, -0.34], [1.12, 2.2, -0.62]], r0: 0.09, r1: 0.03 }
           );
+        } else if (season === 'aniversario') {
+          branchSpecs.push(
+            { pts: [[-0.1, 1.55, 0.04], [-0.64, 2.15, 0.28], [-0.96, 2.85, 0.45]], r0: 0.085, r1: 0.025 },
+            { pts: [[0.1, 1.62, -0.04], [0.62, 2.2, -0.24], [0.94, 2.9, -0.42]], r0: 0.085, r1: 0.025 }
+          );
         } else if (season === 'natal') {
           branchSpecs.push(
             { pts: [[-0.1, 1.82, 0.02], [-0.36, 2.58, 0.12], [-0.52, 3.34, 0.18]], r0: 0.09, r1: 0.025 },
@@ -704,6 +711,8 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
           canopyNodes.push([-1.72, 2.18, 0.35, 0.72], [1.78, 2.12, -0.28, 0.7], [0.02, 2.58, 1.0, 0.68]);
         } else if (season === 'natal') {
           canopyNodes.push([-0.42, 3.7, 0.18, 0.68], [0.44, 3.72, -0.16, 0.68], [0.0, 4.38, 0.0, 0.58]);
+        } else if (season === 'aniversario') {
+          canopyNodes.push([-1.65, 2.7, 0.25, 0.68], [1.7, 2.72, -0.22, 0.68], [0.0, 4.05, 0.0, 0.62]);
         } else if (season === 'namorados') {
           canopyNodes.push([-1.9, 2.8, 0.1, 0.68], [1.92, 2.78, -0.12, 0.68], [0.0, 4.36, 0.0, 0.66]);
         }
