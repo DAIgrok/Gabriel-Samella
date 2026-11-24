@@ -22,6 +22,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { soundEngine } from '../../utils/audioSynth';
 import { getCouplePhotoUrl, REAL_PHOTO_SLOTS } from '../../data/mediaAssets';
 import { uploadChatMedia } from '../../services/supabaseSync';
+import { CoupleCallPanel } from './CoupleCallPanel';
 
 async function compressChatImage(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -368,6 +369,8 @@ export const ChatView: React.FC = () => {
           )}
         </div>
       </div>
+
+      <CoupleCallPanel isSpectator={isSpectator} peerName={peerDisplayName} />
 
       {/* Histórico limpo: nenhuma mensagem é pré-carregada */}
       <div className="relative flex-1 min-h-0 overflow-hidden border border-sky-300/15 rounded-b-2xl bg-[#081329]">
