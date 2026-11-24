@@ -13,6 +13,7 @@ export const Header: React.FC = () => {
     triggerEasterEgg,
     triggerHeartExplosion,
     config,
+    isSpectator,
   } = useApp();
   const [logoTapCount, setLogoTapCount] = useState(0);
 
@@ -59,8 +60,9 @@ export const Header: React.FC = () => {
       {/* Right Side: Diamonds & Single Settings Gear */}
       <div className="flex items-center gap-2.5 shrink-0">
         <button
+          disabled={isSpectator}
           onClick={() => setExtendedView('loja')}
-          title="Loja — Seus Diamantes"
+          title={isSpectator ? 'Saldo em modo de visualização' : 'Loja — Seus Diamantes'}
           className="flex items-center gap-2 px-3 min-h-[44px] rounded-full bg-[#170a2c]/80 hover:bg-[#230f44] border border-purple-500/40 text-xs font-semibold text-pink-200 shadow-[0_0_15px_rgba(168,85,247,0.25)] transition-all cursor-pointer group"
         >
           <DiamondGemIcon className="w-4 h-4 text-pink-300 group-hover:scale-110 transition-transform" />
@@ -70,6 +72,7 @@ export const Header: React.FC = () => {
           </span>
         </button>
 
+        {!isSpectator && (
         <button
           onClick={() => setIsSettingsOpen(true)}
           title="Configurações"
@@ -78,6 +81,7 @@ export const Header: React.FC = () => {
         >
           <Settings className="w-4 h-4" />
         </button>
+        )}
       </div>
     </header>
   );
