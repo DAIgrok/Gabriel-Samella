@@ -23,6 +23,7 @@ import {
   EasterEgg,
   ExtendedView,
   HouseFloorTheme,
+  HouseConstructionWall,
   HouseFurnitureTransform,
   HouseRoomId,
   HouseWallTheme,
@@ -380,6 +381,7 @@ interface AppContextType {
   setHouseCustomFloorHex: (hex: string) => void;
   setHouseCustomCeilingHex: (hex: string) => void;
   setHouseDimensions: (width: number, depth: number, wallHeight: number) => void;
+  setHouseCustomWalls: (walls: HouseConstructionWall[]) => void;
   setHouseFurnitureColor: (furnitureId: string, hex: string) => void;
   toggleHouseLights: () => void;
   toggleHouseFireplace: () => void;
@@ -3635,6 +3637,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }));
   };
 
+  const setHouseCustomWalls = (walls: HouseConstructionWall[]) => {
+    if (guardSpectator()) return;
+    const safeWalls = walls.slice(0, 80).map((wall) => ({
+      ...wall,
+      start: {
+        x: Math.max(-20, Math.min(20, Math.round(wall.start.x * 4) / 4)),
+        z: Math.max(-20, Math.min(20, Math.round(wall.start.z * 4) / 4)),
+      },
+      end: {
+        x: Math.max(-20, Math.min(20, Math.round(wall.end.x * 4) / 4)),
+        z: Math.max(-20, Math.min(20, Math.round(wall.end.z * 4) / 4)),
+      },
+      height: Math.max(2.2, Math.min(4.5, Math.round(wall.height * 4) / 4)),
+      thickness: Math.max(0.08, Math.min(0.5, wall.thickness)),
+    }));
+    setDreamHouse((prev) => ({ ...prev, customWalls: safeWalls }));
+  };
+
   const setHouseCustomCeilingHex = (hex: string) => {
     if (guardSpectator()) return;
     soundEngine.playHeartPop();
@@ -4145,6 +4165,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setHouseCustomFloorHex,
         setHouseCustomCeilingHex,
         setHouseDimensions,
+        setHouseCustomWalls,
         setHouseFurnitureColor,
         toggleHouseLights,
         toggleHouseFireplace,
