@@ -701,26 +701,29 @@ export const DreamHouseView: React.FC = () => {
                     const centerZ = (wall.start.z + wall.end.z) / 2;
                     const length = Math.hypot(wall.end.x - wall.start.x, wall.end.z - wall.start.z);
                     const angle = Math.atan2(wall.end.z - wall.start.z, wall.end.x - wall.start.x);
-                    const updateWall = (nextX: number, nextZ: number, nextLength: number) => {
+                    const updateWall = (nextX: number, nextZ: number, nextLength: number, nextAngle = angle, nextHeight = wall.height) => {
                       const half = nextLength / 2;
-                      const dx = Math.cos(angle) * half;
-                      const dz = Math.sin(angle) * half;
+                      const dx = Math.cos(nextAngle) * half;
+                      const dz = Math.sin(nextAngle) * half;
                       setHouseCustomWalls((dreamHouse.customWalls || []).map((item) => item.id === wall.id ? {
                         ...item,
                         start: { x: nextX - dx, z: nextZ - dz },
                         end: { x: nextX + dx, z: nextZ + dz },
+                        height: nextHeight,
                       } : item));
                     };
                     return (
                       <div className="rounded-xl border border-pink-400/20 bg-[#130927]/60 p-3 space-y-3">
                         {[
-                          { label: 'Posição X', value: centerX, min: -6, max: 6 },
-                          { label: 'Posição Z', value: centerZ, min: -6, max: 6 },
-                          { label: 'Comprimento', value: length, min: 0.5, max: 8 },
+                          { label: 'Posição X', value: centerX, min: -6, max: 6, unit: 'm' },
+                          { label: 'Posição Z', value: centerZ, min: -6, max: 6, unit: 'm' },
+                          { label: 'Comprimento', value: length, min: 0.5, max: 8, unit: 'm' },
+                          { label: 'Rotação', value: angle * 180 / Math.PI, min: -180, max: 180, unit: '°' },
+                          { label: 'Altura', value: wall.height, min: 2.2, max: 4.5, unit: 'm' },
                         ].map((control) => (
                           <label key={control.label} className="block space-y-1.5">
                             <span className="flex justify-between text-[11px] font-semibold text-purple-100">
-                              <span>{control.label}</span><span className="text-pink-200 tabular-nums">{control.value.toFixed(2)} m</span>
+                              <span>{control.label}</span><span className="text-pink-200 tabular-nums">{control.value.toFixed(2)} {control.unit}</span>
                             </span>
                             <input
                               type="range"
@@ -731,7 +734,13 @@ export const DreamHouseView: React.FC = () => {
                               disabled={isSpectator}
                               onChange={(event) => {
                                 const value = Number(event.target.value);
-                                updateWall(control.label === 'Posição X' ? value : centerX, control.label === 'Posição Z' ? value : centerZ, control.label === 'Comprimento' ? value : length);
+                                updateWall(
+                                  control.label === 'Posição X' ? value : centerX,
+                                  control.label === 'Posição Z' ? value : centerZ,
+                                  control.label === 'Comprimento' ? value : length,
+                                  control.label === 'Rotação' ? value * Math.PI / 180 : angle,
+                                  control.label === 'Altura' ? value : wall.height
+                                );
                               }}
                               className="w-full accent-pink-400 disabled:opacity-40"
                             />
