@@ -566,9 +566,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     mergeInitialItems(savedData?.storeItems, INITIAL_STORE_ITEMS)
   );
   const [kitten, setKitten] = useState<KittenState>(savedData?.kitten || INITIAL_KITTEN);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(
-    savedData?.chatMessages || INITIAL_CHAT_MESSAGES
-  );
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(INITIAL_CHAT_MESSAGES);
   const [easterEggs, setEasterEggs] = useState<EasterEgg[]>(
     mergeInitialItems(savedData?.easterEggs, INITIAL_EASTER_EGGS)
   );
@@ -763,7 +761,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (cloud.treeState) setTreeState(cloud.treeState);
     if (cloud.kitten) setKitten(cloud.kitten);
     if (cloud.gameRecords) setGameRecords({ ...DEFAULT_GAME_RECORDS, ...cloud.gameRecords });
-    if (cloud.chatMessages && cloud.chatMessages.length > 0) {
+    if (Array.isArray(cloud.chatMessages)) {
       setChatMessages(cloud.chatMessages);
     }
 
@@ -1059,7 +1057,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           });
         }
 
-        if (supaMessages && supaMessages.length > 0) {
+        if (Array.isArray(supaMessages)) {
           setChatMessages(supaMessages);
         }
 
@@ -2082,6 +2080,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addSong = (newSongData: Omit<Song, 'id'>) => {
+    if (guardSpectator()) return;
     allowSpectatorWorldSaveRef.current = true;
     soundEngine.playSparkle();
     invalidSkippedIdsRef.current.clear();
@@ -2110,6 +2109,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const editSong = (id: string, updates: Partial<Song>) => {
+    if (guardSpectator()) return;
     allowSpectatorWorldSaveRef.current = true;
     setSongs((prev) =>
       prev.map((s) => {
@@ -2124,6 +2124,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const removeSong = (id: string) => {
+    if (guardSpectator()) return;
     allowSpectatorWorldSaveRef.current = true;
     soundEngine.playHeartPop();
     const target = songs.find((s) => s.id === id);
