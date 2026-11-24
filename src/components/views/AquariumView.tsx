@@ -116,7 +116,7 @@ export const AquariumView: React.FC = () => {
           onClick={() =>
             captureVirtualPhoto(
               stageRef.current,
-              'Aquário Mágico 3D',
+              'Aquário',
               `Luz ${LIGHT_MODES.find((l) => l.id === aquarium.lightMode)?.label || 'Bioluminescente'}`
             )
           }
