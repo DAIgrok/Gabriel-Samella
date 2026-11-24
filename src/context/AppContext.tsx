@@ -3545,6 +3545,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // --- DREAM HOUSE 3D ACTIONS ---
+  const expandHousePlot = (): boolean => {
+    if (guardSpectator()) return false;
+    const currentSize = dreamHouse.plotSize || 12;
+    if (currentSize >= 24) {
+      showToast('O terreno já alcançou o tamanho máximo desta etapa.', 'house');
+      return false;
+    }
+    if (!spendCoins(20)) return false;
+    setDreamHouse((prev) => ({ ...prev, plotSize: Math.min(24, (prev.plotSize || 12) + 4) }));
+    showToast('Terreno ampliado! Agora há mais espaço para construir.', 'house');
+    return true;
+  };
   const setHouseRoom = (room: HouseRoomId) => {
     const unlocked = dreamHouse.unlockedRooms || ['sala'];
     if (!unlocked.includes(room)) {
@@ -4120,6 +4132,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         openMysteryChest,
         setHouseRoom,
         unlockHouseRoom,
+        expandHousePlot,
         setHouseWallTheme,
         setHouseFloorTheme,
         setHouseCustomWallHex,
