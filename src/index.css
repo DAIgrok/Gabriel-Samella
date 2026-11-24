@@ -405,3 +405,28 @@ body {
     background: linear-gradient(180deg, rgba(7,17,38,.28), rgba(7,17,38,.78) 72%, rgba(7,17,38,.9));
   }
 }
+
+
+/* Aplicação inteira: acentos rosa antigos migram para lavanda e ouro sem alterar estados de alerta. */
+.nm-app-shell {
+  background:
+    radial-gradient(ellipse at 8% 0%, rgba(50, 87, 166, .11), transparent 34%),
+    radial-gradient(ellipse at 92% 14%, rgba(116, 79, 180, .12), transparent 32%),
+    linear-gradient(155deg, #071126 0%, #080f24 55%, #0b1026 100%) !important;
+}
+.nm-app-shell [class~="text-pink-100"],
+.nm-app-shell [class~="text-pink-200"] { color: #e5ddff !important; }
+.nm-app-shell [class~="text-pink-300"] { color: #c9b9ff !important; }
+.nm-app-shell [class~="text-pink-400"] { color: var(--nm-gold-light) !important; }
+.nm-app-shell [class~="border-pink-400"],
+.nm-app-shell [class~="border-pink-500"] { border-color: rgba(214,181,109,.36) !important; }
+.nm-app-shell [class~="bg-pink-500"] { background-color: #9a7b45 !important; }
+.nm-app-shell [class~="from-pink-500"] { --tw-gradient-from: #5d76c6 var(--tw-gradient-from-position) !important; }
+.nm-app-shell [class~="via-pink-500"] { --tw-gradient-via: #8064c7 var(--tw-gradient-via-position) !important; }
+.nm-app-shell [class~="to-rose-400"] { --tw-gradient-to: #c3a15a var(--tw-gradient-to-position) !important; }
+.nm-app-shell [class~="shadow-pink-500\/30"] { --tw-shadow-color: rgba(214,181,109,.18) !important; }
+.nm-app-shell button:focus-visible,
+.nm-app-shell a:focus-visible {
+  outline: 2px solid rgba(214,181,109,.88);
+  outline-offset: 3px;
+}
