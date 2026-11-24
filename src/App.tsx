@@ -35,6 +35,21 @@ import { ArrowLeft, MessageCircle, X } from 'lucide-react';
 import { DiamondGemIcon, VectorGlyphIcon } from './components/icons/CustomIcons';
 
 const MainAppContent: React.FC = () => {
+  const {
+    isLoading,
+    isLocked,
+    extendedView,
+    setExtendedView,
+    toastMessage,
+    inAppChatToast,
+    dismissInAppChatToast,
+    isSettingsOpen,
+    setIsSettingsOpen,
+    selectedPhoto,
+    setSelectedPhoto,
+    photos,
+  } = useApp();
+
   const navigationHistory = React.useRef<typeof extendedView[]>([]);
   const lastExtendedView = React.useRef(extendedView);
   const navigatingBack = React.useRef(false);
@@ -55,21 +70,6 @@ const MainAppContent: React.FC = () => {
     navigatingBack.current = true;
     setExtendedView(previousView || 'inicio');
   };
-
-  const {
-    isLoading,
-    isLocked,
-    extendedView,
-    setExtendedView,
-    toastMessage,
-    inAppChatToast,
-    dismissInAppChatToast,
-    isSettingsOpen,
-    setIsSettingsOpen,
-    selectedPhoto,
-    setSelectedPhoto,
-    photos,
-  } = useApp();
 
   if (isLoading) {
     return <LoadingScreen />;
