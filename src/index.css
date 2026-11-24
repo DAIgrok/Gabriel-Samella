@@ -504,3 +504,10 @@ body {
 .nm-app-shell [class~="text-purple-200"] {
   color: #d8d8f5;
 }
+
+
+/* Detalhes globais do navegador e rolagem na nova identidade. */
+::-webkit-scrollbar-track { background: rgba(7, 17, 38, .88); }
+::-webkit-scrollbar-thumb { background: rgba(96, 165, 250, .42); }
+::-webkit-scrollbar-thumb:hover { background: rgba(214, 181, 109, .72); }
+::selection { background: rgba(167, 139, 250, .38); color: #fff; }
