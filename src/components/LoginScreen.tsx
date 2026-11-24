@@ -63,7 +63,7 @@ export const LoginScreen: React.FC = () => {
   return (
     <div
       id="login-screen"
-      className="login-screen-shell fixed inset-0 z-40 flex items-center justify-center px-4 py-8 select-none bg-[#080214] overflow-y-auto"
+      className="login-screen-shell fixed inset-0 z-40 flex items-center justify-center px-4 py-8 select-none bg-[#071126] overflow-y-auto"
     >
       {coverPhoto && (
         <div className="login-backdrop" aria-hidden="true">
@@ -72,8 +72,8 @@ export const LoginScreen: React.FC = () => {
       )}
       <div className="login-backdrop-shade" aria-hidden="true" />
       {/* Background romantic glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-purple-600/20 blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-pink-600/15 blur-3xl pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-sky-500/16 blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-violet-500/16 blur-3xl pointer-events-none" />
 
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -83,7 +83,7 @@ export const LoginScreen: React.FC = () => {
       >
         {/* Real Couple Portrait or Glowing Heart Badge */}
         <div className="relative mx-auto w-20 h-20 mb-4">
-          <div className="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-purple-600 via-pink-500 to-rose-400 shadow-[0_0_25px_rgba(244,114,182,0.45)] overflow-hidden flex items-center justify-center bg-[#180830]">
+          <div className="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-sky-400 via-violet-500 to-amber-300 shadow-[0_0_25px_rgba(167,139,250,0.34)] overflow-hidden flex items-center justify-center bg-[#0b1730]">
             {getCouplePhotoUrl(photos, 0) ? (
               <img
                 src={getCouplePhotoUrl(photos, 0)}
@@ -91,21 +91,21 @@ export const LoginScreen: React.FC = () => {
                 className="w-full h-full object-cover rounded-full"
               />
             ) : (
-              <Heart className="w-9 h-9 text-pink-200 fill-pink-400/50 animate-pulse" />
+              <Heart className="w-9 h-9 text-amber-200 fill-amber-300/40 animate-pulse" />
             )}
           </div>
-          <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[#120524] border border-pink-400/50 flex items-center justify-center shadow-md">
-            <Heart className="w-3.5 h-3.5 text-pink-400 fill-pink-400 animate-pulse" />
+          <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[#0b1730] border border-amber-200/40 flex items-center justify-center shadow-md">
+            <Heart className="w-3.5 h-3.5 text-amber-200 fill-amber-200 animate-pulse" />
           </div>
         </div>
 
         {/* Title */}
-        <h1 className="font-romantic text-4xl text-pink-200 neon-title-glow mb-1">
-          Nosso Mundo <span className="text-pink-400">♡</span>
+        <h1 className="font-romantic text-4xl text-sky-100 neon-title-glow mb-1">
+          Nosso Mundo <span className="text-amber-200">♡</span>
         </h1>
-        <p className="text-[10px] uppercase tracking-[0.28em] text-pink-300/75 mb-2">Um universo só nosso</p>
-        <p className="text-xs text-purple-200/85 mb-6">
-          Bem-vinda, minha princesa <strong className="text-pink-300">{config.partnerName}</strong>
+        <p className="text-[10px] uppercase tracking-[0.28em] text-sky-200/75 mb-2">Um universo só nosso</p>
+        <p className="text-xs text-slate-200/90 mb-6">
+          Bem-vinda, minha princesa <strong className="text-amber-200">{config.partnerName}</strong>
         </p>
 
         {/* 6 Passcode Circles */}
@@ -123,8 +123,8 @@ export const LoginScreen: React.FC = () => {
                 transition={{ duration: 0.3 }}
                 className={`w-3.5 h-3.5 rounded-full border transition-all duration-200 ${
                   isFilled
-                    ? 'bg-pink-400 border-pink-300 shadow-[0_0_12px_rgba(244,114,182,0.9)]'
-                    : 'bg-purple-950/60 border-purple-400/30'
+                    ? 'bg-amber-200 border-amber-100 shadow-[0_0_12px_rgba(214,181,109,0.65)]'
+                    : 'bg-slate-950/70 border-sky-300/25'
                 }`}
               />
             );
@@ -138,7 +138,7 @@ export const LoginScreen: React.FC = () => {
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="text-xs text-rose-300 mb-4 bg-rose-950/50 py-1.5 px-3 rounded-lg border border-rose-500/30"
+              className="text-xs text-rose-200 mb-4 bg-rose-950/45 py-1.5 px-3 rounded-lg border border-rose-300/25"
             >
               Senha incorreta! Dica: a data especial do nosso amor ♡
             </motion.p>
@@ -153,7 +153,7 @@ export const LoginScreen: React.FC = () => {
               type="button"
               id={`keypad-${num}`}
               onClick={() => handleKeyPress(num)}
-              className="h-12 rounded-2xl glass-panel-interactive flex items-center justify-center text-lg font-medium text-white/90 active:scale-95 transition-transform border border-purple-500/20 cursor-pointer"
+              className="h-12 rounded-2xl glass-panel-interactive flex items-center justify-center text-lg font-medium text-white/90 active:scale-95 transition-transform border border-sky-300/15 cursor-pointer"
             >
               {num}
             </button>
@@ -162,7 +162,7 @@ export const LoginScreen: React.FC = () => {
             type="button"
             id="keypad-clear"
             onClick={handleDelete}
-            className="h-12 rounded-2xl glass-panel-interactive flex items-center justify-center text-xs text-purple-300 active:scale-95 transition-transform cursor-pointer"
+            className="h-12 rounded-2xl glass-panel-interactive flex items-center justify-center text-xs text-sky-200 active:scale-95 transition-transform cursor-pointer"
           >
             Apagar
           </button>
@@ -170,7 +170,7 @@ export const LoginScreen: React.FC = () => {
             type="button"
             id="keypad-0"
             onClick={() => handleKeyPress('0')}
-            className="h-12 rounded-2xl glass-panel-interactive flex items-center justify-center text-lg font-medium text-white/90 active:scale-95 transition-transform border border-purple-500/20 cursor-pointer"
+            className="h-12 rounded-2xl glass-panel-interactive flex items-center justify-center text-lg font-medium text-white/90 active:scale-95 transition-transform border border-sky-300/15 cursor-pointer"
           >
             0
           </button>
@@ -179,7 +179,7 @@ export const LoginScreen: React.FC = () => {
             id="keypad-confirm"
             onClick={() => handleUnlock()}
             title="Confirmar senha"
-            className="h-12 rounded-2xl glass-panel-interactive flex items-center justify-center text-xs font-bold text-pink-300 active:scale-95 transition-transform border border-pink-500/30 cursor-pointer"
+            className="h-12 rounded-2xl glass-panel-interactive flex items-center justify-center text-xs font-bold text-amber-200 active:scale-95 transition-transform border border-pink-500/30 cursor-pointer"
           >
             OK ♡
           </button>
@@ -191,15 +191,15 @@ export const LoginScreen: React.FC = () => {
           id="btn-direct-login"
           onClick={() => handleUnlock()}
           disabled={isSubmitting}
-          className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-500 text-white font-medium text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(236,72,153,0.4)] active:scale-[0.98] transition-all hover:brightness-110 cursor-pointer"
+          className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-sky-600 via-violet-600 to-indigo-500 text-white font-medium text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(96,165,250,0.28)] active:scale-[0.98] transition-all hover:brightness-110 cursor-pointer"
         >
-          <Sparkles className="w-4 h-4 text-pink-200" />
+          <Sparkles className="w-4 h-4 text-amber-100" />
           <span>Entrar no Nosso Mundo</span>
           <ArrowRight className="w-4 h-4 text-white/80" />
         </button>
 
-        <p className="text-[11px] text-purple-300/50 mt-4 flex items-center justify-center gap-1">
-          <Lock className="w-3 h-3 text-pink-400/70" />
+        <p className="text-[11px] text-slate-300/55 mt-4 flex items-center justify-center gap-1">
+          <Lock className="w-3 h-3 text-amber-200/70" />
           Acesso privado e exclusivo para Samella & Gabriel
         </p>
       </motion.div>
