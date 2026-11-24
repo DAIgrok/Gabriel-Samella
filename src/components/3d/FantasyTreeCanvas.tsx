@@ -336,6 +336,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
         emissiveIntensity: Math.min(0.025, emissiveStrength * 0.08),
         roughness: 0.88,
         metalness: 0,
+        side: THREE.DoubleSide,
       });
 
       puffMat.onBeforeCompile = (shader) => {
