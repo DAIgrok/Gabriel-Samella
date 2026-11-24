@@ -74,6 +74,7 @@ export const DreamHouseView: React.FC = () => {
     setHouseFloorTheme,
     setHouseCustomWallHex,
     setHouseCustomFloorHex,
+    setHouseCustomCeilingHex,
     setHouseFurnitureColor,
     toggleHouseLights,
     toggleHouseFireplace,
@@ -91,7 +92,8 @@ export const DreamHouseView: React.FC = () => {
   } = useApp();
 
   const stageRef = useRef<HTMLDivElement>(null);
-  const [dockTab, setDockTab] = useState<'moveis' | 'paredes' | 'pisos'>('moveis');
+  const [dockTab, setDockTab] = useState<'moveis' | 'paredes' | 'pisos' | 'tetos'>('moveis');
+  const [showCeiling, setShowCeiling] = useState(false);
   const [catFilter, setCatFilter] = useState<'all' | HouseFurnitureCategory>('all');
   const [skyMode, setSkyMode] = useState<DreamHouseSkyMode>('auto');
   const [viewMode, setViewMode] = useState<'interior' | 'exterior'>('interior');
@@ -212,6 +214,8 @@ export const DreamHouseView: React.FC = () => {
             floorTheme={dreamHouse.floorTheme}
             customWallHex={dreamHouse.customWallHex}
             customFloorHex={dreamHouse.customFloorHex}
+            customCeilingHex={dreamHouse.customCeilingHex}
+            showCeiling={showCeiling}
             furnitureColors={dreamHouse.customColors}
             skyMode={skyMode}
             viewMode={viewMode}
@@ -574,6 +578,7 @@ export const DreamHouseView: React.FC = () => {
                 { id: 'moveis' as const, label: 'Móveis do Cômodo', icon: Sofa },
                 { id: 'paredes' as const, label: 'Paredes', icon: Palette },
                 { id: 'pisos' as const, label: 'Pisos', icon: Palette },
+                { id: 'tetos' as const, label: 'Teto', icon: Palette },
               ].map((t) => {
                 const Icon = t.icon;
                 return (
@@ -757,6 +762,39 @@ export const DreamHouseView: React.FC = () => {
                       </button>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {dockTab === 'tetos' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-purple-950/55 border border-pink-400/30">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-white">Visualização do teto</p>
+                    <p className="text-[11px] text-purple-200/75">Ative para conferir o acabamento superior do cômodo</p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isSpectator}
+                    onClick={() => setShowCeiling((visible) => !visible)}
+                    className={`min-h-[38px] px-3 rounded-xl border text-xs font-bold disabled:opacity-45 ${showCeiling ? 'bg-pink-500/25 border-pink-400 text-white' : 'bg-purple-900/70 border-purple-500/30 text-purple-200'}`}
+                  >
+                    {showCeiling ? 'Teto visível' : 'Mostrar teto'}
+                  </button>
+                </div>
+                <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-purple-950/55 border border-pink-400/30">
+                  <div>
+                    <p className="text-xs font-bold text-white">Cor do teto</p>
+                    <p className="text-[11px] text-purple-200/75">Personalização livre, salva junto da casa</p>
+                  </div>
+                  <input
+                    type="color"
+                    disabled={isSpectator}
+                    value={dreamHouse.customCeilingHex || '#eee7f5'}
+                    onChange={(e) => setHouseCustomCeilingHex(e.target.value)}
+                    className="w-10 h-10 rounded-xl border border-white/25 bg-transparent cursor-pointer disabled:opacity-45"
+                    aria-label="Escolher cor do teto"
+                  />
                 </div>
               </div>
             )}
