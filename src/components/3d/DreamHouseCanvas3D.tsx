@@ -175,6 +175,9 @@ interface DreamHouseCanvas3DProps {
   customWallHex?: string;
   customFloorHex?: string;
   customCeilingHex?: string;
+  footprintWidth?: number;
+  footprintDepth?: number;
+  wallHeight?: number;
   showCeiling?: boolean;
   furnitureColors?: Record<string, string>;
   skyMode?: DreamHouseSkyMode;
@@ -1725,6 +1728,9 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
   customWallHex,
   customFloorHex,
   customCeilingHex,
+  footprintWidth = 6.4,
+  footprintDepth = 5.4,
+  wallHeight = 2.75,
   showCeiling = false,
   furnitureColors,
   skyMode = 'auto',
@@ -1761,6 +1767,9 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     customWallHex,
     customFloorHex,
     customCeilingHex,
+    footprintWidth,
+    footprintDepth,
+    wallHeight,
     showCeiling,
     furnitureColors,
     skyMode,
@@ -1793,6 +1802,10 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     floorTheme,
     customWallHex,
     customFloorHex,
+    customCeilingHex,
+    footprintWidth,
+    footprintDepth,
+    wallHeight,
     furnitureColors,
     skyMode,
     viewMode,
@@ -2200,8 +2213,11 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
       const floorTex = createFloorTexture(fTheme, maxAniso, cFloorHex, room === 'banheiro');
       const wallTex = createWallTexture(wTheme, maxAniso, cWallHex);
 
+      const buildWidth = THREE.MathUtils.clamp(footprintWidth, 4, 12);
+      const buildDepth = THREE.MathUtils.clamp(footprintDepth, 4, 12);
+      const buildWallHeight = THREE.MathUtils.clamp(wallHeight, 2.2, 4.5);
       const plinth = new THREE.Mesh(
-        new RoundedBoxGeometry(6.75, 0.28, 5.75, 4, 0.08),
+        new RoundedBoxGeometry(buildWidth + 0.35, 0.28, buildDepth + 0.35, 4, 0.08),
         new THREE.MeshStandardMaterial({ color: 0x4a2284, roughness: 0.6, metalness: 0.08 })
       );
       plinth.position.y = -0.14;
@@ -2209,15 +2225,16 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
       roomGroup.add(plinth);
 
       const floorMesh = new THREE.Mesh(
-        new RoundedBoxGeometry(6.4, 0.05, 5.4, 3, 0.02),
+        new RoundedBoxGeometry(buildWidth, 0.05, buildDepth, 3, 0.02),
         new THREE.MeshStandardMaterial({ map: floorTex, roughness: room === 'banheiro' ? 0.36 : 0.62, metalness: 0.04 })
       );
       floorMesh.position.y = -0.022;
       floorMesh.receiveShadow = true;
+      floorMesh.userData = { constructionElement: 'floor', width: buildWidth, depth: buildDepth };
       roomGroup.add(floorMesh);
 
       const ceilingMesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(6.4, 5.4),
+        new THREE.PlaneGeometry(buildWidth, buildDepth),
         new THREE.MeshStandardMaterial({
           color: cCeilingHex || '#eee7f5',
           roughness: 0.86,
@@ -2225,7 +2242,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
         })
       );
       ceilingMesh.rotation.x = -Math.PI / 2;
-      ceilingMesh.position.y = 3.0;
+      ceilingMesh.position.y = buildWallHeight + 0.25;
       ceilingMesh.visible = Boolean(ceilingVisible);
       roomGroup.add(ceilingMesh);
 
@@ -2288,9 +2305,9 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
         const backWall = createHouseWallMesh(
           {
             id: `${room}-back`,
-            start: { x: -3.2, z: -2.65 },
-            end: { x: 3.2, z: -2.65 },
-            height: 2.75,
+            start: { x: -buildWidth / 2, z: -buildDepth / 2 },
+            end: { x: buildWidth / 2, z: -buildDepth / 2 },
+            height: buildWallHeight,
             thickness: 0.14,
             openings: [
               { id: `${room}-window`, kind: 'window', offset: 3.575, width: 1.55, height: 1.24, sillHeight: 0.94 },
@@ -2301,8 +2318,8 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
         const leftWall = createHouseWallMesh(
           {
             id: `${room}-left`,
-            start: { x: -3.15, z: -2.72 },
-            end: { x: -3.15, z: 2.68 },
+            start: { x: -buildWidth / 2, z: -buildDepth / 2 },
+            end: { x: -buildWidth / 2, z: buildDepth / 2 },
             height: 2.75,
             thickness: 0.14,
             openings: [
@@ -2319,22 +2336,22 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
           roughness: 0.58,
           metalness: 0.02,
         });
-        const doorCenterZ = -2.72 + 0.72 + 0.92 / 2;
+        const doorCenterZ = -buildDepth / 2 + 0.72 + 0.92 / 2;
         const doorTrimLeft = new THREE.Mesh(
           new RoundedBoxGeometry(0.12, 2.16, 0.09, 3, 0.018),
           doorTrimMat
         );
-        doorTrimLeft.position.set(-3.15, 1.08, doorCenterZ - 0.49);
+        doorTrimLeft.position.set(-buildWidth / 2, 1.08, doorCenterZ - 0.49);
         const doorTrimRight = new THREE.Mesh(
           new RoundedBoxGeometry(0.12, 2.16, 0.09, 3, 0.018),
           doorTrimMat
         );
-        doorTrimRight.position.set(-3.15, 1.08, doorCenterZ + 0.49);
+        doorTrimRight.position.set(-buildWidth / 2, 1.08, doorCenterZ + 0.49);
         const doorTrimTop = new THREE.Mesh(
           new RoundedBoxGeometry(0.12, 0.11, 1.07, 3, 0.018),
           doorTrimMat
         );
-        doorTrimTop.position.set(-3.15, 2.16, doorCenterZ);
+        doorTrimTop.position.set(-buildWidth / 2, 2.16, doorCenterZ);
         roomGroup.add(doorTrimLeft, doorTrimRight, doorTrimTop);
 
         const winFrame = new THREE.Mesh(
@@ -2948,6 +2965,9 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     petGlbUrl,
     aqFishKey,
     aqModeKey,
+    footprintWidth,
+    footprintDepth,
+    wallHeight,
   ]);
 
   const transformsKey = JSON.stringify(furnitureTransforms || {});
