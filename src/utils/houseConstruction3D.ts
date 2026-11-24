@@ -109,6 +109,63 @@ export function createHouseWallMesh(
 
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `house-wall-${wall.id}`;
+
+  // Realistic trim and infill make openings read as usable architectural details.
+  for (const rawOpening of wall.openings ?? []) {
+    const opening = normalizeOpening(rawOpening, length, height);
+    const centerX = opening.offset + opening.width / 2 - length / 2;
+    const centerY = opening.sillHeight + opening.height / 2 - height / 2;
+    const frontZ = thickness / 2 + 0.018;
+    const trimMaterial = new THREE.MeshStandardMaterial({
+      color: opening.kind === 'door' ? 0x8b5a3c : 0xe8e1d8,
+      roughness: 0.72,
+    });
+    const trimWidth = 0.055;
+    const addTrim = (x: number, y: number, w: number, h: number) => {
+      const trim = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.075), trimMaterial);
+      trim.position.set(x, y, frontZ);
+      trim.castShadow = true;
+      trim.receiveShadow = true;
+      mesh.add(trim);
+    };
+    addTrim(centerX - opening.width / 2 - trimWidth / 2, centerY, trimWidth, opening.height + trimWidth * 2);
+    addTrim(centerX + opening.width / 2 + trimWidth / 2, centerY, trimWidth, opening.height + trimWidth * 2);
+    addTrim(centerX, centerY + opening.height / 2 + trimWidth / 2, opening.width + trimWidth * 2, trimWidth);
+
+    if (opening.kind === 'door') {
+      const panelMaterial = new THREE.MeshStandardMaterial({ color: 0x986447, roughness: 0.68 });
+      const panel = new THREE.Mesh(
+        new THREE.BoxGeometry(Math.max(0.3, opening.width - 0.12), Math.max(0.3, opening.height - 0.08), 0.045),
+        panelMaterial
+      );
+      panel.position.set(centerX, centerY, frontZ - 0.045);
+      panel.castShadow = true;
+      mesh.add(panel);
+
+      const knob = new THREE.Mesh(
+        new THREE.SphereGeometry(0.035, 12, 10),
+        new THREE.MeshStandardMaterial({ color: 0xd6b56d, metalness: 0.72, roughness: 0.28 })
+      );
+      knob.position.set(centerX + opening.width * 0.32, centerY - 0.02, frontZ + 0.005);
+      mesh.add(knob);
+    } else {
+      const glass = new THREE.Mesh(
+        new THREE.BoxGeometry(Math.max(0.2, opening.width - 0.12), Math.max(0.2, opening.height - 0.12), 0.025),
+        new THREE.MeshPhysicalMaterial({
+          color: 0x9bd8f5,
+          transparent: true,
+          opacity: 0.38,
+          roughness: 0.12,
+          metalness: 0.08,
+          transmission: 0.25,
+        })
+      );
+      glass.position.set(centerX, centerY, frontZ - 0.045);
+      mesh.add(glass);
+      addTrim(centerX, centerY - opening.height / 2 - trimWidth / 2, opening.width + trimWidth * 2, trimWidth);
+    }
+  }
+
   mesh.userData = {
     constructionElement: 'wall',
     constructionId: wall.id,
