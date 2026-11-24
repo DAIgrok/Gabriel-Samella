@@ -96,7 +96,7 @@ export const DreamHouseView: React.FC = () => {
   const stageRef = useRef<HTMLDivElement>(null);
   const [dockTab, setDockTab] = useState<'moveis' | 'paredes' | 'pisos'>('moveis');
   const [catFilter, setCatFilter] = useState<'all' | HouseFurnitureCategory>('all');
-  const [skyMode, setSkyMode] = useState<DreamHouseSkyMode>('auto');
+  const skyMode: DreamHouseSkyMode = 'auto';
   const [hudExpanded, setHudExpanded] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedFurnitureId, setSelectedFurnitureId] = useState<string | null>(null);
@@ -266,23 +266,7 @@ export const DreamHouseView: React.FC = () => {
             )}
           </div>
 
-          {!isWorldView && <button
-            type="button"
-            onClick={() => setSkyMode((prev) => (prev === 'auto' ? 'eclipse' : 'auto'))}
-            className={`px-2.5 py-1.5 rounded-full backdrop-blur-sm border text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition ${
-              skyMode === 'eclipse'
-                ? 'bg-pink-600/80 border-pink-300 text-white shadow'
-                : 'bg-[#130627]/80 border-purple-400/35 text-purple-100 hover:text-white'
-            }`}
-            title="Alternar entre céu em tempo real e Eclipse Romântico"
-          >
-            {skyMode === 'eclipse' ? (
-              <EclipseSkyIcon className="w-3.5 h-3.5" />
-            ) : (
-              <CloudSun className="w-3.5 h-3.5 text-sky-300" />
-            )}
-            <span>{skyMode === 'eclipse' ? 'Eclipse Solar' : getRealtimeSkyLabel()}</span>
-          </button>}
+
 
           {!isWorldView && currentRoom === 'sala' && (
             <button
