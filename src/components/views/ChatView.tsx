@@ -7,12 +7,9 @@ import {
   CheckCheck,
   Heart,
   Mic,
-  Phone,
-  Video,
   Pause,
   Play,
   Send,
-  Sparkles,
   Square,
   Trash2,
   X,
@@ -20,7 +17,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { AnimatePresence, motion } from 'motion/react';
 import { soundEngine } from '../../utils/audioSynth';
-import { getCouplePhotoUrl, REAL_PHOTO_SLOTS } from '../../data/mediaAssets';
+import { getCouplePhotoUrl } from '../../data/mediaAssets';
 import { uploadChatMedia } from '../../services/supabaseSync';
 import { CoupleCallPanel } from './CoupleCallPanel';
 
@@ -115,7 +112,6 @@ export const ChatView: React.FC = () => {
   } = useApp();
 
   const [inputText, setInputText] = useState('');
-  const [senderRole, setSenderRole] = useState<'eu' | 'ela'>(isSpectator ? 'eu' : 'ela');
   const [isSending, setIsSending] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
@@ -130,7 +126,7 @@ export const ChatView: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  const effectiveRole: 'eu' | 'ela' = isSpectator ? 'eu' : senderRole;
+  const effectiveRole: 'eu' | 'ela' = isSpectator ? 'eu' : 'ela';
   const peerRoleKey: 'Gabriel' | 'Samella' = isSpectator ? 'Samella' : 'Gabriel';
   const isPeerOnline = Boolean(onlinePeers?.[peerRoleKey]);
   const peerDisplayName = isSpectator ? config.partnerName || 'Samella' : config.myName || 'Gabriel';
@@ -168,17 +164,6 @@ export const ChatView: React.FC = () => {
     }
   };
 
-  const handleQuickSend = async (preset: string) => {
-    if (isSending) return;
-    setIsSending(true);
-    soundEngine.playHeartPop();
-    triggerHeartExplosion();
-    try {
-      await sendChatMessage({ text: preset, senderRole: effectiveRole, msgType: 'text' });
-    } finally {
-      setIsSending(false);
-    }
-  };
 
   const handleImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -307,40 +292,6 @@ export const ChatView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Sender Switcher hidden automatically in Spectator Mode (locked to Gabriel) */}
-          {!isSpectator && (
-            <div className="flex items-center p-0.5 rounded-xl bg-purple-950/90 border border-purple-400/25">
-              <button
-                type="button"
-                onClick={() => {
-                  soundEngine.playHeartPop();
-                  setSenderRole('ela');
-                }}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition ${
-                  senderRole === 'ela'
-                    ? 'bg-gradient-to-r from-pink-600 to-rose-500 text-white'
-                    : 'text-purple-300/75 hover:text-white'
-                }`}
-              >
-                {config.partnerName}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  soundEngine.playHeartPop();
-                  setSenderRole('eu');
-                }}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer transition ${
-                  senderRole === 'eu'
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
-                    : 'text-purple-300/75 hover:text-white'
-                }`}
-              >
-                {config.myName}
-              </button>
-            </div>
-          )}
-
           {/* Browser Notification Permission Trigger */}
           {notificationPermission !== 'unsupported' && (
             <button
