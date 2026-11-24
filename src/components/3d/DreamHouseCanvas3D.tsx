@@ -14,6 +14,7 @@ import {
 import { HOUSE_FURNITURE_CATALOG } from '../../data/houseFurnitureCatalog';
 import { AQUARIUM_SPECIES_CATALOG } from '../../data/initialData';
 import { buildCompactRoamingPet, RoamingPetInstance } from '../../utils/petMesh3D';
+import { createHouseWallMesh } from '../../utils/houseConstruction3D';
 import {
   addCozyThreePointLights,
   detectSoftwareWebGL,
@@ -2283,12 +2284,33 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
         roomGroup.add(miniTree);
         balconyTreeGroup = miniTree;
       } else {
-        const backWall = new THREE.Mesh(new RoundedBoxGeometry(6.4, 2.75, 0.14, 3, 0.04), wallMat);
-        backWall.position.set(0, 1.375, -2.65);
-        backWall.receiveShadow = true;
-        const leftWall = new THREE.Mesh(new RoundedBoxGeometry(0.14, 2.75, 5.4, 3, 0.04), wallMat);
-        leftWall.position.set(-3.15, 1.375, -0.02);
-        leftWall.receiveShadow = true;
+        // Solid architectural walls with real openings, not window/door decals.
+        const backWall = createHouseWallMesh(
+          {
+            id: `${room}-back`,
+            start: { x: -3.2, z: -2.65 },
+            end: { x: 3.2, z: -2.65 },
+            height: 2.75,
+            thickness: 0.14,
+            openings: [
+              { id: `${room}-window`, kind: 'window', offset: 3.575, width: 1.55, height: 1.24, sillHeight: 0.94 },
+            ],
+          },
+          wallMat
+        );
+        const leftWall = createHouseWallMesh(
+          {
+            id: `${room}-left`,
+            start: { x: -3.15, z: -2.72 },
+            end: { x: -3.15, z: 2.68 },
+            height: 2.75,
+            thickness: 0.14,
+            openings: [
+              { id: `${room}-door`, kind: 'door', offset: 0.72, width: 0.92, height: 2.12, sillHeight: 0 },
+            ],
+          },
+          wallMat
+        );
         roomGroup.add(backWall, leftWall);
 
         const winFrame = new THREE.Mesh(
