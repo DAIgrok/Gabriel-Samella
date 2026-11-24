@@ -104,7 +104,7 @@ export const KittenView: React.FC = () => {
   >('all');
 
   const [paintMode, setPaintMode] = useState(false);
-  const [paintHex, setPaintHex] = useState('#f472b6');
+  const [paintHex, setPaintHex] = useState('#d6b56d');
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [customNameInput, setCustomNameInput] = useState(kitten.name || '');
