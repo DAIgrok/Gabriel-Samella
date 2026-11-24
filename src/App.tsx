@@ -67,7 +67,7 @@ const MainAppContent: React.FC = () => {
 
   const handleBackNavigation = () => {
     const previousView = navigationHistory.current.pop();
-    navigatingBack.current = true;
+    navigatingBack.current = Boolean(previousView);
     setExtendedView(previousView || 'inicio');
   };
 
