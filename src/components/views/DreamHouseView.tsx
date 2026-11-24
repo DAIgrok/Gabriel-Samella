@@ -75,6 +75,7 @@ export const DreamHouseView: React.FC = () => {
     setHouseCustomWallHex,
     setHouseCustomFloorHex,
     setHouseCustomCeilingHex,
+    setHouseDimensions,
     setHouseFurnitureColor,
     toggleHouseLights,
     toggleHouseFireplace,
@@ -92,7 +93,7 @@ export const DreamHouseView: React.FC = () => {
   } = useApp();
 
   const stageRef = useRef<HTMLDivElement>(null);
-  const [dockTab, setDockTab] = useState<'moveis' | 'paredes' | 'pisos' | 'tetos'>('moveis');
+  const [dockTab, setDockTab] = useState<'moveis' | 'paredes' | 'pisos' | 'tetos' | 'construcao'>('moveis');
   const [showCeiling, setShowCeiling] = useState(false);
   const [catFilter, setCatFilter] = useState<'all' | HouseFurnitureCategory>('all');
   const [skyMode, setSkyMode] = useState<DreamHouseSkyMode>('auto');
@@ -215,6 +216,9 @@ export const DreamHouseView: React.FC = () => {
             customWallHex={dreamHouse.customWallHex}
             customFloorHex={dreamHouse.customFloorHex}
             customCeilingHex={dreamHouse.customCeilingHex}
+            footprintWidth={dreamHouse.footprintWidth ?? 6.4}
+            footprintDepth={dreamHouse.footprintDepth ?? 5.4}
+            wallHeight={dreamHouse.wallHeight ?? 2.75}
             showCeiling={showCeiling}
             furnitureColors={dreamHouse.customColors}
             skyMode={skyMode}
@@ -579,6 +583,7 @@ export const DreamHouseView: React.FC = () => {
                 { id: 'paredes' as const, label: 'Paredes', icon: Palette },
                 { id: 'pisos' as const, label: 'Pisos', icon: Palette },
                 { id: 'tetos' as const, label: 'Teto', icon: Palette },
+                { id: 'construcao' as const, label: 'Construção', icon: Move },
               ].map((t) => {
                 const Icon = t.icon;
                 return (
@@ -598,6 +603,45 @@ export const DreamHouseView: React.FC = () => {
                 );
               })}
             </div>
+
+            {dockTab === 'construcao' && (
+              <div className="space-y-4 rounded-2xl border border-pink-400/25 bg-purple-950/45 p-4">
+                <div>
+                  <p className="text-sm font-bold text-white">Dimensões da casa</p>
+                  <p className="text-[11px] text-purple-200/75">Ajuste o tamanho real da planta em passos de 25 cm. As alterações ficam salvas.</p>
+                </div>
+                {[
+                  { label: 'Largura', value: dreamHouse.footprintWidth ?? 6.4, min: 4, max: 12, unit: 'm' },
+                  { label: 'Profundidade', value: dreamHouse.footprintDepth ?? 5.4, min: 4, max: 12, unit: 'm' },
+                  { label: 'Altura das paredes', value: dreamHouse.wallHeight ?? 2.75, min: 2.2, max: 4.5, unit: 'm' },
+                ].map((dimension) => (
+                  <label key={dimension.label} className="block space-y-2">
+                    <span className="flex items-center justify-between text-xs font-semibold text-purple-100">
+                      <span>{dimension.label}</span>
+                      <span className="text-pink-200 tabular-nums">{dimension.value.toFixed(2)} {dimension.unit}</span>
+                    </span>
+                    <input
+                      type="range"
+                      min={dimension.min}
+                      max={dimension.max}
+                      step="0.25"
+                      value={dimension.value}
+                      disabled={isSpectator}
+                      onChange={(event) => {
+                        const next = Number(event.target.value);
+                        setHouseDimensions(
+                          dimension.label === 'Largura' ? next : dreamHouse.footprintWidth ?? 6.4,
+                          dimension.label === 'Profundidade' ? next : dreamHouse.footprintDepth ?? 5.4,
+                          dimension.label === 'Altura das paredes' ? next : dreamHouse.wallHeight ?? 2.75
+                        );
+                      }}
+                      className="w-full accent-pink-400 disabled:opacity-40"
+                    />
+                  </label>
+                ))}
+                <p className="text-[10px] text-purple-300/70">Limites seguros: 4–12 m de largura/profundidade e 2,2–4,5 m de altura.</p>
+              </div>
+            )}
 
             {dockTab === 'moveis' && (
               <div className="space-y-3">
