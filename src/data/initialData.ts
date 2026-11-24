@@ -45,7 +45,7 @@ export {
 
 // Modelo 3D padrão do gatinho já salvo permanentemente para carregar automático na aba de pets
 export const DEFAULT_PET_GLB_URLS: Partial<Record<PetType, string>> = {
-  cat: 'https://skfb.ly/pQwNL',
+  cat: 'https://res.cloudinary.com/r3vmqjwx/raw/upload/v1795515090/nosso-mundo/models/cream-ginger-cat',
 };
 export const DEFAULT_FURNITURE_GLB_URLS: Record<string, string> = {};
 
@@ -53,7 +53,8 @@ export function resolvePetGlbUrl(petType: PetType, config?: CoupleConfig): strin
   const customMap = config?.customGlbModels?.pets;
   if (customMap && Object.prototype.hasOwnProperty.call(customMap, petType)) {
     const custom = customMap[petType]?.trim();
-    return custom || undefined;
+    // Migrate the old Sketchfab short link: it resolves to an HTML page, not a GLB.
+    if (custom && custom !== 'https://skfb.ly/pQwNL') return custom;
   }
   const def = DEFAULT_PET_GLB_URLS[petType]?.trim();
   return def || undefined;
@@ -75,7 +76,7 @@ export const INITIAL_COUPLE_CONFIG: CoupleConfig = {
   creatorPasscode: '2010', // Modo Espectador oculto do Gabriel
   themeGlowColor: '#c084fc',
   customGlbModels: {
-    pets: { cat: 'https://skfb.ly/pQwNL' },
+    pets: { cat: 'https://res.cloudinary.com/r3vmqjwx/raw/upload/v1795515090/nosso-mundo/models/cream-ginger-cat' },
     furniture: {},
   },
 };
