@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { HouseFurnitureTransform, HouseRoomId } from '../../types';
+import type { HouseFurnitureTransform, HouseRoomId } from '../../types';
 import { detectSoftwareWebGL, disposeObject3D } from '../../utils/threeCozyHelpers';
 
 interface DreamHouseWorld3DProps {
