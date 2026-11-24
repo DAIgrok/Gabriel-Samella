@@ -134,20 +134,25 @@ export function createHouseWallMesh(
 
     if (opening.kind === 'door') {
       const panelMaterial = new THREE.MeshStandardMaterial({ color: 0x986447, roughness: 0.68 });
+      const doorLeaf = new THREE.Group();
+      // The door is left slightly ajar so the opening connects visually to the outside.
+      doorLeaf.position.set(centerX - opening.width / 2 + 0.055, centerY, frontZ - 0.045);
+      doorLeaf.rotation.y = -0.62;
       const panel = new THREE.Mesh(
         new THREE.BoxGeometry(Math.max(0.3, opening.width - 0.12), Math.max(0.3, opening.height - 0.08), 0.045),
         panelMaterial
       );
-      panel.position.set(centerX, centerY, frontZ - 0.045);
+      panel.position.x = opening.width / 2 - 0.035;
       panel.castShadow = true;
-      mesh.add(panel);
+      doorLeaf.add(panel);
 
       const knob = new THREE.Mesh(
         new THREE.SphereGeometry(0.035, 12, 10),
         new THREE.MeshStandardMaterial({ color: 0xd6b56d, metalness: 0.72, roughness: 0.28 })
       );
-      knob.position.set(centerX + opening.width * 0.32, centerY - 0.02, frontZ + 0.005);
-      mesh.add(knob);
+      knob.position.set(opening.width * 0.32, -0.02, 0.025);
+      doorLeaf.add(knob);
+      mesh.add(doorLeaf);
     } else {
       const glass = new THREE.Mesh(
         new THREE.BoxGeometry(Math.max(0.2, opening.width - 0.12), Math.max(0.2, opening.height - 0.12), 0.025),
