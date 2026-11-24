@@ -767,3 +767,96 @@ export function subscribeSupabaseSongs(
 export function getLastSavedWorldSignature(): string {
   return lastSavedWorldSignature;
 }
+
+
+// --- CHAT MEDIA STORAGE + SINALIZAÇÃO DE CHAMADAS P2P ---
+export async function uploadChatMedia(blob: Blob, kind: 'image' | 'audio'): Promise<string> {
+  if (!supabase || !isSupabaseConfigured) {
+    throw new Error('Armazenamento do chat indisponível.');
+  }
+
+  const mime = blob.type || (kind === 'image' ? 'image/jpeg' : 'audio/webm');
+  const extension =
+    mime.includes('png') ? 'png' :
+    mime.includes('webp') ? 'webp' :
+    mime.includes('mp4') ? 'm4a' :
+    mime.includes('ogg') ? 'ogg' :
+    mime.includes('mpeg') ? 'mp3' :
+    kind === 'image' ? 'jpg' : 'webm';
+  const filePath = `${COUPLE_WORLD_ID}/${kind}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage.from('chat-media').upload(filePath, blob, {
+    contentType: mime,
+    cacheControl: '3600',
+    upsert: false,
+  });
+  if (error) throw error;
+
+  return supabase.storage.from('chat-media').getPublicUrl(filePath).data.publicUrl;
+}
+
+export type CoupleCallRole = 'Gabriel' | 'Samella';
+export interface CoupleCallSignal {
+  type: 'offer' | 'answer' | 'ice' | 'hangup' | 'reject';
+  from: CoupleCallRole;
+  callKind?: 'audio' | 'video';
+  sdp?: RTCSessionDescriptionInit;
+  candidate?: RTCIceCandidateInit;
+}
+
+export function subscribeCoupleCalls(
+  myRole: CoupleCallRole,
+  onSignal: (signal: CoupleCallSignal) => void,
+  onPeerChange?: (online: boolean) => void
+) {
+  if (!supabase || !isSupabaseConfigured) {
+    return {
+      ready: Promise.reject(new Error('Sinalização de chamadas indisponível.')),
+      send: async (_signal: Omit<CoupleCallSignal, 'from'>) => {},
+      close: () => {},
+    };
+  }
+
+  const channel = supabase.channel(`couple-calls-${COUPLE_WORLD_ID}`, {
+    config: {
+      broadcast: { ack: true },
+      presence: { key: myRole },
+    },
+  });
+
+  channel
+    .on('broadcast', { event: 'signal' }, ({ payload }) => {
+      const signal = payload as CoupleCallSignal;
+      if (signal?.from && signal.from !== myRole) onSignal(signal);
+    })
+    .on('presence', { event: 'sync' }, () => {
+      const state = channel.presenceState<{ role?: CoupleCallRole }>();
+      const peerRole: CoupleCallRole = myRole === 'Gabriel' ? 'Samella' : 'Gabriel';
+      onPeerChange?.(Boolean(state[peerRole]?.length));
+    });
+
+  const ready = new Promise<void>((resolve, reject) => {
+    channel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await channel.track({ role: myRole, onlineAt: new Date().toISOString() });
+        resolve();
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        reject(new Error('Não foi possível conectar a sinalização da chamada.'));
+      }
+    });
+  });
+
+  return {
+    ready,
+    send: async (signal: Omit<CoupleCallSignal, 'from'>) => {
+      await ready;
+      await channel.send({
+        type: 'broadcast',
+        event: 'signal',
+        payload: { ...signal, from: myRole },
+      });
+    },
+    close: () => {
+      supabase?.removeChannel(channel);
+    },
+  };
+}
