@@ -94,6 +94,7 @@ export const DreamHouseView: React.FC = () => {
   const [dockTab, setDockTab] = useState<'moveis' | 'paredes' | 'pisos'>('moveis');
   const [catFilter, setCatFilter] = useState<'all' | HouseFurnitureCategory>('all');
   const [skyMode, setSkyMode] = useState<DreamHouseSkyMode>('auto');
+  const [viewMode, setViewMode] = useState<'interior' | 'exterior'>('interior');
   const [hudExpanded, setHudExpanded] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedFurnitureId, setSelectedFurnitureId] = useState<string | null>(null);
@@ -213,6 +214,7 @@ export const DreamHouseView: React.FC = () => {
             customFloorHex={dreamHouse.customFloorHex}
             furnitureColors={dreamHouse.customColors}
             skyMode={skyMode}
+            viewMode={viewMode}
             lightsOn={dreamHouse.lightsOn}
             fireplaceLit={dreamHouse.fireplaceLit}
             placedFurnitureIds={placedInRoom}
@@ -237,15 +239,24 @@ export const DreamHouseView: React.FC = () => {
           />
         </div>
 
-        {/* Top-Left Room & Sky Spec Badge */}
+        {/* View mode and sky controls */}
         <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5">
-          <div className="px-3 py-1.5 rounded-full bg-[#130627]/85 backdrop-blur-sm border border-pink-400/30 text-[11px] font-bold text-white flex items-center gap-1.5 pointer-events-none">
-            <Sparkles className="w-3.5 h-3.5 text-pink-300" />
-            <span>{roomLabel}</span>
-            {currentRoom === 'varanda' && (
-              <span className="text-teal-300">· Árvore Nv.{treeState.level || 1}</span>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={() => setViewMode((current) => (current === 'interior' ? 'exterior' : 'interior'))}
+            className="px-3 py-1.5 rounded-full bg-[#130627]/90 backdrop-blur-sm border border-pink-400/40 text-[11px] font-bold text-white shadow-lg cursor-pointer"
+          >
+            {viewMode === 'interior' ? 'Casa por fora · 360°' : 'Voltar ao cômodo'}
+          </button>
+          {viewMode === 'interior' && (
+            <div className="px-3 py-1.5 rounded-full bg-[#130627]/85 backdrop-blur-sm border border-pink-400/30 text-[11px] font-bold text-white flex items-center gap-1.5 pointer-events-none">
+              <Sparkles className="w-3.5 h-3.5 text-pink-300" />
+              <span>{roomLabel}</span>
+              {currentRoom === 'varanda' && (
+                <span className="text-teal-300">· Árvore Nv.{treeState.level || 1}</span>
+              )}
+            </div>
+          )}
 
           <button
             type="button"
@@ -265,7 +276,7 @@ export const DreamHouseView: React.FC = () => {
             <span>{skyMode === 'eclipse' ? 'Eclipse Solar' : getRealtimeSkyLabel()}</span>
           </button>
 
-          {currentRoom === 'sala' && (
+          {viewMode === 'interior' && currentRoom === 'sala' && (
             <button
               type="button"
               onClick={() => setExtendedView('aquario')}
