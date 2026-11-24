@@ -92,7 +92,7 @@ interface IndexedGlbMesh {
 
 const TALKING_TOM_SWATCHES = [
   { hex: '#ffffff', label: 'Branco Neve' },
-  { hex: '#f9a8d4', label: 'Rosa Algodão' },
+  { hex: '#c4b5fd', label: 'Lavanda Suave' },
   { hex: '#c084fc', label: 'Lilás Mágico' },
   { hex: '#fbbf24', label: 'Caramelo Dourado' },
   { hex: '#7dd3fc', label: 'Azul Celeste' },
@@ -751,7 +751,7 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
         className={`relative w-full rounded-[26px] overflow-hidden select-none ${
           embedded
             ? 'bg-transparent'
-            : 'border border-pink-300/35 shadow-[0_14px_38px_rgba(236,72,153,0.24)]'
+            : 'border border-sky-300/30 shadow-[0_14px_38px_rgba(96,165,250,0.22)]'
         } ${
           isDead ? 'grayscale opacity-75 cursor-default' : paintMode ? 'cursor-crosshair' : 'cursor-pointer'
         }`}
@@ -760,20 +760,20 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
             ? undefined
             : {
                 background:
-                  'linear-gradient(155deg, rgba(244,114,182,0.34) 0%, rgba(168,85,247,0.28) 46%, rgba(19,6,36,0.94) 100%)',
+                  'linear-gradient(155deg, rgba(96,165,250,0.25) 0%, rgba(139,92,246,0.28) 48%, rgba(7,17,38,0.96) 100%)',
               }
         }
       >
         {!embedded && (
           <div
             className="pointer-events-none absolute -top-16 left-1/2 -translate-x-1/2 w-64 h-40 rounded-full blur-3xl opacity-50"
-            style={{ background: showColorGlow ? colorHex : '#f472b6' }}
+            style={{ background: showColorGlow ? colorHex : '#d6b56d' }}
           />
         )}
 
         {!hasError && isLoaded && !isDead && (
-          <div className="pointer-events-none absolute top-2 left-2 z-20 px-2.5 py-1 rounded-full bg-black/55 border border-pink-300/30 text-[10px] font-bold text-pink-100 flex items-center gap-1.5 backdrop-blur-sm">
-            <Sparkles className="w-3 h-3 text-pink-300" />
+          <div className="pointer-events-none absolute top-2 left-2 z-20 px-2.5 py-1 rounded-full bg-black/55 border border-amber-200/30 text-[10px] font-bold text-sky-100 flex items-center gap-1.5 backdrop-blur-sm">
+            <Sparkles className="w-3 h-3 text-amber-200" />
             <span>{isSleeping ? 'Dormindo' : statusText}</span>
           </div>
         )}
@@ -802,7 +802,7 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
               className="pointer-events-none absolute z-30"
               style={{ left: `${p.x}%`, top: `${p.y}%` }}
             >
-              <Heart className="w-5 h-5 fill-pink-400 text-pink-200 drop-shadow-[0_0_8px_rgba(244,114,182,0.8)]" />
+              <Heart className="w-5 h-5 fill-violet-400 text-amber-100 drop-shadow-[0_0_8px_rgba(167,139,250,0.75)]" />
             </motion.div>
           ))}
         </AnimatePresence>
@@ -846,17 +846,17 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
 
       {/* Standalone controls only shown when NOT embedded inside KittenView */}
       {!embedded && !isSpectator && !isDead && (
-        <div className="rounded-2xl bg-black/40 border border-pink-400/25 px-3.5 py-3 space-y-2.5">
+        <div className="rounded-2xl bg-slate-950/45 border border-amber-200/20 px-3.5 py-3 space-y-2.5">
           <div className="flex items-center justify-between gap-2">
             <label
               htmlFor="seletorCor"
-              className="text-xs font-bold text-pink-100 flex items-center gap-2 cursor-pointer"
+              className="text-xs font-bold text-sky-100 flex items-center gap-2 cursor-pointer"
             >
               <span
                 className="w-5 h-5 rounded-full border border-white/40 shadow-inner shrink-0"
                 style={{ backgroundColor: localColor }}
               />
-              <Palette className="w-4 h-4 text-pink-300 shrink-0" />
+              <Palette className="w-4 h-4 text-amber-200 shrink-0" />
               <span>Cor do Mascote</span>
             </label>
 
@@ -869,7 +869,7 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
                 id="seletorCor"
                 value={localColor}
                 onChange={(e) => applyColorHex(e.target.value)}
-                className="w-11 h-8 rounded-xl border border-pink-400/50 bg-transparent cursor-pointer"
+                className="w-11 h-8 rounded-xl border border-amber-200/40 bg-transparent cursor-pointer"
                 aria-label="Escolha a cor do mascote"
               />
             </div>
@@ -887,7 +887,7 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
                   aria-label={`Aplicar cor ${swatch.label}`}
                   className={`w-7 h-7 rounded-full border-2 transition cursor-pointer active:scale-90 ${
                     selected
-                      ? 'border-pink-400 scale-110 shadow-[0_0_12px_rgba(244,114,182,0.85)]'
+                      ? 'border-amber-200 scale-110 shadow-[0_0_12px_rgba(214,181,109,0.65)]'
                       : 'border-white/30 hover:scale-105'
                   }`}
                   style={{ backgroundColor: swatch.hex }}
@@ -903,7 +903,7 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
           <button
             type="button"
             onClick={handlePetAction}
-            className="min-h-[46px] px-3 py-2.5 rounded-2xl bg-gradient-to-r from-pink-500/85 to-rose-500/85 hover:brightness-110 border border-pink-300/45 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-[0_6px_20px_rgba(236,72,153,0.3)] cursor-pointer transition active:scale-95"
+            className="min-h-[46px] px-3 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500/85 to-amber-500/85 hover:brightness-110 border border-sky-300/45 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-[0_6px_20px_rgba(236,72,153,0.3)] cursor-pointer transition active:scale-95"
           >
             <Heart className="w-4 h-4 fill-current" />
             <span>{cdPet > 0 ? `Carinho (${formatCooldownMs(cdPet)})` : 'Fazer Carinho'}</span>

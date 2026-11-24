@@ -65,35 +65,35 @@ export const Navigation: React.FC = () => {
   ];
 
   const allDrawerItems: { id: ExtendedView; label: string; icon: React.ElementType; color: string; badge?: string }[] = [
-    { id: 'inicio', label: 'Página Inicial', icon: Home, color: 'text-pink-400' },
-    { id: 'conversas', label: 'Chat do Casal', icon: MessageCircle, color: 'text-pink-300', badge: unreadChatCount > 0 ? String(unreadChatCount) : undefined },
-    { id: 'casa', label: 'Casa dos Sonhos 3D', icon: DreamHouseCrestIcon, color: 'text-pink-300', badge: '3D' },
-    { id: 'aquario', label: 'Aquário Mágico 3D', icon: AquariumCoralIcon, color: 'text-cyan-300', badge: '3D' },
-    { id: 'missoes', label: 'Missões & Sazonal', icon: MissionCompassIcon, color: 'text-amber-300' },
-    { id: 'cartas', label: 'Cartas de Amor', icon: Mail, color: 'text-pink-400' },
-    { id: 'fotos', label: 'Galeria de Fotos', icon: ImageIcon, color: 'text-purple-400' },
-    { id: 'musica', label: 'Nosso Player de Música', icon: Music, color: 'text-indigo-400' },
-    { id: 'arvore', label: 'Árvore do Amor', icon: Trees, color: 'text-teal-300' },
-    { id: 'conquistas', label: 'Conquistas & Selos', icon: Trophy, color: 'text-amber-300' },
-    { id: 'metas', label: 'Sonhos & Lista de Desejos', icon: Target, color: 'text-pink-300' },
-    { id: 'calendario', label: 'Calendário do Casal', icon: CalendarDays, color: 'text-pink-300' },
-    { id: 'jogos', label: '25 Jogos do Casal', icon: Gamepad2, color: 'text-indigo-400' },
-    { id: 'gatinho', label: `Mascote (${petDisplayName})`, icon: Cat, color: 'text-pink-300', badge: kitten.hunger < 35 ? 'Fome!' : undefined },
-    { id: 'loja', label: 'Loja do Amor', icon: ShoppingBag, color: 'text-rose-400', badge: `${coins}` },
-    { id: 'frases', label: '50+ Frases Românticas', icon: BookHeart, color: 'text-pink-300' },
-    { id: 'config', label: 'Configurações (Criador)', icon: Settings, color: 'text-slate-300' },
+    { id: 'inicio', label: 'Início', icon: Home, color: 'text-sky-300' },
+    { id: 'conversas', label: 'Chat', icon: MessageCircle, color: 'text-violet-300', badge: unreadChatCount > 0 ? String(unreadChatCount) : undefined },
+    { id: 'casa', label: 'Casa', icon: DreamHouseCrestIcon, color: 'text-violet-300' },
+    { id: 'aquario', label: 'Aquário', icon: AquariumCoralIcon, color: 'text-sky-300' },
+    { id: 'missoes', label: 'Missões', icon: MissionCompassIcon, color: 'text-amber-200' },
+    { id: 'cartas', label: 'Cartas', icon: Mail, color: 'text-sky-300' },
+    { id: 'fotos', label: 'Fotos', icon: ImageIcon, color: 'text-violet-300' },
+    { id: 'musica', label: 'Música', icon: Music, color: 'text-indigo-300' },
+    { id: 'arvore', label: 'Árvore', icon: Trees, color: 'text-sky-200' },
+    { id: 'conquistas', label: 'Selos', icon: Trophy, color: 'text-amber-200' },
+    { id: 'metas', label: 'Desejos', icon: Target, color: 'text-violet-300' },
+    { id: 'calendario', label: 'Agenda', icon: CalendarDays, color: 'text-violet-300' },
+    { id: 'jogos', label: 'Jogos', icon: Gamepad2, color: 'text-indigo-300' },
+    { id: 'gatinho', label: 'Pet', icon: Cat, color: 'text-violet-300', badge: kitten.hunger < 35 ? 'Fome!' : undefined },
+    { id: 'loja', label: 'Loja', icon: ShoppingBag, color: 'text-amber-200', badge: `${coins}` },
+    { id: 'frases', label: 'Frases', icon: BookHeart, color: 'text-violet-300' },
+    { id: 'config', label: 'Ajustes', icon: Settings, color: 'text-slate-300' },
   ];
 
-  const drawerItems = allDrawerItems;
+  const drawerItems = allDrawerItems.filter((item) => item.id !== 'config' || !isSpectator);
 
   return (
     <>
       {/* Bottom Floating Navigation Bar (Mobile Only) */}
       <div className="fixed bottom-0 left-0 right-0 z-30 pointer-events-auto select-none md:hidden">
         <div className="max-w-lg mx-auto px-3 pb-safe pb-2 pt-1">
-          <div className="relative glass rounded-[28px] px-2 py-2 border border-white/10 shadow-[0_-8px_30px_rgba(0,0,0,0.8)] backdrop-blur-2xl">
+          <div className="nm-bottom-nav relative glass rounded-[28px] px-2 py-2 border border-white/10 shadow-[0_-8px_30px_rgba(0,0,0,0.8)] backdrop-blur-2xl">
             {/* Top Floating Glow Heart indicator */}
-            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 pointer-events-none">
+            <div className="nm-nav-orbit absolute -top-3.5 left-1/2 -translate-x-1/2 pointer-events-none">
               <motion.div
                 animate={{
                   y: [-2, 2, -2],
@@ -128,7 +128,7 @@ export const Navigation: React.FC = () => {
                     {isActive && (
                       <motion.div
                         layoutId="activeNavBubble"
-                        className="absolute inset-0 bg-white/10 rounded-2xl border border-white/10 shadow-[0_0_12px_rgba(168,85,247,0.3)]"
+                        className="nm-nav-active absolute inset-0 bg-white/10 rounded-2xl border border-white/10 shadow-[0_0_12px_rgba(168,85,247,0.3)]"
                         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                       />
                     )}
@@ -180,7 +180,7 @@ export const Navigation: React.FC = () => {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="absolute top-0 bottom-0 left-0 w-80 max-w-[85vw] bg-[#050208] border-r border-white/10 shadow-2xl flex flex-col p-5 z-10 overflow-y-auto"
+              className="nm-drawer absolute top-0 bottom-0 left-0 w-80 max-w-[85vw] bg-[#050208] border-r border-white/10 shadow-2xl flex flex-col p-5 z-10 overflow-y-auto"
             >
               {/* Drawer Header */}
               <div className="flex items-center justify-between pb-4 border-b border-purple-500/20">
@@ -253,7 +253,7 @@ export const Navigation: React.FC = () => {
                     >
                       <div className="flex items-center gap-3">
                         <Icon className={`w-5 h-5 ${item.color}`} />
-                        <span className="text-sm font-medium">{item.label}</span>
+                        <span className="font-romantic text-[15px] tracking-wide font-semibold">{item.label}</span>
                       </div>
 
                       <div className="flex items-center gap-1.5">

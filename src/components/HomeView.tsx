@@ -141,7 +141,7 @@ export const HomeView: React.FC = () => {
       <Header />
 
       {/* 2. Romantic Hero Section */}
-      <section className="relative rounded-3xl overflow-hidden p-6 md:p-8 min-h-[210px] md:min-h-[240px] bg-gradient-to-r from-[#0d041c] via-[#15072e]/90 to-[#240a44]/80 border border-purple-500/20 shadow-[0_12px_40px_rgba(0,0,0,0.5)] flex flex-col justify-between">
+      <section className="nm-hero relative rounded-3xl overflow-hidden p-6 md:p-8 min-h-[210px] md:min-h-[240px] bg-gradient-to-r from-[#0d041c] via-[#15072e]/90 to-[#240a44]/80 border border-purple-500/20 shadow-[0_12px_40px_rgba(0,0,0,0.5)] flex flex-col justify-between">
         {photos.length > 0 && (
           <div className="absolute top-0 right-0 bottom-0 w-full md:w-2/3 pointer-events-none overflow-hidden opacity-90">
             <SmartPhoto
@@ -171,21 +171,17 @@ export const HomeView: React.FC = () => {
         </div>
 
         <div className="relative z-10 max-w-lg space-y-2.5">
-          <h2 className="font-romantic text-3xl sm:text-4xl md:text-5xl text-pink-200 neon-title-glow tracking-wide flex items-center gap-2">
+          <span className="nm-hero-kicker inline-flex items-center gap-2 rounded-full px-3 py-1 text-[9px] uppercase tracking-[0.24em] font-semibold"> <Sparkles className="w-3 h-3" /> Nosso universo particular </span>
+          <h2 className="nm-hero-title font-romantic text-3xl sm:text-4xl md:text-5xl text-pink-200 neon-title-glow tracking-wide flex items-center gap-2">
             Bem-vinda, meu amor
             <span className="text-pink-400 font-sans text-2xl drop-shadow-[0_0_8px_rgba(244,114,182,0.8)]">
               ♡
             </span>
           </h2>
 
-          <div className="text-xs sm:text-sm text-purple-200/85 font-normal leading-relaxed space-y-0.5">
-            <p>Que bom ter você aqui...</p>
-            <p>Cada dia com você é um presente</p>
-            <p className="flex items-center gap-1.5">
-              <span>e eu sou muito grato por tudo que construímos juntos.</span>
-              <Heart className="w-4 h-4 text-pink-400 fill-pink-400 shrink-0" />
-            </p>
-          </div>
+          <p className="text-xs sm:text-sm text-purple-200/85 font-normal leading-relaxed">
+            Que bom ter você aqui. Este cantinho é nosso.
+          </p>
         </div>
       </section>
 

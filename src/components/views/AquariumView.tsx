@@ -21,10 +21,10 @@ import { AquariumLightMode } from '../../types';
 import { AquariumCoralIcon } from '../icons/CustomIcons';
 
 const LIGHT_MODES: { id: AquariumLightMode; label: string; dot: string }[] = [
-  { id: 'bioluminescent', label: 'Bioluminescente', dot: '#c084fc' },
+  { id: 'bioluminescent', label: 'Bioluminescência', dot: '#c084fc' },
   { id: 'sunlight', label: 'Luz do Sol', dot: '#fde047' },
-  { id: 'moonlight', label: 'Luar Profundo', dot: '#818cf8' },
-  { id: 'coral', label: 'Recife Rosé', dot: '#f472b6' },
+  { id: 'moonlight', label: 'Luz da Lua', dot: '#818cf8' },
+  { id: 'coral', label: 'Luz de Recife', dot: '#f472b6' },
 ];
 
 export const AquariumView: React.FC = () => {
@@ -72,7 +72,7 @@ export const AquariumView: React.FC = () => {
           </div>
           <div className="min-w-0">
             <h2 className="text-lg sm:text-xl font-bold text-white truncate">
-              Aquário Mágico 3D
+              Aquário do Nosso Mundo
             </h2>
             <p className="text-xs text-cyan-200/75 truncate">
               Toque nos peixes para vê-los nadar rápido · Mascotes aquáticos entram aqui automaticamente
@@ -116,7 +116,7 @@ export const AquariumView: React.FC = () => {
           onClick={() =>
             captureVirtualPhoto(
               stageRef.current,
-              'Aquário Mágico 3D',
+              'Aquário',
               `Luz ${LIGHT_MODES.find((l) => l.id === aquarium.lightMode)?.label || 'Bioluminescente'}`
             )
           }
@@ -135,7 +135,7 @@ export const AquariumView: React.FC = () => {
             <div className="flex justify-between text-xs font-bold">
               <span className="text-cyan-200 flex items-center gap-1.5">
                 <Droplets className="w-3.5 h-3.5 text-cyan-400" />
-                Cristalinidade da Água
+                Qualidade da Água
               </span>
               <span className="text-white tabular-nums">{waterClarity}%</span>
             </div>
@@ -151,7 +151,7 @@ export const AquariumView: React.FC = () => {
             <div className="flex justify-between text-xs font-bold">
               <span className="text-amber-200 flex items-center gap-1.5">
                 <Utensils className="w-3.5 h-3.5 text-amber-400" />
-                Saciedade dos Peixes
+                Peixes Alimentados
               </span>
               <span className="text-white tabular-nums">{fishHunger}%</span>
             </div>
@@ -190,7 +190,7 @@ export const AquariumView: React.FC = () => {
             className="min-h-[48px] px-3 rounded-2xl bg-gradient-to-r from-cyan-600 to-teal-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md hover:brightness-110 cursor-pointer disabled:opacity-45"
           >
             <Sparkles className="w-4 h-4" />
-            <span>Limpar Vidro</span>
+            <span>Limpar Aquário</span>
           </button>
 
           <button
@@ -244,7 +244,7 @@ export const AquariumView: React.FC = () => {
                 : 'bg-purple-950/50 border-purple-500/25 text-purple-300'
             }`}
           >
-            Espécies Marinhas ({aquarium.unlockedFishIds.length}/{AQUARIUM_SPECIES_CATALOG.length})
+            Peixes e mascotes ({aquarium.unlockedFishIds.length}/{AQUARIUM_SPECIES_CATALOG.length})
           </button>
           <button
             type="button"
@@ -255,7 +255,7 @@ export const AquariumView: React.FC = () => {
                 : 'bg-purple-950/50 border-purple-500/25 text-purple-300'
             }`}
           >
-            Miniaturas do Fundo ({aquarium.unlockedDecorIds.length}/{AQUARIUM_DECOR_CATALOG.length})
+            Decoração do Aquário ({aquarium.unlockedDecorIds.length}/{AQUARIUM_DECOR_CATALOG.length})
           </button>
         </div>
 

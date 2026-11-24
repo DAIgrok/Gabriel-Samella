@@ -217,3 +217,297 @@
   }
 }
 
+
+
+/* Login cinematográfico: fotografia do casal como cenário, sem comprometer a leitura. */
+.login-screen-shell {
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 50% 12%, rgba(168, 85, 247, .16), transparent 48%),
+    #080214;
+}
+.login-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  overflow: hidden;
+  pointer-events: none;
+}
+.login-backdrop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 38%;
+  opacity: .42;
+  filter: saturate(.78) blur(1px);
+  transform: scale(1.035);
+}
+.login-backdrop-shade {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(8, 2, 20, .36), rgba(8, 2, 20, .78)),
+    radial-gradient(ellipse at center, rgba(8, 2, 20, .12), rgba(8, 2, 20, .78));
+}
+.login-card {
+  background: linear-gradient(155deg, rgba(30, 13, 54, .88), rgba(12, 5, 27, .94));
+  border-color: rgba(244, 114, 182, .28);
+  box-shadow:
+    0 28px 90px rgba(0, 0, 0, .62),
+    0 0 55px rgba(168, 85, 247, .12),
+    inset 0 1px 0 rgba(255, 255, 255, .09);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+.login-card button:focus-visible {
+  outline: 2px solid rgba(249, 168, 212, .95);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-card,
+  .login-card * {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+
+/* NOSSO MUNDO — identidade visual azul safira, violeta e dourado champagne */
+:root {
+  --nm-night: #071126;
+  --nm-midnight: #0b1730;
+  --nm-blue: #60a5fa;
+  --nm-blue-soft: #93c5fd;
+  --nm-violet: #a78bfa;
+  --nm-violet-deep: #6d4bd1;
+  --nm-gold: #d6b56d;
+  --nm-gold-light: #f2dca3;
+  --nm-gold-muted: rgba(214, 181, 109, .18);
+  --nm-glass: rgba(12, 23, 48, .78);
+  --nm-line: rgba(147, 165, 219, .18);
+}
+body {
+  background-color: var(--nm-night);
+}
+::selection {
+  background: rgba(167, 139, 250, .35);
+  color: #fff;
+}
+.glass-panel,
+.glass-panel-interactive {
+  background: linear-gradient(145deg, rgba(18, 34, 67, .82), rgba(10, 18, 40, .82));
+  border-color: rgba(147, 165, 219, .2);
+  box-shadow: 0 12px 34px rgba(1, 7, 22, .34), inset 0 1px 0 rgba(255,255,255,.035);
+}
+.glass-panel-interactive:hover,
+.glass-panel-interactive:active {
+  background: linear-gradient(145deg, rgba(35, 48, 91, .9), rgba(17, 25, 57, .92));
+  border-color: rgba(214, 181, 109, .42);
+  box-shadow: 0 14px 34px rgba(2, 8, 24, .42), 0 0 24px rgba(96, 165, 250, .12);
+}
+.glass-card-glow {
+  background: linear-gradient(145deg, rgba(18, 32, 66, .9), rgba(11, 17, 39, .94));
+  border-color: rgba(167, 139, 250, .25);
+  box-shadow: 0 22px 70px rgba(1, 6, 20, .55), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.neon-title-glow {
+  text-shadow: 0 0 18px rgba(96, 165, 250, .26), 0 0 28px rgba(167, 139, 250, .3);
+}
+.neon-text-glow {
+  text-shadow: 0 0 12px rgba(214, 181, 109, .42), 0 0 22px rgba(167, 139, 250, .2);
+}
+.neon-glow-gold {
+  filter: drop-shadow(0 0 7px rgba(214, 181, 109, .62)) drop-shadow(0 0 15px rgba(214, 181, 109, .24));
+}
+.nm-brand-title {
+  color: #f2eaff;
+  text-shadow: 0 0 18px rgba(96, 165, 250, .24), 0 0 34px rgba(167, 139, 250, .3);
+}
+.nm-brand-heart {
+  color: var(--nm-gold-light);
+  filter: drop-shadow(0 0 9px rgba(214,181,109,.45));
+}
+.nm-balance-pill {
+  color: var(--nm-gold-light);
+  background: linear-gradient(120deg, rgba(23, 37, 73, .9), rgba(35, 27, 61, .9));
+  border-color: rgba(214,181,109,.36);
+  box-shadow: 0 8px 26px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.nm-balance-pill svg,
+.nm-balance-pill .text-pink-300 { color: var(--nm-gold-light); }
+.nm-hero {
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 82% 10%, rgba(96,165,250,.24), transparent 40%),
+    radial-gradient(ellipse at 70% 100%, rgba(167,139,250,.2), transparent 48%),
+    linear-gradient(118deg, #08142c 0%, #111a3b 54%, #241d4b 100%) !important;
+  border-color: rgba(167,139,250,.28) !important;
+  box-shadow: 0 22px 54px rgba(1,7,22,.45), inset 0 1px 0 rgba(255,255,255,.07);
+}
+.nm-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .65;
+  background: linear-gradient(112deg, rgba(7,17,38,.94) 0%, rgba(7,17,38,.72) 44%, rgba(7,17,38,.12) 100%);
+  z-index: 0;
+}
+.nm-hero-kicker {
+  color: var(--nm-gold-light);
+  border: 1px solid rgba(214,181,109,.28);
+  background: rgba(8,18,40,.62);
+  box-shadow: 0 4px 18px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.nm-hero-title {
+  color: #f2eaff;
+  text-shadow: 0 0 20px rgba(96,165,250,.22), 0 0 34px rgba(167,139,250,.32);
+}
+.nm-hero .font-romantic,
+.nm-hero .text-pink-200,
+.nm-hero .text-pink-300 {
+  color: #e9ddff;
+}
+.nm-hero .text-pink-400,
+.nm-hero .fill-pink-400 {
+  color: var(--nm-gold-light);
+  fill: var(--nm-gold-light);
+}
+.nm-bottom-nav {
+  background: linear-gradient(145deg, rgba(12,24,51,.94), rgba(12,15,38,.96)) !important;
+  border-color: rgba(147,165,219,.22) !important;
+  box-shadow: 0 -8px 36px rgba(0,0,0,.42), 0 0 32px rgba(96,165,250,.08) !important;
+}
+.nm-nav-orbit > div {
+  background: linear-gradient(135deg, #4f6fd8, #7652c8 58%, #c3a15a) !important;
+  border-color: rgba(242,220,163,.75) !important;
+  box-shadow: 0 0 20px rgba(96,165,250,.32), 0 0 26px rgba(167,139,250,.28) !important;
+}
+.nm-nav-active {
+  background: linear-gradient(135deg, rgba(96,165,250,.14), rgba(167,139,250,.18)) !important;
+  border-color: rgba(214,181,109,.24) !important;
+}
+.nm-drawer {
+  background: linear-gradient(180deg, #0b1730, #080f22 78%) !important;
+  border-color: rgba(147,165,219,.18) !important;
+}
+.nm-drawer .text-pink-200,
+.nm-drawer .text-pink-300,
+.nm-drawer .text-pink-400 { color: #d9ceff; }
+.nm-drawer .border-purple-500\/20 { border-color: rgba(147,165,219,.18); }
+.nm-drawer .bg-gradient-to-tr { background-image: linear-gradient(135deg, #5476d8, #8060ce 65%, #c3a15a); }
+@media (max-width: 640px) {
+  .nm-hero { min-height: 230px; }
+  .nm-hero::after {
+    background: linear-gradient(180deg, rgba(7,17,38,.28), rgba(7,17,38,.78) 72%, rgba(7,17,38,.9));
+  }
+}
+
+
+/* Aplicação inteira: acentos rosa antigos migram para lavanda e ouro sem alterar estados de alerta. */
+.nm-app-shell {
+  background:
+    radial-gradient(ellipse at 8% 0%, rgba(50, 87, 166, .11), transparent 34%),
+    radial-gradient(ellipse at 92% 14%, rgba(116, 79, 180, .12), transparent 32%),
+    linear-gradient(155deg, #071126 0%, #080f24 55%, #0b1026 100%) !important;
+}
+.nm-app-shell [class~="text-pink-100"],
+.nm-app-shell [class~="text-pink-200"] { color: #e5ddff !important; }
+.nm-app-shell [class~="text-pink-300"] { color: #c9b9ff !important; }
+.nm-app-shell [class~="text-pink-400"] { color: var(--nm-gold-light) !important; }
+.nm-app-shell [class~="border-pink-400"],
+.nm-app-shell [class~="border-pink-500"] { border-color: rgba(214,181,109,.36) !important; }
+.nm-app-shell [class~="bg-pink-500"] { background-color: #9a7b45 !important; }
+.nm-app-shell [class~="from-pink-500"] { --tw-gradient-from: #5d76c6 var(--tw-gradient-from-position) !important; }
+.nm-app-shell [class~="via-pink-500"] { --tw-gradient-via: #8064c7 var(--tw-gradient-via-position) !important; }
+.nm-app-shell [class~="to-rose-400"] { --tw-gradient-to: #c3a15a var(--tw-gradient-to-position) !important; }
+.nm-app-shell [class~="shadow-pink-500\/30"] { --tw-shadow-color: rgba(214,181,109,.18) !important; }
+.nm-app-shell button:focus-visible,
+.nm-app-shell a:focus-visible {
+  outline: 2px solid rgba(214,181,109,.88);
+  outline-offset: 3px;
+}
+
+
+/* Acabamento premium: superfícies, controles e palco do mascote. */
+.nm-app-shell {
+  color-scheme: dark;
+}
+.nm-app-shell :is(input, textarea, select) {
+  accent-color: var(--nm-gold);
+}
+.nm-app-shell :is(input:not([type="color"]), textarea, select) {
+  border-color: rgba(147, 165, 219, .24);
+}
+.nm-app-shell :is(input, textarea, select):focus {
+  border-color: rgba(214, 181, 109, .68) !important;
+  box-shadow: 0 0 0 3px rgba(214, 181, 109, .12) !important;
+}
+.nm-app-shell :is(.rounded-2xl, .rounded-3xl, .rounded-\[26px\]) {
+  -webkit-backdrop-filter: saturate(1.08);
+}
+.nm-app-shell .login-card {
+  border-color: rgba(214, 181, 109, .3);
+  background: linear-gradient(150deg, rgba(20, 34, 68, .92), rgba(10, 15, 35, .96));
+}
+.nm-app-shell .login-screen-shell {
+  background:
+    radial-gradient(ellipse at 50% 10%, rgba(96, 165, 250, .18), transparent 46%),
+    #071126;
+}
+.nm-app-shell .login-backdrop-shade {
+  background:
+    linear-gradient(180deg, rgba(7, 17, 38, .38), rgba(7, 17, 38, .84)),
+    radial-gradient(ellipse at center, rgba(7, 17, 38, .12), rgba(7, 17, 38, .82));
+}
+.nm-app-shell ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(96, 165, 250, .55), rgba(167, 139, 250, .55));
+  border: 2px solid rgba(7, 17, 38, .8);
+  border-radius: 999px;
+}
+.nm-app-shell ::-webkit-scrollbar-track {
+  background: rgba(7, 17, 38, .42);
+}
+.nm-app-shell model-viewer {
+  --poster-color: transparent;
+  --progress-bar-color: #d6b56d;
+  --progress-mask: #0b1730;
+}
+
+
+/* Harmonização dos botões e acentos legados sem alterar cores de erro/alerta. */
+.nm-app-shell [class~="bg-pink-500"],
+.nm-app-shell [class~="bg-pink-600"] {
+  background-color: #5b68c9 !important;
+}
+.nm-app-shell [class~="bg-rose-500"] {
+  background-color: #a78bfa !important;
+}
+.nm-app-shell [class~="from-purple-600"] {
+  --tw-gradient-from: #345eae var(--tw-gradient-from-position) !important;
+}
+.nm-app-shell [class~="from-pink-600"] {
+  --tw-gradient-from: #416fc4 var(--tw-gradient-from-position) !important;
+}
+.nm-app-shell [class~="via-pink-600"] {
+  --tw-gradient-via: #7258c7 var(--tw-gradient-via-position) !important;
+}
+.nm-app-shell [class~="to-rose-500"] {
+  --tw-gradient-to: #b79658 var(--tw-gradient-to-position) !important;
+}
+.nm-app-shell [class~="hover:border-pink-400"]:hover {
+  border-color: rgba(214,181,109,.62) !important;
+}
+.nm-app-shell [class~="text-purple-200"] {
+  color: #d8d8f5;
+}
+
+
+/* Detalhes globais do navegador e rolagem na nova identidade. */
+::-webkit-scrollbar-track { background: rgba(7, 17, 38, .88); }
+::-webkit-scrollbar-thumb { background: rgba(96, 165, 250, .42); }
+::-webkit-scrollbar-thumb:hover { background: rgba(214, 181, 109, .72); }
+::selection { background: rgba(167, 139, 250, .38); color: #fff; }

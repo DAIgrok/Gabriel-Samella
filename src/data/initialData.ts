@@ -73,7 +73,7 @@ export const INITIAL_COUPLE_CONFIG: CoupleConfig = {
   subtitle: 'Que bom ter você aqui de novo ♡',
   passcode: '120623', // 12/06/2023
   creatorPasscode: '2010', // Modo Espectador oculto do Gabriel
-  themeGlowColor: '#c084fc',
+  themeGlowColor: '#a78bfa',
   customGlbModels: {
     pets: { cat: 'https://skfb.ly/pQwNL' },
     furniture: {},
@@ -378,8 +378,81 @@ export const INITIAL_LETTERS: Letter[] = [];
 // Galeria começa limpa (zero fotos estáticas ou de IA); apenas fotos reais adicionadas pelo casal permanecem salvas para sempre
 export const INITIAL_PHOTOS: MemoryPhoto[] = [];
 
-// Playlist starts empty; Gabriel & Samella add YouTube links or audio files via MusicView or Settings
-export const INITIAL_SONGS: Song[] = [];
+// Seleção inicial: somente as músicas que a Samella pediu, com capas oficiais do YouTube
+export const INITIAL_SONGS: Song[] = [
+  {
+    id: 'song-incondicional-luan',
+    title: 'Incondicional',
+    artist: 'Luan Santana',
+    duration: 190,
+    durationFormatted: '3:10',
+    coverUrl: 'https://img.youtube.com/vi/36W_wRuPYbs/hqdefault.jpg',
+    audioUrl: 'https://www.youtube.com/watch?v=36W_wRuPYbs',
+    youtubeId: '36W_wRuPYbs',
+    sourceType: 'youtube',
+    lyrics: [],
+  },
+  {
+    id: 'song-na-hora-da-raiva',
+    title: 'Na Hora da Raiva',
+    artist: 'Henrique & Juliano',
+    duration: 174,
+    durationFormatted: '2:54',
+    coverUrl: 'https://img.youtube.com/vi/X8jD3F9PI7Q/hqdefault.jpg',
+    audioUrl: 'https://www.youtube.com/watch?v=X8jD3F9PI7Q',
+    youtubeId: 'X8jD3F9PI7Q',
+    sourceType: 'youtube',
+    lyrics: [],
+  },
+  {
+    id: 'song-na-linha-do-tempo',
+    title: 'Na Linha do Tempo',
+    artist: 'Victor & Leo',
+    duration: 248,
+    durationFormatted: '4:08',
+    coverUrl: 'https://img.youtube.com/vi/DULQudMe7vA/hqdefault.jpg',
+    audioUrl: 'https://www.youtube.com/watch?v=DULQudMe7vA',
+    youtubeId: 'DULQudMe7vA',
+    sourceType: 'youtube',
+    lyrics: [],
+  },
+  {
+    id: 'song-te-esperando',
+    title: 'Te Esperando',
+    artist: 'Luan Santana',
+    duration: 262,
+    durationFormatted: '4:22',
+    coverUrl: 'https://img.youtube.com/vi/tPmS-CfIeNk/hqdefault.jpg',
+    audioUrl: 'https://www.youtube.com/watch?v=tPmS-CfIeNk',
+    youtubeId: 'tPmS-CfIeNk',
+    sourceType: 'youtube',
+    lyrics: [],
+  },
+  {
+    id: 'song-te-vivo',
+    title: 'Te Vivo',
+    artist: 'Luan Santana',
+    duration: 210,
+    durationFormatted: '3:30',
+    coverUrl: 'https://img.youtube.com/vi/dWpGsK8Md28/hqdefault.jpg',
+    audioUrl: 'https://www.youtube.com/watch?v=dWpGsK8Md28',
+    youtubeId: 'dWpGsK8Md28',
+    sourceType: 'youtube',
+    lyrics: [],
+  },
+  {
+    id: 'song-chuva-de-arroz',
+    title: 'Chuva de Arroz',
+    artist: 'Luan Santana',
+    duration: 203,
+    durationFormatted: '3:23',
+    coverUrl: 'https://img.youtube.com/vi/xfwXJxf839w/hqdefault.jpg',
+    audioUrl: 'https://www.youtube.com/watch?v=xfwXJxf839w',
+    youtubeId: 'xfwXJxf839w',
+    sourceType: 'youtube',
+    lyrics: [],
+  },
+];
 
 // Initial Achievements — 50 balanced milestones without emojis
 export const INITIAL_ACHIEVEMENTS: Achievement[] = [
@@ -1112,7 +1185,6 @@ export const INITIAL_STORE_ITEMS: StoreItem[] = [
 
   // --- Enfeites da Árvore do Amor ---
   { id: 'item-tree-fairy-lights', title: 'Luzes de Fada Douradas', description: 'Cordão de microlâmpadas cintilantes que iluminam os galhos à noite.', price: 20, icon: 'sparkles', category: 'arvore', purchased: false, slotType: 'tree' },
-  { id: 'item-tree-sakura', title: 'Copa de Cerejeira Sakura', description: 'Transforma toda a folhagem da árvore em flores cor-de-rosa encantadas.', price: 28, icon: 'flower', category: 'arvore', purchased: false, slotType: 'tree' },
   { id: 'item-tree-golden-apples', title: 'Maçãs Douradas do Amor', description: 'Frutos sagrados reluzentes que nascem entre os galhos da árvore.', price: 24, icon: 'star', category: 'arvore', purchased: false, slotType: 'tree' },
   { id: 'item-tree-swing', title: 'Balanço Romântico nos Galhos', description: 'Um balanço de madeira e flores pendurado suavemente no galho principal.', price: 26, icon: 'tree', category: 'arvore', purchased: false, slotType: 'tree' },
   { id: 'item-tree-lanterns', title: 'Lanternas Mágicas Flutuantes', description: 'Lanternas quentes douradas penduradas iluminando a copa em 360°.', price: 22, icon: 'lamp', category: 'arvore', purchased: false, slotType: 'tree' },
@@ -1122,29 +1194,20 @@ export const INITIAL_STORE_ITEMS: StoreItem[] = [
   { id: 'item-tree-promise-ribbon', title: 'Fita Dourada de Promessas', description: 'Enfeita os galhos da árvore com fitas luminosas de eternidade.', price: 14, icon: 'award', category: 'arvore', purchased: false, slotType: 'tree' },
 
   // --- Molduras das Fotos ---
-  { id: 'item-frame-polaroid', title: 'Moldura Polaroid Romântica', description: 'Efeito clássico de foto instantânea com legenda manuscrita.', price: 16, icon: 'camera', category: 'molduras', purchased: false, slotType: 'frame' },
-  { id: 'item-frame-golden-glamour', title: 'Moldura de Ouro Puro & Brilho', description: 'Bordas douradas reluzentes para destacar os momentos mais valiosos.', price: 28, icon: 'image', category: 'molduras', purchased: false, slotType: 'frame' },
-  { id: 'item-frame-neon-glow', title: 'Moldura Neon Lilás & Rosa', description: 'Aura futurista de luz neon pulsante ao redor das memórias.', price: 20, icon: 'heart', category: 'molduras', purchased: false, slotType: 'frame' },
 
   // --- Temas & Efeitos Visuais ---
-  { id: 'item-theme-aurora', title: 'Tema Aurora Boreal Encantada', description: 'Glow mágico verde-esmeralda e lilás iluminando todo o aplicativo.', price: 32, icon: 'moon', category: 'temas', purchased: false, slotType: 'theme' },
-  { id: 'item-effect-meteor-shower', title: 'Chuva de Meteoros do Amor', description: 'Estrelas cadentes cruzando o céu noturno da tela inicial.', price: 28, icon: 'star', category: 'efeitos', purchased: false },
-  { id: 'item-effect-sakura-petals', title: 'Pétalas de Sakura Flutuantes', description: 'Chuva suave de pétalas cor-de-rosa caindo lentamente pela tela.', price: 24, icon: 'flower', category: 'efeitos', purchased: false },
 
   // --- Casa dos Sonhos 3D (Catálogo Completo & Categorizado) ---
   ...HOUSE_STORE_ITEMS,
 
   // --- Aquário Mágico 3D ---
-  { id: 'item-aqua-seahorse', title: 'Cavalo-Marinho Dourado', description: 'Criatura encantada que dança delicadamente entre os corais.', price: 24, icon: 'aqua', category: 'aquario', purchased: false, slotType: 'aquarium-fish', targetId: 'seahorse' },
+  { id: 'item-aqua-seahorse', title: 'Cavalo-marinho', description: 'Criatura encantada que dança delicadamente entre os corais.', price: 24, icon: 'aqua', category: 'aquario', purchased: false, slotType: 'aquarium-fish', targetId: 'seahorse' },
   { id: 'item-aqua-jellyfish', title: 'Água-Viva Bioluminescente', description: 'Flutua em ondas rosadas e violetas iluminando o aquário à noite.', price: 32, icon: 'aqua', category: 'aquario', purchased: false, slotType: 'aquarium-fish', targetId: 'jellyfish' },
-  { id: 'item-aqua-koi', title: 'Carpa Koi Imperial', description: 'Peixe oriental elegante símbolo de amor e harmonia eterna.', price: 28, icon: 'aqua', category: 'aquario', purchased: false, slotType: 'aquarium-fish', targetId: 'koifish' },
+  { id: 'item-aqua-koi', title: 'Carpa Koi', description: 'Peixe oriental elegante símbolo de amor e harmonia eterna.', price: 28, icon: 'aqua', category: 'aquario', purchased: false, slotType: 'aquarium-fish', targetId: 'koifish' },
   { id: 'item-aqua-ship', title: 'Navio Miniatura Submerso', description: 'Navio fantástico com velas em miniatura no fundo do aquário.', price: 30, icon: 'aqua', category: 'aquario', purchased: false, slotType: 'aquarium-decor', targetId: 'ship' },
   { id: 'item-aqua-crystal', title: 'Cristal Atlante Luminoso', description: 'Aglomerado de cristais azuis e magenta que brilha sob a água.', price: 24, icon: 'diamond', category: 'aquario', purchased: false, slotType: 'aquarium-decor', targetId: 'crystal' },
 
   // --- Trajes Sazonais Exclusivos para Mascotes ---
-  { id: 'item-pet-santa-hat', title: 'Gorro de Papai Noel do Pet', description: 'Gorrinho vermelho fofo com pompom branco de Natal para seu mascote.', price: 16, icon: 'snow', category: 'sazonal', purchased: false, slotType: 'hat' },
-  { id: 'item-pet-witch-hat', title: 'Chapéu Encantado de Halloween', description: 'Chapéu pontudo roxo com fivela dourada para noites de outubro.', price: 16, icon: 'pumpkin', category: 'sazonal', purchased: false, slotType: 'hat' },
-  { id: 'item-pet-valentine-rose', title: 'Rosa Encantada dos Namorados', description: 'Uma rosa carmesim brilhante que flutua ao lado do mascote.', price: 18, icon: 'flower', category: 'sazonal', purchased: false, slotType: 'accessory' },
 ];
 
 // Initial Virtual Pet State (Zeroed progress; user chooses pet name & custom colors)
@@ -1427,7 +1490,7 @@ export const INITIAL_DAILY_WHEEL: DailyWheelState = {
 export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
   {
     id: 'clownfish',
-    name: 'Peixe-Palhaço Laranja',
+    name: 'Peixe-palhaço',
     rarity: 'comum',
     colorHex: '#f97316',
     accentHex: '#ffffff',
@@ -1437,7 +1500,7 @@ export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
   },
   {
     id: 'betta',
-    name: 'Betta Véu Violeta',
+    name: 'Peixe Betta',
     rarity: 'raro',
     colorHex: '#a855f7',
     accentHex: '#f472b6',
@@ -1447,7 +1510,7 @@ export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
   },
   {
     id: 'angelfish',
-    name: 'Acará-Bandeira Dourado',
+    name: 'Acará-bandeira',
     rarity: 'comum',
     colorHex: '#facc15',
     accentHex: '#0f172a',
@@ -1457,7 +1520,7 @@ export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
   },
   {
     id: 'koifish',
-    name: 'Carpa Koi Imperial',
+    name: 'Carpa Koi',
     rarity: 'raro',
     colorHex: '#fb7185',
     accentHex: '#fef3c7',
@@ -1467,7 +1530,7 @@ export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
   },
   {
     id: 'seahorse',
-    name: 'Cavalo-Marinho Dourado',
+    name: 'Cavalo-marinho',
     rarity: 'raro',
     colorHex: '#fbbf24',
     accentHex: '#fde68a',
@@ -1477,7 +1540,7 @@ export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
   },
   {
     id: 'jellyfish',
-    name: 'Água-Viva Luminescente',
+    name: 'Água-viva',
     rarity: 'lendario',
     colorHex: '#e879f9',
     accentHex: '#38bdf8',
@@ -1487,7 +1550,7 @@ export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
   },
   {
     id: 'shark',
-    name: 'Tubarãozinho (Pet Aquático)',
+    name: 'Tubarão',
     rarity: 'lendario',
     colorHex: '#38bdf8',
     accentHex: '#f8fafc',
@@ -1498,7 +1561,7 @@ export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
   },
   {
     id: 'dolphin',
-    name: 'Golfinho (Pet Aquático)',
+    name: 'Golfinho',
     rarity: 'lendario',
     colorHex: '#22d3ee',
     accentHex: '#f0fdfa',
@@ -1509,7 +1572,7 @@ export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
   },
   {
     id: 'whale',
-    name: 'Baleia Azul (Pet Aquático)',
+    name: 'Baleia-azul',
     rarity: 'mitico',
     colorHex: '#60a5fa',
     accentHex: '#e0f2fe',
@@ -1523,7 +1586,7 @@ export const AQUARIUM_SPECIES_CATALOG: AquariumSpeciesInfo[] = [
 export const AQUARIUM_DECOR_CATALOG: AquariumDecorInfo[] = [
   {
     id: 'coral',
-    name: 'Recife de Corais Rosé',
+    name: 'Recife de corais',
     description: 'Corais coloridos que abrigam peixinhos.',
     unlockedByDefault: true,
     accentHex: '#f472b6',

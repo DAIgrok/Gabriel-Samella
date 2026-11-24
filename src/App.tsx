@@ -50,6 +50,56 @@ const MainAppContent: React.FC = () => {
     photos,
   } = useApp();
 
+  const navigationHistory = React.useRef<typeof extendedView[]>([]);
+  const lastExtendedView = React.useRef(extendedView);
+  const navigatingBack = React.useRef(false);
+
+  // Mantém o histórico de telas dentro do app sem acrescentar hashes ou IDs à URL.
+  React.useEffect(() => {
+    window.history.replaceState(
+      { ...(window.history.state || {}), nmApp: true, nmView: extendedView },
+      '',
+      window.location.pathname + window.location.search
+    );
+  }, []);
+
+  React.useEffect(() => {
+    if (lastExtendedView.current !== extendedView) {
+      if (navigatingBack.current) {
+        navigatingBack.current = false;
+      } else {
+        navigationHistory.current.push(lastExtendedView.current);
+        window.history.pushState(
+          { nmApp: true, nmView: extendedView },
+          '',
+          window.location.pathname + window.location.search
+        );
+      }
+      lastExtendedView.current = extendedView;
+    }
+  }, [extendedView]);
+
+  React.useEffect(() => {
+    const handleBrowserBack = (event: PopStateEvent) => {
+      const previousView = event.state?.nmApp ? event.state.nmView : 'inicio';
+      navigationHistory.current.pop();
+      navigatingBack.current = true;
+      setExtendedView(previousView || 'inicio');
+    };
+    window.addEventListener('popstate', handleBrowserBack);
+    return () => window.removeEventListener('popstate', handleBrowserBack);
+  }, [setExtendedView]);
+
+  const handleBackNavigation = () => {
+    if (navigationHistory.current.length > 0 && window.history.state?.nmApp) {
+      window.history.back();
+      return;
+    }
+    const previousView = navigationHistory.current.pop();
+    navigatingBack.current = true;
+    setExtendedView(previousView || 'inicio');
+  };
+
   if (isLoading) {
     return <LoadingScreen />;
   }
@@ -59,7 +109,7 @@ const MainAppContent: React.FC = () => {
   }
 
   return (
-    <div className="relative min-h-screen text-slate-100 font-sans selection:bg-pink-500/30 selection:text-pink-200 bg-[#070210] flex overflow-x-hidden">
+    <div className="nm-app-shell relative min-h-screen text-slate-100 font-sans selection:bg-pink-500/30 selection:text-pink-200 bg-[#070210] flex overflow-x-hidden">
       {/* Heart Rain Overlay */}
       <HeartRain />
 
@@ -81,11 +131,11 @@ const MainAppContent: React.FC = () => {
         {extendedView !== 'inicio' && (
           <div className="flex items-center justify-between py-2 mb-2">
             <button
-              onClick={() => setExtendedView('inicio')}
+              onClick={handleBackNavigation}
               className="flex items-center gap-1.5 px-3.5 min-h-[44px] rounded-2xl glass-panel-interactive text-purple-200 hover:text-white text-xs font-semibold border border-purple-500/30 shadow-md cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Voltar ao Início</span>
+              <span>Voltar</span>
             </button>
 
             <span className="text-sm font-script text-pink-300">Nosso Mundo ♡</span>

@@ -11,6 +11,9 @@ export const DailyMessageCard: React.FC = () => {
     author: 'Para você',
   };
 
+  const messageText = (currentMsg.text || 'Você é a prova de que Deus ainda escreve histórias lindas para quem tem fé.')
+    .replace(/^['“”\u0022]+|['“”\u0022]+$/g, '');
+
   return (
     <div className="rounded-3xl p-5 bg-gradient-to-br from-[#160a2c]/90 via-[#0e051c]/90 to-[#070210]/95 border border-purple-500/25 shadow-[0_10px_35px_rgba(0,0,0,0.6)] relative overflow-hidden backdrop-blur-xl flex flex-col justify-between min-h-[220px]">
       {/* Background floral / cosmic aesthetic glow */}
@@ -38,7 +41,7 @@ export const DailyMessageCard: React.FC = () => {
             transition={{ duration: 0.25 }}
             className="text-xs sm:text-sm text-purple-100 font-normal leading-relaxed italic"
           >
-            “{currentMsg.text || 'Você é a prova de que Deus ainda escreve histórias lindas para quem tem fé.'}”
+            “{messageText}”
           </motion.p>
         </AnimatePresence>
       </div>

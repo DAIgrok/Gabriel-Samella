@@ -6,7 +6,7 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  CloudSun,
+  ArrowLeft,
   Droplets,
   Flame,
   Lightbulb,
@@ -36,11 +36,11 @@ import {
 } from '../../data/initialData';
 import { HOUSE_CATEGORY_META, HOUSE_ROOM_PRICES } from '../../data/houseFurnitureCatalog';
 import { HouseFurnitureCategory, HouseRoomId } from '../../types';
+import { DreamHouseWorld3D } from '../3d/DreamHouseWorld3D';
 import {
   DiamondGemIcon,
   DreamHouseCrestIcon,
-  EclipseSkyIcon,
-  VectorGlyphIcon,
+    VectorGlyphIcon,
 } from '../icons/CustomIcons';
 
 const ROOMS: { id: HouseRoomId; label: string }[] = [
@@ -69,7 +69,9 @@ export const DreamHouseView: React.FC = () => {
     treeState,
     activeSeasonalEvent,
     setHouseRoom,
+    setHouseRoomTransform,
     unlockHouseRoom,
+    expandHousePlot,
     setHouseWallTheme,
     setHouseFloorTheme,
     setHouseCustomWallHex,
@@ -93,17 +95,19 @@ export const DreamHouseView: React.FC = () => {
   const stageRef = useRef<HTMLDivElement>(null);
   const [dockTab, setDockTab] = useState<'moveis' | 'paredes' | 'pisos'>('moveis');
   const [catFilter, setCatFilter] = useState<'all' | HouseFurnitureCategory>('all');
-  const [skyMode, setSkyMode] = useState<DreamHouseSkyMode>('auto');
+  const skyMode: DreamHouseSkyMode = 'auto';
   const [hudExpanded, setHudExpanded] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedFurnitureId, setSelectedFurnitureId] = useState<string | null>(null);
+  const [isBuildMenuOpen, setIsBuildMenuOpen] = useState(false);
+  const [isWorldView, setIsWorldView] = useState(true);
 
   useEffect(() => {
     recordHouseVisit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const unlockedRooms = dreamHouse.unlockedRooms || ['sala'];
+  const unlockedRooms = dreamHouse.unlockedRooms || [];
   const currentRoom = unlockedRooms.includes(dreamHouse.activeRoom) ? dreamHouse.activeRoom : 'sala';
   const placedInRoom = dreamHouse.placedFurniture?.[currentRoom] || [];
   const totalPlacedAllRooms = Object.values(dreamHouse.placedFurniture || {}).flat().length;
@@ -112,7 +116,7 @@ export const DreamHouseView: React.FC = () => {
     catFilter === 'all' ? roomFurniture : roomFurniture.filter((f) => f.category === catFilter);
 
   const roomCategories = Array.from(new Set(roomFurniture.map((f) => f.category)));
-  const roomLabel = ROOMS.find((r) => r.id === currentRoom)?.label || 'Sala';
+  const roomLabel = unlockedRooms.length === 0 ? 'Terreno vazio' : ROOMS.find((r) => r.id === currentRoom)?.label || 'Sala';
 
   const petType = kitten.petType || 'cat';
   const isPetDead = Boolean(kitten.deadPets?.includes(petType));
@@ -173,7 +177,7 @@ export const DreamHouseView: React.FC = () => {
           </div>
           <div className="min-w-0">
             <h2 className="text-lg sm:text-xl font-bold text-white truncate">
-              Casa dos Sonhos 3D
+              Casa
             </h2>
             <p className="text-xs text-purple-200/75 truncate">
               {isSpectator
@@ -205,67 +209,76 @@ export const DreamHouseView: React.FC = () => {
       {/* 3D Viewport Stage with Real-Time Climatic Sky Backdrop */}
       <div className="relative rounded-3xl border border-purple-500/30 shadow-2xl overflow-hidden">
         <div ref={stageRef} className="w-full">
-          <DreamHouseCanvas3D
-            activeRoom={currentRoom}
-            wallTheme={dreamHouse.wallTheme}
-            floorTheme={dreamHouse.floorTheme}
-            customWallHex={dreamHouse.customWallHex}
-            customFloorHex={dreamHouse.customFloorHex}
-            furnitureColors={dreamHouse.customColors}
-            skyMode={skyMode}
-            lightsOn={dreamHouse.lightsOn}
-            fireplaceLit={dreamHouse.fireplaceLit}
-            placedFurnitureIds={placedInRoom}
-            treeLevel={treeState.level || 1}
-            activeSeasonalEvent={activeSeasonalEvent}
-            furnitureTransforms={dreamHouse.furnitureTransforms}
-            isEditMode={isEditMode && !isSpectator}
-            selectedFurnitureId={selectedFurnitureId}
-            furnitureGlbUrls={furnitureGlbUrls}
-            ownedPets={kitten.ownedPets}
-            deadPets={kitten.deadPets}
-            petColors={kitten.petColors}
-            petGlbUrl={catGlbUrl}
-            petHunger={petHunger}
-            petThirst={petThirst}
-            petLastFedTimestamp={kitten.lastFedAt}
-            aquarium={aquarium}
-            onTapAquarium={() => setExtendedView('aquario')}
-            onInteractFurniture={interactHouseFurniture}
-            onSelectFurniture={setSelectedFurnitureId}
-            onMoveFurniture={setHouseFurnitureTransform}
-          />
-        </div>
+          {isWorldView ? (
+            <DreamHouseWorld3D
+              rooms={unlockedRooms}
+              roomTransforms={dreamHouse.roomTransforms}
+              plotSize={dreamHouse.plotSize || 12}
+              isEditMode={isEditMode && !isSpectator}
+              onOpenRoom={(room) => {
+                setHouseRoom(room);
+                setIsWorldView(false);
+                setIsEditMode(false);
+              }}
+              onMoveRoom={setHouseRoomTransform}
+            />
+          ) : (
+            <DreamHouseCanvas3D
+              activeRoom={currentRoom}
+              wallTheme={dreamHouse.wallTheme}
+              floorTheme={dreamHouse.floorTheme}
+              customWallHex={dreamHouse.customWallHex}
+              customFloorHex={dreamHouse.customFloorHex}
+              furnitureColors={dreamHouse.customColors}
+              skyMode={skyMode}
+              lightsOn={dreamHouse.lightsOn}
+              fireplaceLit={dreamHouse.fireplaceLit}
+              placedFurnitureIds={placedInRoom}
+              treeLevel={treeState.level || 1}
+              activeSeasonalEvent={activeSeasonalEvent}
+              furnitureTransforms={dreamHouse.furnitureTransforms}
+              isEditMode={isEditMode && !isSpectator}
+              selectedFurnitureId={selectedFurnitureId}
+              furnitureGlbUrls={furnitureGlbUrls}
+              ownedPets={kitten.ownedPets}
+              deadPets={kitten.deadPets}
+              petColors={kitten.petColors}
+              petGlbUrl={catGlbUrl}
+              petHunger={petHunger}
+              petThirst={petThirst}
+              petLastFedTimestamp={kitten.lastFedAt}
+              aquarium={aquarium}
+              onTapAquarium={() => setExtendedView('aquario')}
+              onInteractFurniture={interactHouseFurniture}
+              onSelectFurniture={setSelectedFurnitureId}
+              onMoveFurniture={setHouseFurnitureTransform}
+            />
+          )}        </div>
 
         {/* Top-Left Room & Sky Spec Badge */}
         <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5">
+          {!isWorldView && (
+            <button
+              type="button"
+              onClick={() => { setIsWorldView(true); setIsEditMode(false); setSelectedFurnitureId(null); }}
+              aria-label="Voltar à planta da casa"
+              title="Planta da casa"
+              className="w-8 h-8 rounded-full bg-[#071126]/90 border border-sky-300/30 text-sky-100 flex items-center justify-center shadow-lg"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          )}
           <div className="px-3 py-1.5 rounded-full bg-[#130627]/85 backdrop-blur-sm border border-pink-400/30 text-[11px] font-bold text-white flex items-center gap-1.5 pointer-events-none">
             <Sparkles className="w-3.5 h-3.5 text-pink-300" />
-            <span>{roomLabel}</span>
+            <span>{isWorldView ? 'Casa · visão 360°' : roomLabel}</span>
             {currentRoom === 'varanda' && (
               <span className="text-teal-300">· Árvore Nv.{treeState.level || 1}</span>
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={() => setSkyMode((prev) => (prev === 'auto' ? 'eclipse' : 'auto'))}
-            className={`px-2.5 py-1.5 rounded-full backdrop-blur-sm border text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition ${
-              skyMode === 'eclipse'
-                ? 'bg-pink-600/80 border-pink-300 text-white shadow'
-                : 'bg-[#130627]/80 border-purple-400/35 text-purple-100 hover:text-white'
-            }`}
-            title="Alternar entre céu em tempo real e Eclipse Romântico"
-          >
-            {skyMode === 'eclipse' ? (
-              <EclipseSkyIcon className="w-3.5 h-3.5" />
-            ) : (
-              <CloudSun className="w-3.5 h-3.5 text-sky-300" />
-            )}
-            <span>{skyMode === 'eclipse' ? 'Eclipse Solar' : getRealtimeSkyLabel()}</span>
-          </button>
 
-          {currentRoom === 'sala' && (
+
+          {!isWorldView && currentRoom === 'sala' && (
             <button
               type="button"
               onClick={() => setExtendedView('aquario')}
@@ -466,36 +479,36 @@ export const DreamHouseView: React.FC = () => {
       {/* Unified Bottom Control Dock */}
       <div className="glass-card-glow rounded-3xl border border-purple-500/25 overflow-hidden">
         <div className="p-3 sm:p-4 border-b border-purple-500/15 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-            {ROOMS.map((r) => {
-              const isUnlocked = unlockedRooms.includes(r.id);
-              const price = HOUSE_ROOM_PRICES[r.id] ?? 30;
-              return (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => {
-                    if (isUnlocked) setHouseRoom(r.id);
-                    else unlockHouseRoom(r.id);
-                  }}
-                  className={`min-h-[40px] px-3.5 rounded-2xl text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
-                    currentRoom === r.id
-                      ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-md'
-                      : isUnlocked
-                      ? 'bg-purple-950/60 border border-purple-500/25 text-purple-200 hover:text-white'
-                      : 'bg-amber-500/15 border border-amber-400/35 text-amber-200 hover:bg-amber-500/25'
-                  }`}
-                  title={isUnlocked ? `Ir para ${r.label}` : `Desbloquear ${r.label} por ${price} diamantes`}
-                >
-                  {!isUnlocked && <Lock className="w-3 h-3 shrink-0" />}
-                  <span>{r.label}</span>
-                  {!isUnlocked && <span className="text-[10px] opacity-90">{price}◆</span>}
-                </button>
-              );
-            })}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="px-3 py-2 rounded-xl bg-[#142440] border border-sky-300/15 text-slate-200 text-[11px] font-semibold">
+              {unlockedRooms.length} {unlockedRooms.length === 1 ? 'espaço construído' : 'espaços construídos'}
+            </span>
+
+            {!isSpectator && (
+              <button type="button" onClick={() => setIsBuildMenuOpen((open) => !open)} className="min-h-[40px] px-3.5 rounded-2xl text-xs font-bold bg-amber-300/15 border border-amber-200/35 text-amber-100">
+                + Construir
+              </button>
+            )}
+            {isBuildMenuOpen && !isSpectator && (
+              <div className="w-full flex flex-wrap gap-1.5 rounded-2xl bg-[#0b1730] border border-sky-300/15 p-2">
+                {ROOMS.filter((room) => !unlockedRooms.includes(room.id)).map((room) => (
+                  <button key={room.id} type="button" onClick={() => { unlockHouseRoom(room.id); setIsBuildMenuOpen(false); }} className="px-3 py-2 rounded-xl bg-[#172747] border border-sky-300/15 text-slate-100 text-[11px] font-semibold">
+                    {room.label} · {HOUSE_ROOM_PRICES[room.id] ?? 30}◆
+                  </button>
+                ))}
+              </div>
+            )}
+            {unlockedRooms.length === 0 && (
+              <p className="w-full text-[11px] text-slate-300/75">O terreno está vazio. Gire a câmera em 360° e comece a construir quando quiser.</p>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5">
+            {isWorldView && <button type="button" disabled={isSpectator || (dreamHouse.plotSize || 12) >= 24} onClick={expandHousePlot} className="min-h-[40px] px-3 rounded-2xl text-xs font-bold border border-amber-200/30 bg-amber-300/10 text-amber-100 disabled:opacity-40">
+              Aumentar terreno · 20◆
+            </button>}
+            {unlockedRooms.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
               disabled={isSpectator}
@@ -512,10 +525,10 @@ export const DreamHouseView: React.FC = () => {
               }`}
             >
               <Move className="w-3.5 h-3.5" />
-              <span>{isEditMode ? 'Modo Explorar' : 'Modo Decorar'}</span>
+              <span>{isEditMode ? 'Concluir organização' : isWorldView ? 'Organizar cômodos' : 'Modo Decorar'}</span>
             </button>
 
-            <button
+            {!isWorldView && <button
               type="button"
               disabled={isSpectator}
               onClick={toggleHouseLights}
@@ -527,9 +540,9 @@ export const DreamHouseView: React.FC = () => {
             >
               <Lightbulb className="w-3.5 h-3.5" />
               <span>{dreamHouse.lightsOn ? 'Luzes Acesas' : 'Penumbra'}</span>
-            </button>
+            </button>}
 
-            {currentRoom === 'sala' && (
+            {!isWorldView && currentRoom === 'sala' && (
               <button
                 type="button"
                 disabled={isSpectator}
@@ -553,10 +566,12 @@ export const DreamHouseView: React.FC = () => {
             >
               {hudExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
             </button>
+              </div>
+            )}
           </div>
         </div>
 
-        {hudExpanded && (
+        {!isWorldView && unlockedRooms.length > 0 && hudExpanded && (
           <div className="p-4 space-y-4">
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
               {[

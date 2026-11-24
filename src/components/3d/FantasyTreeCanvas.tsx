@@ -453,11 +453,23 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
       emissiveHex: number,
       emissiveStrength: number
     ) => {
-      const puffsPerCluster = isSoftwareGl ? 15 : 28;
+      // Lâminas de folha individuais para uma copa mais orgânica,
+      // mantendo o lago, raízes, lanternas, flores e cenário já existentes.
+      const puffsPerCluster = isSoftwareGl ? 28 : 44;
       const totalInstances = clusters.length * puffsPerCluster;
 
-      const puffGeo = new THREE.SphereGeometry(0.35, 16, 12);
-      puffGeo.scale(1.24, 0.78, 1.18);
+      // Geometria volumétrica: cada folha é uma malha fechada, afilada na ponta,
+      // com espessura real para receber luz e sombra de diferentes ângulos.
+      const puffGeo = new THREE.SphereGeometry(0.12, 12, 8);
+      const leafPositions = puffGeo.attributes.position;
+      for (let vertex = 0; vertex < leafPositions.count; vertex++) {
+        const x = leafPositions.getX(vertex);
+        const y = leafPositions.getY(vertex);
+        const z = leafPositions.getZ(vertex);
+        const taper = 1 - 0.68 * ((y + 1) * 0.5);
+        leafPositions.setXYZ(vertex, x * taper * 0.92, y * 1.75, z * 0.34);
+      }
+      puffGeo.computeVertexNormals();
 
       const puffMat = new THREE.MeshStandardMaterial({
         color: 0xffffff,
@@ -465,6 +477,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
         emissiveIntensity: emissiveStrength,
         roughness: 0.58,
         metalness: 0.02,
+        side: THREE.FrontSide,
       });
 
       puffMat.onBeforeCompile = (shader) => {
@@ -514,8 +527,11 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
             cz * growth + Math.sin(phi) * Math.sin(theta) * dist * 1.2
           );
           dummy.rotation.set(nextRand() * 1.4, nextRand() * Math.PI * 2, nextRand() * 1.4);
-          const puffScale = (0.58 + nextRand() * 0.72) * (0.85 + scaledR * 0.35);
-          dummy.scale.set(puffScale, puffScale * 0.82, puffScale);
+          const puffScale = (0.72 + nextRand() * 0.72) * (0.85 + scaledR * 0.35);
+          dummy.scale.set(puffScale, puffScale, 0.72 + nextRand() * 0.45);
+          // Inclinações variadas evitam um padrão plano ou repetitivo na copa.
+          dummy.rotation.x += (nextRand() - 0.5) * 0.8;
+          dummy.rotation.z += (nextRand() - 0.5) * 1.1;
           dummy.updateMatrix();
 
           instMesh.setMatrixAt(idx, dummy.matrix);
@@ -527,20 +543,6 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
           idx++;
         }
 
-        // Soft glowing volumetric halo sprite inside major canopy clusters
-        const auraMat = new THREE.SpriteMaterial({
-          map: cIdx % 2 === 0 ? auraTexPink : auraTexViolet,
-          transparent: true,
-          opacity: 0.45,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-        });
-        const sprite = new THREE.Sprite(auraMat);
-        sprite.position.set(cx * growth, cy * growth, cz * growth);
-        const baseScale = rad * growth * 2.4;
-        sprite.scale.set(baseScale, baseScale * 0.85, 1);
-        treeGroup.add(sprite);
-        auraSpriteRefs.push({ sprite, baseScale, phase: cIdx * 0.9 });
       });
 
       instMesh.instanceMatrix.needsUpdate = true;
@@ -582,44 +584,20 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
 
       // Smooth Cozy Stylized Cinnamon-Violet Bark with glowing Leyline Spirit Veins shader
       const barkMat = new THREE.MeshStandardMaterial({
-        color: 0x5c374c,
-        roughness: 0.68,
-        metalness: 0.03,
+        color: 0x62452f,
+        roughness: 0.94,
+        metalness: 0,
       });
-      barkMat.onBeforeCompile = (shader) => {
-        shader.uniforms.uTime = shaderUniforms.uTime;
-        shader.vertexShader = `varying vec3 vWorldBarkPos;\n` + shader.vertexShader;
-        shader.vertexShader = shader.vertexShader.replace(
-          '#include <worldpos_vertex>',
-          `
-          #include <worldpos_vertex>
-          vWorldBarkPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
-          `
-        );
-        shader.fragmentShader =
-          `uniform float uTime;\nvarying vec3 vWorldBarkPos;\n` + shader.fragmentShader;
-        shader.fragmentShader = shader.fragmentShader.replace(
-          '#include <emissivemap_fragment>',
-          `
-          #include <emissivemap_fragment>
-          float veinWave = sin(vWorldBarkPos.y * 7.5 - uTime * 1.9 + sin(vWorldBarkPos.x * 12.0) * 1.8);
-          float veinMask = smoothstep(0.86, 0.99, veinWave);
-          totalEmissiveRadiance += vec3(0.94, 0.45, 0.76) * veinMask * 0.65;
-          `
-        );
-      };
-
       const isCelestialMax = curLevel >= 10 && !sakura;
-      const showSakura = sakura || curLevel >= 5;
+      const showSakura = sakura;
 
-      const paletteHex = sakura || showSakura
-        ? [0xf472b6, 0xfbcfe8, 0xf9a8d4, 0xe879f9, 0xfdf2f8]
-        : isCelestialMax
-        ? [0x5eead4, 0x7dd3fc, 0xc4b5fd, 0x6ee7b7]
-        : [0x4ade80, 0x86efac, 0x34d399, 0xf9a8d4];
+      const paletteHex = showSakura
+        ? [0xf3c4d8, 0xf7dce8, 0xe8b7d0, 0xf9eaf1]
+        : [0x315d32, 0x3f7138, 0x568546, 0x71964f, 0x8ba85d];
 
-      const canopyEmissiveHex = isCelestialMax ? 0x0f766e : showSakura ? 0xbe185d : 0x047857;
-      const canopyEmissiveStr = showSakura || isCelestialMax ? 0.34 : 0.22;
+      // Natural foliage stays non-emissive; special color appears only when Sakura is explicitly equipped.
+      const canopyEmissiveHex = 0x000000;
+      const canopyEmissiveStr = 0;
 
       if (curLevel <= 1) {
         // --- STAGE 1: LUMINOUS SACRED SPROUT ---

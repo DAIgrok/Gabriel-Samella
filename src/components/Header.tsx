@@ -13,6 +13,7 @@ export const Header: React.FC = () => {
     triggerEasterEgg,
     triggerHeartExplosion,
     config,
+    isSpectator,
   } = useApp();
   const [logoTapCount, setLogoTapCount] = useState(0);
 
@@ -41,10 +42,10 @@ export const Header: React.FC = () => {
 
         <div onClick={handleLogoClick} className="cursor-pointer group min-w-0">
           <div className="flex items-center gap-1.5">
-            <h1 className="font-romantic text-3xl md:text-4xl text-pink-100 neon-title-glow tracking-wide truncate">
+            <h1 className="nm-brand-title font-romantic text-3xl md:text-4xl text-pink-100 neon-title-glow tracking-wide truncate">
               Nosso Mundo
             </h1>
-            <span className="text-pink-300 text-2xl font-light drop-shadow-[0_0_10px_rgba(244,114,182,0.8)] shrink-0">
+            <span className="nm-brand-heart text-pink-300 text-2xl font-light drop-shadow-[0_0_10px_rgba(244,114,182,0.8)] shrink-0">
               ♡
             </span>
           </div>
@@ -59,9 +60,10 @@ export const Header: React.FC = () => {
       {/* Right Side: Diamonds & Single Settings Gear */}
       <div className="flex items-center gap-2.5 shrink-0">
         <button
+          disabled={isSpectator}
           onClick={() => setExtendedView('loja')}
-          title="Loja — Seus Diamantes"
-          className="flex items-center gap-2 px-3 min-h-[44px] rounded-full bg-[#170a2c]/80 hover:bg-[#230f44] border border-purple-500/40 text-xs font-semibold text-pink-200 shadow-[0_0_15px_rgba(168,85,247,0.25)] transition-all cursor-pointer group"
+          title={isSpectator ? 'Saldo em modo de visualização' : 'Loja — Seus Diamantes'}
+          className="nm-balance-pill flex items-center gap-2 px-3 min-h-[44px] rounded-full bg-[#170a2c]/80 hover:bg-[#230f44] border border-purple-500/40 text-xs font-semibold text-pink-200 shadow-[0_0_15px_rgba(168,85,247,0.25)] transition-all cursor-pointer group"
         >
           <DiamondGemIcon className="w-4 h-4 text-pink-300 group-hover:scale-110 transition-transform" />
           <span className="font-mono text-sm tabular-nums">{coins}</span>
@@ -70,6 +72,7 @@ export const Header: React.FC = () => {
           </span>
         </button>
 
+        {!isSpectator && (
         <button
           onClick={() => setIsSettingsOpen(true)}
           title="Configurações"
@@ -78,6 +81,7 @@ export const Header: React.FC = () => {
         >
           <Settings className="w-4 h-4" />
         </button>
+        )}
       </div>
     </header>
   );

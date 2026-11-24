@@ -91,6 +91,41 @@ function createCausticsTexture(): THREE.CanvasTexture {
   return tex;
 }
 
+function createFishScaleTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 256, 256);
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth = 1.15;
+    for (let row = 0; row < 12; row++) {
+      const offset = row % 2 ? 10 : 0;
+      for (let col = -1; col < 13; col++) {
+        const x = col * 21 + offset;
+        const y = row * 22 + 8;
+        ctx.beginPath();
+        ctx.arc(x, y, 13, 0.12, Math.PI - 0.12);
+        ctx.stroke();
+      }
+    }
+    const sheen = ctx.createLinearGradient(0, 0, 0, 256);
+    sheen.addColorStop(0, 'rgba(255,255,255,0.20)');
+    sheen.addColorStop(0.48, 'rgba(255,255,255,0.02)');
+    sheen.addColorStop(1, 'rgba(0,0,0,0.12)');
+    ctx.fillStyle = sheen;
+    ctx.fillRect(0, 0, 256, 256);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1.5, 1);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
 function buildFishMesh(fishId: string): {
   group: THREE.Group;
   tailObj: THREE.Object3D;
@@ -105,8 +140,9 @@ function buildFishMesh(fishId: string): {
 
   const mainMat = new THREE.MeshStandardMaterial({
     color: spec.colorHex,
-    roughness: 0.55,
-    metalness: 0.05,
+    map: createFishScaleTexture(),
+    roughness: 0.48,
+    metalness: 0.04,
   });
   const accMat = new THREE.MeshStandardMaterial({
     color: spec.accentHex,
@@ -164,8 +200,19 @@ function buildFishMesh(fishId: string): {
     tailObj = fin;
   } else {
     // Cozy Stylized Chibi Swimmer with articulated pectoral & caudal fins + catchlight eyes
-    const bodyGeo = new THREE.SphereGeometry(0.17, 22, 16);
-    bodyGeo.scale(1.55, fishId === 'angelfish' ? 1.34 : 0.94, 0.74);
+    // Corpo hidrodinâmico alongado e afilado, em vez de uma esfera redonda.
+    const bodyProfile = [
+      new THREE.Vector2(0, -0.28),
+      new THREE.Vector2(0.055, -0.25),
+      new THREE.Vector2(0.105, -0.16),
+      new THREE.Vector2(0.13, -0.02),
+      new THREE.Vector2(0.115, 0.12),
+      new THREE.Vector2(0.07, 0.22),
+      new THREE.Vector2(0, 0.28),
+    ];
+    const bodyGeo = new THREE.LatheGeometry(bodyProfile, 24);
+    bodyGeo.rotateZ(-Math.PI / 2);
+    if (fishId === 'angelfish') bodyGeo.scale(0.86, 1.35, 1);
     const body = new THREE.Mesh(bodyGeo, mainMat);
     body.castShadow = true;
 
@@ -173,50 +220,79 @@ function buildFishMesh(fishId: string): {
     belly.scale.set(1.22, 0.56, 0.68);
     belly.position.set(0.02, -0.055, 0);
 
-    const dorsalGeo = new THREE.SphereGeometry(0.095, 14, 12);
-    dorsalGeo.scale(1.25, 0.9, 0.25);
-    const dorsal = new THREE.Mesh(dorsalGeo, accMat);
-    dorsal.position.set(-0.02, 0.14, 0);
-    dorsal.rotation.z = -0.35;
+    // Dorsal fin with a natural swept silhouette (not a rounded blob).
+    const dorsalShape = new THREE.Shape();
+    dorsalShape.moveTo(0.12, 0.02);
+    dorsalShape.quadraticCurveTo(0.02, 0.16, -0.13, 0.21);
+    dorsalShape.quadraticCurveTo(-0.19, 0.11, -0.16, 0.015);
+    dorsalShape.closePath();
+    const dorsal = new THREE.Mesh(new THREE.ShapeGeometry(dorsalShape, 12), accMat);
+    dorsal.position.set(-0.02, 0.12, 0.008);
+    dorsal.rotation.z = -0.12;
+    dorsal.material.side = THREE.DoubleSide;
 
-    // Articulated Pectoral Fins
-    const pectGeo = new THREE.SphereGeometry(0.075, 12, 10);
-    pectGeo.scale(1.3, 0.65, 0.18);
+    // Fine lateral stripe and gill arc give the body a recognisable fish anatomy.
+    const stripeMat = new THREE.MeshBasicMaterial({ color: spec.accentHex, transparent: true, opacity: 0.72 });
+    const stripeCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0.17, -0.005, 0.105),
+      new THREE.Vector3(0.05, -0.012, 0.125),
+      new THREE.Vector3(-0.08, -0.018, 0.115),
+      new THREE.Vector3(-0.2, -0.012, 0.075),
+    ]);
+    const stripe = new THREE.Mesh(new THREE.TubeGeometry(stripeCurve, 16, 0.006, 5, false), stripeMat);
+    const gillCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0.105, 0.105, 0.103),
+      new THREE.Vector3(0.065, 0.055, 0.126),
+      new THREE.Vector3(0.052, -0.015, 0.126),
+      new THREE.Vector3(0.085, -0.085, 0.105),
+    ]);
+    const gill = new THREE.Mesh(new THREE.TubeGeometry(gillCurve, 12, 0.008, 5, false), stripeMat);
+
+    // Thin, tapered pectoral fins, animated from their shoulder pivots.
+    const pectShape = new THREE.Shape();
+    pectShape.moveTo(0.035, 0.035);
+    pectShape.quadraticCurveTo(-0.005, -0.055, -0.17, -0.16);
+    pectShape.quadraticCurveTo(-0.115, -0.015, 0.035, 0.035);
+    const pectGeo = new THREE.ShapeGeometry(pectShape, 10);
     const lFinPivot = new THREE.Group();
-    lFinPivot.position.set(0.04, -0.02, 0.11);
+    lFinPivot.position.set(0.025, -0.005, 0.115);
     const lFin = new THREE.Mesh(pectGeo, accMat);
-    lFin.position.set(-0.04, 0, 0.03);
-    lFin.rotation.y = 0.45;
+    lFin.material.side = THREE.DoubleSide;
     lFinPivot.add(lFin);
     finL = lFinPivot;
 
     const rFinPivot = new THREE.Group();
-    rFinPivot.position.set(0.04, -0.02, -0.11);
+    rFinPivot.position.set(0.025, -0.005, -0.115);
     const rFin = new THREE.Mesh(pectGeo, accMat);
-    rFin.position.set(-0.04, 0, -0.03);
-    rFin.rotation.y = -0.45;
+    rFin.material = accMat.clone();
+    rFin.material.side = THREE.DoubleSide;
+    rFin.rotation.y = Math.PI;
     rFinPivot.add(rFin);
     finR = rFinPivot;
 
-    // Articulated Flowing Caudal Tail
+    // Forked caudal fin with two tapered lobes, driven by a single tail pivot.
     const tailGroup = new THREE.Group();
-    tailGroup.position.set(-0.22, 0, 0);
-    const tailGeo = new THREE.SphereGeometry(fishId === 'betta' ? 0.155 : 0.115, 14, 12);
-    tailGeo.scale(1.35, 1.1, 0.24);
-    const tailFin = new THREE.Mesh(tailGeo, accMat);
-    tailFin.position.x = -0.08;
+    tailGroup.position.set(-0.285, 0, 0);
+    const tailShape = new THREE.Shape();
+    tailShape.moveTo(0.025, 0);
+    tailShape.quadraticCurveTo(-0.07, 0.105, -0.255, 0.19);
+    tailShape.quadraticCurveTo(-0.215, 0.055, -0.17, 0);
+    tailShape.quadraticCurveTo(-0.215, -0.055, -0.255, -0.19);
+    tailShape.quadraticCurveTo(-0.07, -0.105, 0.025, 0);
+    const tailFin = new THREE.Mesh(new THREE.ShapeGeometry(tailShape, 16), accMat);
+    tailFin.material.side = THREE.DoubleSide;
     tailGroup.add(tailFin);
 
     // Glossy eyes with white catchlight
     const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 12), eyeMat);
-    eyeL.position.set(0.16, 0.042, 0.085);
+    eyeL.position.set(0.225, 0.042, 0.085);
     const hlL = new THREE.Mesh(new THREE.SphereGeometry(0.011, 8, 8), catchlightMat);
     hlL.position.set(0.01, 0.01, 0.022);
     eyeL.add(hlL);
     const eyeR = eyeL.clone();
-    eyeR.position.z = -0.085;
+    eyeR.position.set(0.225, 0.042, -0.085);
 
-    g.add(body, belly, dorsal, lFinPivot, rFinPivot, tailGroup, eyeL, eyeR);
+    g.add(body, belly, dorsal, stripe, gill, lFinPivot, rFinPivot, tailGroup, eyeL, eyeR);
     tailObj = tailGroup;
   }
 
