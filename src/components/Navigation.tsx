@@ -65,23 +65,23 @@ export const Navigation: React.FC = () => {
   ];
 
   const allDrawerItems: { id: ExtendedView; label: string; icon: React.ElementType; color: string; badge?: string }[] = [
-    { id: 'inicio', label: 'Página Inicial', icon: Home, color: 'text-pink-400' },
-    { id: 'conversas', label: 'Chat do Casal', icon: MessageCircle, color: 'text-pink-300', badge: unreadChatCount > 0 ? String(unreadChatCount) : undefined },
+    { id: 'inicio', label: 'Início', icon: Home, color: 'text-pink-400' },
+    { id: 'conversas', label: 'Chat', icon: MessageCircle, color: 'text-pink-300', badge: unreadChatCount > 0 ? String(unreadChatCount) : undefined },
     { id: 'casa', label: 'Casa', icon: DreamHouseCrestIcon, color: 'text-pink-300' },
     { id: 'aquario', label: 'Aquário', icon: AquariumCoralIcon, color: 'text-cyan-300' },
-    { id: 'missoes', label: 'Missões & Sazonal', icon: MissionCompassIcon, color: 'text-amber-300' },
-    { id: 'cartas', label: 'Cartas de Amor', icon: Mail, color: 'text-pink-400' },
-    { id: 'fotos', label: 'Galeria de Fotos', icon: ImageIcon, color: 'text-purple-400' },
-    { id: 'musica', label: 'Nosso Player de Música', icon: Music, color: 'text-indigo-400' },
-    { id: 'arvore', label: 'Árvore do Amor', icon: Trees, color: 'text-teal-300' },
-    { id: 'conquistas', label: 'Conquistas & Selos', icon: Trophy, color: 'text-amber-300' },
-    { id: 'metas', label: 'Sonhos & Lista de Desejos', icon: Target, color: 'text-pink-300' },
-    { id: 'calendario', label: 'Calendário do Casal', icon: CalendarDays, color: 'text-pink-300' },
-    { id: 'jogos', label: '25 Jogos do Casal', icon: Gamepad2, color: 'text-indigo-400' },
-    { id: 'gatinho', label: `Mascote (${petDisplayName})`, icon: Cat, color: 'text-pink-300', badge: kitten.hunger < 35 ? 'Fome!' : undefined },
-    { id: 'loja', label: 'Loja do Amor', icon: ShoppingBag, color: 'text-rose-400', badge: `${coins}` },
-    { id: 'frases', label: '50+ Frases Românticas', icon: BookHeart, color: 'text-pink-300' },
-    { id: 'config', label: 'Configurações (Criador)', icon: Settings, color: 'text-slate-300' },
+    { id: 'missoes', label: 'Missões', icon: MissionCompassIcon, color: 'text-amber-300' },
+    { id: 'cartas', label: 'Cartas', icon: Mail, color: 'text-pink-400' },
+    { id: 'fotos', label: 'Fotos', icon: ImageIcon, color: 'text-purple-400' },
+    { id: 'musica', label: 'Música', icon: Music, color: 'text-indigo-400' },
+    { id: 'arvore', label: 'Árvore', icon: Trees, color: 'text-teal-300' },
+    { id: 'conquistas', label: 'Selos', icon: Trophy, color: 'text-amber-300' },
+    { id: 'metas', label: 'Desejos', icon: Target, color: 'text-pink-300' },
+    { id: 'calendario', label: 'Agenda', icon: CalendarDays, color: 'text-pink-300' },
+    { id: 'jogos', label: 'Jogos', icon: Gamepad2, color: 'text-indigo-400' },
+    { id: 'gatinho', label: 'Pet', icon: Cat, color: 'text-pink-300', badge: kitten.hunger < 35 ? 'Fome!' : undefined },
+    { id: 'loja', label: 'Loja', icon: ShoppingBag, color: 'text-rose-400', badge: `${coins}` },
+    { id: 'frases', label: 'Frases', icon: BookHeart, color: 'text-pink-300' },
+    { id: 'config', label: 'Ajustes', icon: Settings, color: 'text-slate-300' },
   ];
 
   const drawerItems = allDrawerItems.filter((item) => item.id !== 'config' || !isSpectator);
@@ -253,7 +253,7 @@ export const Navigation: React.FC = () => {
                     >
                       <div className="flex items-center gap-3">
                         <Icon className={`w-5 h-5 ${item.color}`} />
-                        <span className="text-sm font-medium">{item.label}</span>
+                        <span className="font-romantic text-[15px] tracking-wide font-semibold">{item.label}</span>
                       </div>
 
                       <div className="flex items-center gap-1.5">
