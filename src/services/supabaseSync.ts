@@ -870,7 +870,7 @@ export async function uploadPetModel(file: File): Promise<string> {
   const { error } = await supabase.storage.from('pet-assets').upload(path, file, {
     contentType: 'model/gltf-binary',
     cacheControl: '31536000',
-    upsert: true,
+    upsert: false,
   });
   if (error) throw error;
   return supabase.storage.from('pet-assets').getPublicUrl(path).data.publicUrl;
