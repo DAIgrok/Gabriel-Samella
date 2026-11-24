@@ -32,6 +32,9 @@ const COLOR_PRESETS = [
   '#fb7185',
 ];
 
+// Legacy catalog entries stay in saved data for compatibility, but are no longer sold or shown.
+const HIDDEN_STORE_CATEGORIES = new Set(['sazonal', 'molduras', 'temas', 'efeitos']);
+
 export const StoreView: React.FC = () => {
   const {
     storeItems,
@@ -63,15 +66,12 @@ export const StoreView: React.FC = () => {
 
   const categories = [
     { id: 'todos', label: 'Tudo', icon: 'sparkles' },
-    { id: 'casa', label: 'Casa 3D', icon: 'sofa' },
-    { id: 'pets', label: 'Pets 3D', icon: 'paw' },
+    { id: 'casa', label: 'Casa', icon: 'sofa' },
+    { id: 'pets', label: 'Pets', icon: 'paw' },
     { id: 'roupas', label: 'Roupas & Looks', icon: 'shirt' },
     { id: 'vales', label: 'Vales do Amor', icon: 'gift' },
-    { id: 'aquario', label: 'Aquário 3D', icon: 'aqua' },
+    { id: 'aquario', label: 'Aquário', icon: 'aqua' },
     { id: 'arvore', label: 'Árvore do Amor', icon: 'tree' },
-    { id: 'sazonal', label: 'Sazonal', icon: 'snow' },
-    { id: 'molduras', label: 'Molduras', icon: 'camera' },
-    { id: 'temas', label: 'Temas & Efeitos', icon: 'moon' },
   ];
 
   const getActiveItemColor = (item: StoreItem): string => {
@@ -98,6 +98,7 @@ export const StoreView: React.FC = () => {
   const filteredItems = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return storeItems.filter((item) => {
+      if (HIDDEN_STORE_CATEGORIES.has(item.category)) return false;
       if (q) {
         const hay = `${item.title} ${item.description} ${item.category} ${item.houseCategory || ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
@@ -111,9 +112,6 @@ export const StoreView: React.FC = () => {
       }
       if (selectedCategory === 'roupas') {
         return item.category === 'roupas' || item.category === 'acessorios' || item.category === 'gatinho';
-      }
-      if (selectedCategory === 'temas') {
-        return item.category === 'temas' || item.category === 'efeitos';
       }
       return item.category === selectedCategory;
     });
