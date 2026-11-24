@@ -40,6 +40,7 @@ import { PetCanvas3D, PetDanceMove } from '../3d/PetCanvas3D';
 import { PET_SPECIES_CATALOG, resolvePetGlbUrl } from '../../data/initialData';
 import { getPetDialogue } from '../../data/petPersonalities';
 import { PetType } from '../../types';
+import { uploadPetModel } from '../../services/supabaseSync';
 import { DiamondGemIcon, VectorGlyphIcon } from '../icons/CustomIcons';
 import {
   formatPaintPartLabel,
