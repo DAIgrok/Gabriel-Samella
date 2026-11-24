@@ -775,7 +775,7 @@ export async function uploadChatMedia(blob: Blob, kind: 'image' | 'audio'): Prom
     throw new Error('Armazenamento do chat indisponível.');
   }
 
-  const mime = blob.type || (kind === 'image' ? 'image/jpeg' : 'audio/webm');
+  const mime = (blob.type || (kind === 'image' ? 'image/jpeg' : 'audio/webm')).split(';')[0].trim();
   const extension =
     mime.includes('png') ? 'png' :
     mime.includes('webp') ? 'webp' :
