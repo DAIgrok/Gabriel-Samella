@@ -2097,6 +2097,24 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
       slot.currentActionName = nextName;
     };
 
+    const refreshPetObstacleRects = () => {
+      petObstacleRects = [];
+      furnitureRootMap.forEach(({ group }, furnitureId) => {
+        // Rugs are walkable surfaces and the pet bowl is an intentional destination.
+        if (furnitureId === 'house-rug' || furnitureId === 'house-rug-heart' || furnitureId === 'house-pet-bowl') return;
+        group.updateMatrixWorld(true);
+        const bounds = new THREE.Box3().setFromObject(group);
+        if (Number.isFinite(bounds.min.x) && Number.isFinite(bounds.max.x)) {
+          petObstacleRects.push({
+            minX: bounds.min.x - 0.08,
+            maxX: bounds.max.x + 0.08,
+            minZ: bounds.min.z - 0.08,
+            maxZ: bounds.max.z + 0.08,
+          });
+        }
+      });
+    };
+
     let appliedViewMode: 'interior' | 'exterior' | null = null;
     const syncTransformsAndOverlay = () => {
       const nextViewMode = propsRef.current.viewMode || 'interior';
@@ -2132,6 +2150,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
         group.position.set(tr ? tr.x : def.x, baseY, tr ? tr.z : def.z);
         group.rotation.y = tr ? tr.rotY : def.rotY;
       });
+      refreshPetObstacleRects();
 
       if (editActive && selId && furnitureRootMap.has(selId)) {
         const target = furnitureRootMap.get(selId)!;
@@ -2562,6 +2581,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
               }
               tagFurnitureRecursive(glbGroup, fId);
               built.group.add(glbGroup);
+              refreshPetObstacleRects();
             })
             .catch(() => {
               // Keep Cozy procedural furniture on invalid GLB URL
@@ -2571,19 +2591,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
 
       // Cache de colisões do mobiliário: os pets contornam móveis em vez de atravessá-los.
       syncTransformsAndOverlay();
-      petObstacleRects = [];
-      furnitureRootMap.forEach(({ group }) => {
-        group.updateMatrixWorld(true);
-        const bounds = new THREE.Box3().setFromObject(group);
-        if (Number.isFinite(bounds.min.x) && Number.isFinite(bounds.max.x)) {
-          petObstacleRects.push({
-            minX: bounds.min.x - 0.08,
-            maxX: bounds.max.x + 0.08,
-            minZ: bounds.min.z - 0.08,
-            maxZ: bounds.max.z + 0.08,
-          });
-        }
-      });
+      refreshPetObstacleRects();
 
       // Mascotes vivos andando livremente pelo cômodo
       const deadSet = new Set(dPets || []);
@@ -2774,6 +2782,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
 
         entry.group.position.x = snappedX;
         entry.group.position.z = snappedZ;
+        refreshPetObstacleRects();
         selectionRing.position.set(snappedX, 0.016, snappedZ);
         selectionRing.visible = true;
       }
