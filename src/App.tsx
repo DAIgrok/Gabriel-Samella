@@ -54,18 +54,47 @@ const MainAppContent: React.FC = () => {
   const lastExtendedView = React.useRef(extendedView);
   const navigatingBack = React.useRef(false);
 
+  // Mantém o histórico de telas dentro do app sem acrescentar hashes ou IDs à URL.
+  React.useEffect(() => {
+    window.history.replaceState(
+      { ...(window.history.state || {}), nmApp: true, nmView: extendedView },
+      '',
+      window.location.pathname + window.location.search
+    );
+  }, []);
+
   React.useEffect(() => {
     if (lastExtendedView.current !== extendedView) {
       if (navigatingBack.current) {
         navigatingBack.current = false;
       } else {
         navigationHistory.current.push(lastExtendedView.current);
+        window.history.pushState(
+          { nmApp: true, nmView: extendedView },
+          '',
+          window.location.pathname + window.location.search
+        );
       }
       lastExtendedView.current = extendedView;
     }
   }, [extendedView]);
 
+  React.useEffect(() => {
+    const handleBrowserBack = (event: PopStateEvent) => {
+      const previousView = event.state?.nmApp ? event.state.nmView : 'inicio';
+      navigationHistory.current.pop();
+      navigatingBack.current = true;
+      setExtendedView(previousView || 'inicio');
+    };
+    window.addEventListener('popstate', handleBrowserBack);
+    return () => window.removeEventListener('popstate', handleBrowserBack);
+  }, [setExtendedView]);
+
   const handleBackNavigation = () => {
+    if (navigationHistory.current.length > 0 && window.history.state?.nmApp) {
+      window.history.back();
+      return;
+    }
     const previousView = navigationHistory.current.pop();
     navigatingBack.current = true;
     setExtendedView(previousView || 'inicio');
