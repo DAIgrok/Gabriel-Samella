@@ -860,3 +860,18 @@ export function subscribeCoupleCalls(
     },
   };
 }
+
+export async function uploadPetModel(file: File): Promise<string> {
+  if (!supabase || !isSupabaseConfigured) throw new Error('Armazenamento do mascote indisponível.');
+  if (!file.name.toLowerCase().endsWith('.glb') || file.size > 5 * 1024 * 1024) {
+    throw new Error('Escolha um arquivo GLB de até 5 MB.');
+  }
+  const path = 'pets/cat__toon_animated.glb';
+  const { error } = await supabase.storage.from('pet-assets').upload(path, file, {
+    contentType: 'model/gltf-binary',
+    cacheControl: '31536000',
+    upsert: false,
+  });
+  if (error) throw error;
+  return supabase.storage.from('pet-assets').getPublicUrl(path).data.publicUrl;
+}
