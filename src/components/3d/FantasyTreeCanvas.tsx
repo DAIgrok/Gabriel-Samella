@@ -620,21 +620,21 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
           #include <emissivemap_fragment>
           float veinWave = sin(vWorldBarkPos.y * 7.5 - uTime * 1.9 + sin(vWorldBarkPos.x * 12.0) * 1.8);
           float veinMask = smoothstep(0.86, 0.99, veinWave);
-          totalEmissiveRadiance += vec3(0.94, 0.45, 0.76) * veinMask * 0.65;
+          totalEmissiveRadiance += vec3(0.82, 0.68, 0.38) * veinMask * 0.42;
           `
         );
       };
 
       const isCelestialMax = curLevel >= 10 && !sakura;
-      const showSakura = sakura || curLevel >= 5;
+      const showSakura = sakura;
 
       const paletteHex = sakura || showSakura
         ? [0xf472b6, 0xfbcfe8, 0xf9a8d4, 0xe879f9, 0xfdf2f8]
         : isCelestialMax
-        ? [0x5eead4, 0x7dd3fc, 0xc4b5fd, 0x6ee7b7]
-        : [0x4ade80, 0x86efac, 0x34d399, 0xf9a8d4];
+        ? [0x60a5fa, 0x93c5fd, 0xa78bfa, 0xd6b56d]
+        : [0x3f7d42, 0x5f944e, 0x82a85f, 0xb4a66a];
 
-      const canopyEmissiveHex = isCelestialMax ? 0x0f766e : showSakura ? 0xbe185d : 0x047857;
+      const canopyEmissiveHex = isCelestialMax ? 0x5141a5 : showSakura ? 0xbe185d : 0x8b6b32;
       const canopyEmissiveStr = showSakura || isCelestialMax ? 0.34 : 0.22;
 
       if (curLevel <= 1) {
