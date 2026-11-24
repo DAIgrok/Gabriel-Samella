@@ -380,6 +380,7 @@ interface AppContextType {
   setHouseCustomWallHex: (hex: string) => void;
   setHouseCustomFloorHex: (hex: string) => void;
   setHouseCustomCeilingHex: (hex: string) => void;
+  setHouseRoofStyle: (style: 'flat' | 'gable') => void;
   setHouseDimensions: (width: number, depth: number, wallHeight: number) => void;
   setHouseCustomWalls: (walls: HouseConstructionWall[]) => void;
   setHouseFurnitureColor: (furnitureId: string, hex: string) => void;
@@ -3674,6 +3675,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setDreamHouse((prev) => ({ ...prev, customCeilingHex: hex }));
   };
 
+  const setHouseRoofStyle = (style: 'flat' | 'gable') => {
+    if (guardSpectator()) return;
+    soundEngine.playHeartPop();
+    setDreamHouse((prev) => ({ ...prev, roofStyle: style }));
+  };
+
   const setHouseFurnitureColor = (furnitureId: string, hex: string) => {
     if (guardSpectator()) return;
     soundEngine.playHeartPop();
@@ -4177,6 +4184,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setHouseCustomWallHex,
         setHouseCustomFloorHex,
         setHouseCustomCeilingHex,
+        setHouseRoofStyle,
         setHouseDimensions,
         setHouseCustomWalls,
         setHouseFurnitureColor,
