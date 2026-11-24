@@ -76,6 +76,7 @@ export const DreamHouseView: React.FC = () => {
     setHouseCustomWallHex,
     setHouseCustomFloorHex,
     setHouseCustomCeilingHex,
+    setHouseRoofStyle,
     setHouseDimensions,
     setHouseCustomWalls,
     setHouseFurnitureColor,
@@ -97,7 +98,6 @@ export const DreamHouseView: React.FC = () => {
   const stageRef = useRef<HTMLDivElement>(null);
   const [dockTab, setDockTab] = useState<'moveis' | 'paredes' | 'pisos' | 'telhados' | 'construcao'>('construcao');
   const [showCeiling, setShowCeiling] = useState(false);
-  const [roofStyle, setRoofStyle] = useState<'flat' | 'gable'>('gable');
   const [catFilter, setCatFilter] = useState<'all' | HouseFurnitureCategory>('all');
   const [skyMode, setSkyMode] = useState<DreamHouseSkyMode>('auto');
   const [viewMode, setViewMode] = useState<'interior' | 'exterior'>('interior');
@@ -230,7 +230,7 @@ export const DreamHouseView: React.FC = () => {
             wallHeight={dreamHouse.wallHeight ?? 2.75}
             customWalls={dreamHouse.customWalls || []}
             showCeiling={showCeiling}
-            roofStyle={roofStyle}
+            roofStyle={dreamHouse.roofStyle || 'gable'}
             furnitureColors={dreamHouse.customColors}
             skyMode={skyMode}
             viewMode={viewMode}
@@ -877,8 +877,8 @@ export const DreamHouseView: React.FC = () => {
                     <button
                       type="button"
                       disabled={isSpectator}
-                      onClick={() => setRoofStyle('gable')}
-                      className={`min-h-[78px] rounded-2xl border p-3 flex flex-col items-center justify-center gap-2 transition disabled:opacity-40 ${roofStyle === 'gable' ? 'bg-pink-500/20 border-pink-300 text-white' : 'bg-purple-950/55 border-purple-400/20 text-purple-200'}`}
+                      onClick={() => setHouseRoofStyle('gable')}
+                      className={`min-h-[78px] rounded-2xl border p-3 flex flex-col items-center justify-center gap-2 transition disabled:opacity-40 ${(dreamHouse.roofStyle || 'gable') === 'gable' ? 'bg-pink-500/20 border-pink-300 text-white' : 'bg-purple-950/55 border-purple-400/20 text-purple-200'}`}
                     >
                       <Triangle className="w-6 h-6" />
                       <span className="text-xs font-bold">Duas águas</span>
@@ -886,8 +886,8 @@ export const DreamHouseView: React.FC = () => {
                     <button
                       type="button"
                       disabled={isSpectator}
-                      onClick={() => setRoofStyle('flat')}
-                      className={`min-h-[78px] rounded-2xl border p-3 flex flex-col items-center justify-center gap-2 transition disabled:opacity-40 ${roofStyle === 'flat' ? 'bg-pink-500/20 border-pink-300 text-white' : 'bg-purple-950/55 border-purple-400/20 text-purple-200'}`}
+                      onClick={() => setHouseRoofStyle('flat')}
+                      className={`min-h-[78px] rounded-2xl border p-3 flex flex-col items-center justify-center gap-2 transition disabled:opacity-40 ${(dreamHouse.roofStyle || 'gable') === 'flat' ? 'bg-pink-500/20 border-pink-300 text-white' : 'bg-purple-950/55 border-purple-400/20 text-purple-200'}`}
                     >
                       <Square className="w-6 h-6" />
                       <span className="text-xs font-bold">Plano</span>
