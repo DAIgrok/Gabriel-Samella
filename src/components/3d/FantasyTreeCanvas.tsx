@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { SeasonalEventId } from '../../types';
+import type { SeasonalEventId } from '../../types';
 import {
   addCozyThreePointLights,
   detectSoftwareWebGL,
