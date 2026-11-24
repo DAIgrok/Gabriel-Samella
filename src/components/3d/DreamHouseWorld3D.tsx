@@ -149,6 +149,8 @@ export const DreamHouseWorld3D: React.FC<DreamHouseWorld3DProps> = ({
       return v - Math.floor(v);
     };
 
+    const half = propsRef.current.plotSize / 2;
+
     // Curved footpath and garden border around the player's plot.
     const pathMat = new THREE.MeshStandardMaterial({ color: 0x9b927e, roughness: 0.98 });
     const path = new THREE.Mesh(new THREE.RingGeometry(half + 0.65, half + 1.45, 4, 1), pathMat);
@@ -272,7 +274,6 @@ export const DreamHouseWorld3D: React.FC<DreamHouseWorld3DProps> = ({
     });
     world.add(grid);
 
-    const half = propsRef.current.plotSize / 2;
     const borderMaterial = new THREE.MeshStandardMaterial({ color: 0x9b8257, roughness: 0.78 });
     [
       { x: 0, z: -half, sx: propsRef.current.plotSize, sz: 0.12 },
