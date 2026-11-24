@@ -391,6 +391,15 @@ export interface HouseFurnitureTransform {
   rotY: number;
 }
 
+export interface HouseWallOpening {
+  id: string;
+  kind: 'door' | 'window';
+  offset: number;
+  width: number;
+  height: number;
+  sillHeight?: number;
+}
+
 export interface HouseConstructionWall {
   id: string;
   roomId?: HouseRoomId;
@@ -398,6 +407,7 @@ export interface HouseConstructionWall {
   end: { x: number; z: number };
   height: number;
   thickness: number;
+  openings?: HouseWallOpening[];
 }
 
 export interface DreamHouseState {
