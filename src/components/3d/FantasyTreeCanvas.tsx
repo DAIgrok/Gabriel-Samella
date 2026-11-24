@@ -1011,6 +1011,9 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
             const mesh = object as THREE.Mesh;
             mesh.castShadow = true;
             mesh.receiveShadow = true;
+            // GLTF scene clones share geometry by default; own a copy so rebuilding
+            // the tree can dispose the previous stage without invalidating the source.
+            mesh.geometry = mesh.geometry.clone();
 
             // Keep the generated model's texture maps, but remove artificial
             // emission and metallic shine so bark and foliage read naturally.
@@ -1335,6 +1338,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
 
       disposeObject3D(terrainGroup);
       disposeObject3D(treeGroup);
+      if (loadedTreeModel) disposeObject3D(loadedTreeModel);
       fireflyGeo.dispose();
       fireflyMat.dispose();
       petalGeo.dispose();
