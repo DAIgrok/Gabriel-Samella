@@ -2387,7 +2387,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
       }
 
       // User-built wall segments are persisted and rendered as solid 3D geometry.
-      (savedCustomWalls || []).forEach((wall) => {
+      (savedCustomWalls || []).filter((wall) => !wall.roomId || wall.roomId === room).forEach((wall) => {
         try {
           const customWall = createHouseWallMesh(
             {
