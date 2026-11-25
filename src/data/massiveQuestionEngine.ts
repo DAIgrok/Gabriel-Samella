@@ -181,6 +181,48 @@ const QUIZ_MATRIX: QuizTemplateSeed[] = [
       },
     ],
   },
+  {
+    cat: 'Gostos do Gabriel & Combos',
+    contexts: [
+      'Num dia chuvoso e friozinho jogando em casa',
+      'Planejando o lanche da tarde com a Samella',
+      'Durante uma pausa entre partidas de videogame',
+      'Se o Gabriel escolher tudo do jeitinho dele',
+      'Em uma noite especial de verão com chuva lá fora',
+    ],
+    prompts: [
+      {
+        q: 'qual trio de comidas doces e cookies conquista o Gabriel na hora?',
+        right: 'Bolo de chocolate, brigadeiro, paçoca e cookies',
+        wrongs: ['Beijinho com jiló e barra de cereal', 'Suspiro salgado com ricota', 'Gelatina sem açúcar e pepino'],
+        explain: 'Gabriel ama bolo de chocolate, brigadeiro (no lugar de beijinho), paçoca e cookies!',
+      },
+      {
+        q: 'qual prato salgado e massa aparecem no topo da lista do Gabriel?',
+        right: 'Pizza bem recheada e macarrão caprichado',
+        wrongs: ['Sopa rala de abobrinha sem sal', 'Salada pura de acelga', 'Sanduíche de pepino cru'],
+        explain: 'Macarrão e pizza são clássicos irresistíveis favoritos dele!',
+      },
+      {
+        q: 'qual miojo ou bebida achocolatada ele prepara rapidinho na temperatura morna perfeita?',
+        right: 'Cup Noodles de Cheddar ou Nissin Galinha Caipira acompanhado de Toddy',
+        wrongs: ['Miojo doce com Nescau fervendo', 'Café amargo gelado com farinha', 'Sopa de legumes com água tônica'],
+        explain: 'Cup Noodles Cheddar, Nissin Galinha Caipira e Toddy (sempre morno!) formam o combo oficial.',
+      },
+      {
+        q: 'quais jogos entram na rotação pesada de diversão do Gabriel?',
+        right: 'Roblox, Fisch, Free Fire, GTA 5, GTA 6, Far Cry e LEGO',
+        wrongs: ['Apenas Paciência Spider de 1998', 'Campo Minado em preto e branco', 'Dominó solo offline'],
+        explain: 'Pescar no Fisch no Roblox, jogar Free Fire, LEGO, Far Cry e o hype de GTA 5 & GTA 6!',
+      },
+      {
+        q: 'qual combinação de clima e estação define o gosto único do Gabriel?',
+        right: 'Prefere frio e clima chuvoso, ama o verão e gosta das coisas mornas',
+        wrongs: ['Ama neve polar congelando tudo no outono', 'Só gosta de calor seco acima de 45 graus', 'Odeia chuva e prefere água fervendo'],
+        explain: 'Mistura autêntica do Gabriel: frio + chuvoso + verão + temperatura morna!',
+      },
+    ],
+  },
 ];
 
 // Additional dynamic word-meaning / logic quiz permutations for vast non-repeating quiz sets
@@ -273,9 +315,23 @@ export function getMassiveQuizUniverse(customQuiz: QuizQuestion[] = []): QuizQue
 export function drawQuizDeck(count: number, customQuiz: QuizQuestion[] = []): QuizQuestion[] {
   const pool = getMassiveQuizUniverse(customQuiz);
   const customPart = customQuiz.slice(0, Math.min(3, customQuiz.length));
-  const remaining = Math.max(1, count - customPart.length);
-  const drawn = pickNonRepeating('quiz', pool, remaining, (q) => q.id);
-  return [...customPart, ...drawn].slice(0, count);
+  const gabrielFavorites = QUIZ_QUESTIONS_BASE.filter(
+    (q) =>
+      q.category === 'Gostos do Gabriel' ||
+      q.category === 'Jogos do Gabriel' ||
+      q.category === 'Combos do Gabriel' ||
+      q.category === 'Jogos & Gostos'
+  );
+  const favPick = pickNonRepeating('quiz-gabriel-favs', gabrielFavorites, Math.min(3, count), (q) => q.id);
+  const usedIds = new Set([...customPart.map((q) => q.id), ...favPick.map((q) => q.id)]);
+  const remaining = Math.max(1, count - customPart.length - favPick.length);
+  const drawn = pickNonRepeating(
+    'quiz',
+    pool.filter((q) => !usedIds.has(q.id)),
+    remaining,
+    (q) => q.id
+  );
+  return [...customPart, ...favPick, ...drawn].sort(() => Math.random() - 0.5).slice(0, count);
 }
 
 // =========================================================================

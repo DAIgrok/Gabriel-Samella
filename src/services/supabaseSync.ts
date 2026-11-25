@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { COUPLE_WORLD_ID, CloudWorldPayload, SaveCloudInput } from './cloudSync';
-import { ChatMessage, MemoryPhoto, Song } from '../types';
+import { ChatMessage, CoupleConfig, MemoryPhoto, Song } from '../types';
 
 export const SUPABASE_WORLD_TABLE = 'couple_worlds';
 export const SUPABASE_MESSAGES_TABLE = 'couple_messages';
@@ -357,8 +357,27 @@ export function subscribeSupabaseWorld(
   };
 }
 
-export async function clearSupabaseWorld(): Promise<void> {
+export async function clearSupabaseWorld(
+  preservedCustomGlbModels?: CoupleConfig['customGlbModels']
+): Promise<void> {
   if (!supabase || !isSupabaseConfigured) return;
+
+  let customGlbToKeep = preservedCustomGlbModels;
+  if (!customGlbToKeep) {
+    try {
+      const { data } = await supabase
+        .from(SUPABASE_WORLD_TABLE)
+        .select('full_state')
+        .eq('world_id', COUPLE_WORLD_ID)
+        .maybeSingle();
+      const existingFull = (data as { full_state?: { config?: CoupleConfig } } | null)?.full_state;
+      if (existingFull?.config?.customGlbModels) {
+        customGlbToKeep = existingFull.config.customGlbModels;
+      }
+    } catch {
+      // ignore read failure
+    }
+  }
 
   await supabase.from(SUPABASE_MESSAGES_TABLE).delete().eq('world_id', COUPLE_WORLD_ID);
 
@@ -379,7 +398,13 @@ export async function clearSupabaseWorld(): Promise<void> {
         dream_house_state: {},
         purchased_store_ids: [],
         store_items_state: {},
-        full_state: {},
+        full_state: customGlbToKeep
+          ? {
+              config: {
+                customGlbModels: customGlbToKeep,
+              },
+            }
+          : {},
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'world_id' }

@@ -330,16 +330,16 @@ function getPalette(petType: PetType, isSleeping: boolean): SpeciesPalette {
     case 'cat':
     default:
       return sleepTint({
-        light: '#fff1f7',
-        mid: '#fbcfe8',
-        dark: '#ec4899',
-        stroke: '#be185d',
-        earOuter: '#f472b6',
-        earInner: '#ffe4e6',
-        belly: '#ffffff',
-        cheeks: '#fb7185',
-        nose: '#e11d48',
-        glow: 'rgba(244, 114, 182, 0.45)',
+        light: '#fde8c8',
+        mid: '#e69f58',
+        dark: '#b46224',
+        stroke: '#78350f',
+        earOuter: '#c26e2a',
+        earInner: '#fbcfe8',
+        belly: '#fff9f2',
+        cheeks: '#fda4af',
+        nose: '#f472b6',
+        glow: 'rgba(230, 159, 88, 0.42)',
       });
   }
 }
@@ -375,7 +375,7 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
   const colors = useMemo(() => {
     const base = getPalette(petType, isSleeping);
     const customHex = kitten.petColors?.[petType];
-    const headBase = partColors?.head || customHex;
+    const headBase = partColors?.head || partColors?.body || customHex;
     const bodyBase = partColors?.body || customHex;
     return {
       ...base,
@@ -446,11 +446,14 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
 
   const eyeFill = petType === 'panda' ? '#ffffff' : '#2e1065';
   const irisColor =
-    petType === 'shark' || petType === 'dolphin' || petType === 'whale'
+    partColors?.eyes ||
+    (petType === 'cat'
+      ? '#10b981'
+      : petType === 'shark' || petType === 'dolphin' || petType === 'whale'
       ? '#0284c7'
       : petType === 'snake' || petType === 'frog' || petType === 'turtle'
       ? '#16a34a'
-      : '#6d28d9';
+      : '#6d28d9');
 
   return (
     <div className="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center select-none">
@@ -928,9 +931,9 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
             />
           )}
 
-          {/* Tiger Forehead Stripes */}
-          {petType === 'tiger' && (
-            <g stroke="#7c2d12" strokeWidth="3.5" strokeLinecap="round" className="pointer-events-none">
+          {/* Cat / Tiger Forehead Tabby Stripes */}
+          {(petType === 'cat' || petType === 'tiger') && (
+            <g stroke={petType === 'cat' ? '#9a4a12' : '#7c2d12'} strokeWidth="3.5" strokeLinecap="round" opacity={petType === 'cat' ? 0.65 : 1} className="pointer-events-none">
               <path d="M120,56 L120,69" />
               <path d="M108,60 L112,71" />
               <path d="M132,60 L128,71" />
@@ -958,7 +961,10 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
             </g>
           ) : isEating || isPlayMode ? (
             // Happy shiny Pou eyes with stars
-            <g className="pointer-events-none">
+            <g
+              className={paintMode ? 'cursor-pointer' : 'pointer-events-none'}
+              onClick={paintMode ? (e) => handleSvgPartClick(e, 'eyes', 'head') : undefined}
+            >
               <circle cx="94" cy="100" r="13.5" fill="#ffffff" stroke={colors.stroke} strokeWidth="1.5" />
               <circle cx="94" cy="101" r="9.5" fill={irisColor} />
               <circle cx="94" cy="101" r="6" fill="#0f0720" />
@@ -972,7 +978,10 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
               <circle cx="150" cy="105" r="1.6" fill="#ffffff" />
             </g>
           ) : (
-            <g className="pointer-events-none">
+            <g
+              className={paintMode ? 'cursor-pointer' : 'pointer-events-none'}
+              onClick={paintMode ? (e) => handleSvgPartClick(e, 'eyes', 'head') : undefined}
+            >
               {/* Left Eye */}
               <ellipse cx="94" cy="102" rx="13" ry={isTired ? 8 : 13.5} fill="#ffffff" stroke={colors.stroke} strokeWidth="1.5" />
               <circle cx="95" cy="103" r={isTired ? 6 : 9} fill={irisColor} />
@@ -1089,9 +1098,9 @@ export const PetCharacter: React.FC<PetCharacterProps> = ({
               }}
               className="cursor-pointer"
             >
-              {/* Soft muzzle pad for dogs/bears/lions/cats */}
-              {(petType === 'dog' || petType === 'bear' || petType === 'lion' || petType === 'tiger' || petType === 'bunny') && (
-                <ellipse cx="120" cy="125" rx="22" ry="14" fill="#ffffff" fillOpacity="0.72" />
+              {/* Soft muzzle pad for cats/dogs/bears/lions/bunnies */}
+              {(petType === 'cat' || petType === 'dog' || petType === 'bear' || petType === 'lion' || petType === 'tiger' || petType === 'bunny') && (
+                <ellipse cx="120" cy="125" rx="22" ry="14" fill="#fffaf3" fillOpacity="0.82" />
               )}
               <path d="M112,113 Q120,111 128,113 Q125,123 120,124 Q115,123 112,113 Z" fill={colors.nose} />
             </g>

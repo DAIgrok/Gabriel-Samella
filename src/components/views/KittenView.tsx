@@ -30,19 +30,17 @@ import {
   Lock,
   Home,
 } from 'lucide-react';
-import {
-  useApp,
-  getCooldownRemaining,
-  formatCooldownMs,
-} from '../../context/AppContext';
+import { useApp } from '../../context/AppContext';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { soundEngine } from '../../utils/audioSynth';
 import { PetCharacter } from '../pets/PetCharacter';
 import { ModelViewerPetStage } from '../pets/ModelViewerPetStage';
 import { PetPaintBucketButton } from '../pets/PetPaintBucketButton';
+import { PetFoodTable } from '../pets/PetFoodTable';
 import { PetCanvas3D, PetDanceMove } from '../3d/PetCanvas3D';
 import { PET_SPECIES_CATALOG, resolvePetGlbUrl } from '../../data/initialData';
 import { getPetDialogue } from '../../data/petPersonalities';
+import type { PetKeyboardFood } from '../../data/petFoodsCatalog';
 import { PetType } from '../../types';
 import { DiamondGemIcon, VectorGlyphIcon } from '../icons/CustomIcons';
 import {
@@ -50,6 +48,13 @@ import {
   type PetActionCueType,
   type PetAnimationCue,
 } from '../../utils/petGlbAnimations';
+import {
+  CatCoatPreset,
+  DEFAULT_CAT_COAT,
+  PET_PAINT_PARTS,
+  PaintableCatPart,
+} from '../../utils/petCoatPainter';
+import { translateGlbClipLabel } from '../../utils/glbAnalyzer';
 
 type PetRoom = 'sala' | 'cozinha' | 'banheiro' | 'quarto';
 
@@ -78,7 +83,7 @@ export const KittenView: React.FC = () => {
     switchPet,
     renamePet,
     setPetColor,
-    setPetPartColor,
+    setPetPartColorsBatch,
     clearPetPartColors,
     setAccessoryColor,
     storeItems,
@@ -97,6 +102,8 @@ export const KittenView: React.FC = () => {
   const [petViewMode, setPetViewMode] = useState<'design' | '3d' | '2d'>('design');
   const [danceMove, setDanceMove] = useState<PetDanceMove>('idle');
   const [actionCue, setActionCue] = useState<PetAnimationCue>({ type: 'idle', tick: 0 });
+  const [detectedGlbClips, setDetectedGlbClips] = useState<string[]>([]);
+  const [requestedGlbClip, setRequestedGlbClip] = useState<{ name: string; tick: number } | null>(null);
   const danceTimerRef = useRef<number | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const [wardrobeSlotFilter, setWardrobeSlotFilter] = useState<
@@ -104,7 +111,8 @@ export const KittenView: React.FC = () => {
   >('all');
 
   const [paintMode, setPaintMode] = useState(false);
-  const [paintHex, setPaintHex] = useState('#f472b6');
+  const [paintHex, setPaintHex] = useState<string>(DEFAULT_CAT_COAT.parts.body);
+  const [activePaintPart, setActivePaintPart] = useState<PaintableCatPart>('body');
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [customNameInput, setCustomNameInput] = useState(kitten.name || '');
@@ -121,20 +129,6 @@ export const KittenView: React.FC = () => {
 
   const [farewellPetTarget, setFarewellPetTarget] = useState<typeof PET_SPECIES_CATALOG[0] | null>(null);
   const [switchPetName, setSwitchPetName] = useState<string>('');
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    const id = window.setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const cdPet = getCooldownRemaining(kitten.cooldowns, 'pet_pet');
-  const cdFeed = getCooldownRemaining(kitten.cooldowns, 'pet_feed');
-  const cdWater = getCooldownRemaining(kitten.cooldowns, 'pet_water');
-  const cdBath = getCooldownRemaining(kitten.cooldowns, 'pet_bath');
-  const cdSleep = getCooldownRemaining(kitten.cooldowns, 'pet_sleep');
-  const cdPlay = getCooldownRemaining(kitten.cooldowns, 'pet_play');
-  const cdDance = getCooldownRemaining(kitten.cooldowns, 'pet_dance');
 
   const currentPetType: PetType = (kitten.petType as PetType) || 'cat';
   const currentSpecies =
@@ -218,11 +212,44 @@ export const KittenView: React.FC = () => {
     setActionCue({ type, tick: Date.now() });
   };
 
-  const handlePaintPart = (partKey: string, label?: string) => {
+  const resolveMappedPaintKey = (partKey: string): string => {
+    if (!partKey.startsWith('glb_')) return partKey;
+    const lower = partKey.toLowerCase();
+    if (/ear|orelha/.test(lower)) return 'ears';
+    if (/paw|foot|feet|pata/.test(lower)) return 'paws';
+    if (/eye|iris|pupil|olho/.test(lower)) return 'eyes';
+    if (/nose|nariz|snout/.test(lower)) return 'nose';
+    return activePaintPart;
+  };
+
+  const applyPaintColorToPart = (partKey: string, hex: string, label?: string) => {
     if (isSpectator || isPetDead) return;
-    setPetPartColor(currentPetType, partKey, paintHex);
-    const niceLabel = label || formatPaintPartLabel(partKey);
+    const targetKey = resolveMappedPaintKey(partKey);
+    const nextParts: Record<string, string> = {
+      ...currentPartColors,
+      [targetKey]: hex,
+    };
+    if (targetKey === 'body') {
+      nextParts.head = hex;
+    } else if (targetKey === 'head') {
+      nextParts.body = hex;
+    }
+    setPetPartColorsBatch(currentPetType, nextParts);
+    const activeMeta = PET_PAINT_PARTS.find((p) => p.key === targetKey);
+    const niceLabel = activeMeta?.label || label || formatPaintPartLabel(targetKey);
     setPetReaction(`${niceLabel} com cor nova! ♡`);
+    triggerHeartExplosion(0.5, 0.45);
+  };
+
+  const handlePaintPart = (partKey: string, label?: string) => {
+    applyPaintColorToPart(partKey, paintHex, label);
+  };
+
+  const handleApplyCoatPreset = (preset: CatCoatPreset) => {
+    if (isSpectator || isPetDead) return;
+    setPetPartColorsBatch(currentPetType, { ...preset.parts }, `Pelagem ${preset.label} aplicada!`);
+    setPaintHex(preset.parts[activePaintPart] || preset.parts.body);
+    setPetReaction(`Pelagem ${preset.label} em ${displayName}! ♡`);
     triggerHeartExplosion(0.5, 0.45);
   };
 
@@ -294,6 +321,29 @@ export const KittenView: React.FC = () => {
       triggerCue('water');
       setFlyingFood({ iconKey: 'fish', key: Date.now() });
       setPetReaction(getPetDialogue(currentPetType, displayName, 'water', petDialogueStats));
+      setTimeout(() => setFlyingFood(null), 950);
+    }
+  };
+
+  const handleFeedFromKitchen = (food: PetKeyboardFood) => {
+    if (isSpectator) return;
+    if (kitten.isSleeping) {
+      setPetReaction(`Acorde ${displayName} no Quarto primeiro`);
+      return;
+    }
+    if (food.isDrink) {
+      if (giveWaterKitten(food.id, food.thirstBoost || 35)) {
+        triggerCue('water');
+        setFlyingFood({ iconKey: 'fish', key: Date.now() });
+        setPetReaction(`${displayName} amou ${food.name}! ♡`);
+        setTimeout(() => setFlyingFood(null), 950);
+      }
+      return;
+    }
+    if (feedKitten(food.name, food.hungerBoost, food.happyBoost, food.id)) {
+      triggerCue('feed');
+      setFlyingFood({ iconKey: 'utensils', key: Date.now() });
+      setPetReaction(`${displayName} saboreou ${food.name}! ♡`);
       setTimeout(() => setFlyingFood(null), 950);
     }
   };
@@ -476,6 +526,11 @@ export const KittenView: React.FC = () => {
   const hasCustomColors = Boolean(
     currentWholeColor || Object.keys(currentPartColors).length > 0
   );
+
+  useEffect(() => {
+    setDetectedGlbClips([]);
+    setRequestedGlbClip(null);
+  }, [resolvedGlbUrl, currentPetType]);
 
   const drawersPortal = (
     <AnimatePresence>
@@ -1047,6 +1102,8 @@ export const KittenView: React.FC = () => {
           <PetPaintBucketButton
             paintMode={paintMode}
             selectedHex={paintHex}
+            activePart={activePaintPart}
+            currentPartColors={currentPartColors}
             hasCustomColors={hasCustomColors}
             disabled={isSpectator || isPetDead}
             onTogglePaintMode={() => {
@@ -1057,6 +1114,9 @@ export const KittenView: React.FC = () => {
               });
             }}
             onSelectHex={setPaintHex}
+            onSelectPart={setActivePaintPart}
+            onPaintActivePart={(part, hex) => applyPaintColorToPart(part, hex)}
+            onApplyCoatPreset={handleApplyCoatPreset}
             onFillAll={(hex) => {
               if (isSpectator) return;
               setPetColor(currentPetType, hex);
@@ -1065,7 +1125,8 @@ export const KittenView: React.FC = () => {
             onClearColors={() => {
               if (isSpectator) return;
               clearPetPartColors(currentPetType);
-              setPetReaction(`Cores originais de ${displayName} restauradas! ♡`);
+              setPaintHex(DEFAULT_CAT_COAT.parts[activePaintPart] || DEFAULT_CAT_COAT.parts.body);
+              setPetReaction(`Pelagem natural de ${displayName} restaurada! ♡`);
             }}
           />
         </div>
@@ -1133,11 +1194,7 @@ export const KittenView: React.FC = () => {
             >
               <Lamp className="w-5 h-5" />
               <span className="text-[10px] font-bold">
-                {kitten.isSleeping
-                  ? 'Acordar'
-                  : cdSleep > 0
-                  ? formatCooldownMs(cdSleep)
-                  : 'Dormir'}
+                {kitten.isSleeping ? 'Acordar' : 'Dormir'}
               </span>
             </button>
           )}
@@ -1163,6 +1220,8 @@ export const KittenView: React.FC = () => {
                 isShowering={isShowering}
                 danceMove={danceMove}
                 actionCue={actionCue}
+                requestedClip={requestedGlbClip}
+                onAnimationsDetected={setDetectedGlbClips}
                 onPaintPart={handlePaintPart}
                 onPetTap={() => handleBodyClick('head')}
                 fallback={
@@ -1175,6 +1234,8 @@ export const KittenView: React.FC = () => {
                     customModelUrl={resolvedGlbUrl}
                     paintMode={paintMode}
                     actionCue={actionCue}
+                    requestedClip={requestedGlbClip}
+                    onAnimationsDetected={setDetectedGlbClips}
                     onPetTouch={handleBodyClick}
                     onPaintPart={handlePaintPart}
                   />
@@ -1192,6 +1253,8 @@ export const KittenView: React.FC = () => {
                 customModelUrl={resolvedGlbUrl}
                 paintMode={paintMode}
                 actionCue={actionCue}
+                requestedClip={requestedGlbClip}
+                onAnimationsDetected={setDetectedGlbClips}
                 onPetTouch={handleBodyClick}
                 onPaintPart={handlePaintPart}
               />
@@ -1255,11 +1318,45 @@ export const KittenView: React.FC = () => {
               >
                 <BtnIcon className="w-3 h-3" />
                 <span>{btn.label}</span>
-                {cdDance > 0 && <span className="text-[9px] text-amber-300 ml-0.5">({formatCooldownMs(cdDance)})</span>}
               </button>
             );
           })}
         </div>
+
+        {/* Auto-Detected Embedded .GLB Animations Strip */}
+        {detectedGlbClips.length > 0 && petViewMode !== '2d' && (
+          <div className="relative z-20 pt-1">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+              <span className="px-2 py-1 rounded-md bg-white/10 border border-white/15 text-[9px] font-bold uppercase tracking-wider text-zinc-200 shrink-0">
+                Animações .GLB ({detectedGlbClips.length})
+              </span>
+              {detectedGlbClips.map((clipName) => {
+                const isSelected = requestedGlbClip?.name === clipName;
+                const friendly = translateGlbClipLabel(clipName);
+                return (
+                  <button
+                    key={clipName}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setRequestedGlbClip({ name: clipName, tick: Date.now() });
+                      soundEngine.playHeartPop();
+                      setPetReaction(`${displayName}: ${friendly} ♡`);
+                    }}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-semibold shrink-0 border transition cursor-pointer active:scale-95 ${
+                      isSelected
+                        ? 'bg-white text-zinc-950 border-white shadow'
+                        : 'bg-black/50 border-white/15 text-zinc-200 hover:bg-white/10'
+                    }`}
+                    title={`Reproduzir animação "${clipName}" do .GLB`}
+                  >
+                    {friendly}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Room Action Tray */}
         <div className="relative z-20 pt-2">
@@ -1271,9 +1368,7 @@ export const KittenView: React.FC = () => {
                 className="min-h-[58px] p-2 rounded-2xl bg-pink-500/20 hover:bg-pink-500/30 border border-pink-400/30 flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition disabled:opacity-50"
               >
                 <Heart className="w-5 h-5 text-pink-300" />
-                <span className="text-[10px] font-bold text-white">
-                  {cdPet > 0 ? formatCooldownMs(cdPet) : 'Carinho'}
-                </span>
+                <span className="text-[10px] font-bold text-white">Carinho</span>
               </button>
               {[
                 { name: 'Novelo de Lã', label: 'Novelo', iconKey: 'sparkles' },
@@ -1283,20 +1378,18 @@ export const KittenView: React.FC = () => {
                 <button
                   key={toy.name}
                   onClick={() => handlePlayToy(toy.name, toy.iconKey)}
-                  disabled={isSpectator || cdPlay > 0}
+                  disabled={isSpectator}
                   className="min-h-[58px] p-2 rounded-2xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition disabled:opacity-50"
                 >
                   <VectorGlyphIcon name={toy.iconKey} className="w-5 h-5 text-purple-200" />
-                  <span className="text-[10px] font-bold text-white">
-                    {cdPlay > 0 ? formatCooldownMs(cdPlay) : toy.label}
-                  </span>
+                  <span className="text-[10px] font-bold text-white">{toy.label}</span>
                 </button>
               ))}
             </div>
           )}
 
           {currentRoom === 'cozinha' && (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {!hasKitchenAndBowl && !isSpectator && (
                 <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-2xl bg-amber-500/15 border border-amber-400/35 text-[11px] text-amber-100">
                   <span>Compre a Cozinha e coloque o Pote de Ração na Casa dos Sonhos para alimentar!</span>
@@ -1315,26 +1408,30 @@ export const KittenView: React.FC = () => {
                   <button
                     key={food.name}
                     onClick={() => handleFeed(food.name, food.iconKey, food.hunger, food.happy)}
-                    disabled={isSpectator || cdFeed > 0}
+                    disabled={isSpectator}
                     className="min-h-[60px] p-2 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/30 flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition disabled:opacity-50"
                   >
                     <VectorGlyphIcon name={food.iconKey} className="w-5 h-5 text-amber-300" />
                     <span className="text-[10px] font-bold text-white leading-tight line-clamp-1">
-                      {cdFeed > 0 ? formatCooldownMs(cdFeed) : food.name}
+                      {food.name}
                     </span>
                   </button>
                 ))}
                 <button
                   onClick={handleDrinkWater}
-                  disabled={isSpectator || cdWater > 0}
+                  disabled={isSpectator}
                   className="min-h-[60px] p-2 rounded-2xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/35 flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition disabled:opacity-50"
                 >
                   <Droplets className="w-5 h-5 text-cyan-300" />
-                  <span className="text-[10px] font-bold text-white leading-tight">
-                    {cdWater > 0 ? formatCooldownMs(cdWater) : 'Água'}
-                  </span>
+                  <span className="text-[10px] font-bold text-white leading-tight">Água</span>
                 </button>
               </div>
+
+              <PetFoodTable
+                mode="kitchen"
+                compactHeader
+                onFeedFromKitchen={handleFeedFromKitchen}
+              />
             </div>
           )}
 
@@ -1377,13 +1474,11 @@ export const KittenView: React.FC = () => {
 
                 <button
                   onClick={handleShower}
-                  disabled={isSpectator || cdBath > 0}
+                  disabled={isSpectator}
                   className="min-h-[56px] px-3 py-2 rounded-2xl bg-sky-500/25 hover:bg-sky-500/35 border border-sky-400/40 text-white flex items-center justify-center gap-2 cursor-pointer transition active:scale-95 disabled:opacity-50"
                 >
                   <ShowerHead className="w-5 h-5 text-sky-300" />
-                  <span className="text-xs font-bold">
-                    {cdBath > 0 ? formatCooldownMs(cdBath) : 'Chuveiro'}
-                  </span>
+                  <span className="text-xs font-bold">Chuveiro</span>
                 </button>
               </div>
             </div>
@@ -1405,7 +1500,7 @@ export const KittenView: React.FC = () => {
                   toggleSleepKitten();
                   triggerCue(kitten.isSleeping ? 'idle' : 'sleep');
                 }}
-                disabled={isSpectator || (!kitten.isSleeping && cdSleep > 0)}
+                disabled={isSpectator}
                 className={`min-h-[42px] px-4 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer transition disabled:opacity-50 ${
                   kitten.isSleeping
                     ? 'bg-amber-500 text-purple-950 hover:bg-amber-400'
@@ -1413,13 +1508,7 @@ export const KittenView: React.FC = () => {
                 }`}
               >
                 {kitten.isSleeping ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-                <span>
-                  {kitten.isSleeping
-                    ? 'Acordar'
-                    : cdSleep > 0
-                    ? formatCooldownMs(cdSleep)
-                    : 'Dormir'}
-                </span>
+                <span>{kitten.isSleeping ? 'Acordar' : 'Dormir'}</span>
               </button>
             </div>
           )}

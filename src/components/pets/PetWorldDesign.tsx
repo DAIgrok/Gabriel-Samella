@@ -184,7 +184,7 @@ export const PetWorldDesign: React.FC<PetWorldDesignProps> = ({
 
   const clampStat = (val: number) => Math.max(0, Math.min(100, Math.round(val)));
   const xpPercent = Math.min(100, Math.round(((xp || 0) / (maxXp || 100)) * 100));
-  const currentFurHex = kittenState.petColors?.[currentPetType] || '#f7b2c9';
+  const currentFurHex = kittenState.petColors?.[currentPetType] || '#e69f58';
 
   return (
     <div className="space-y-3.5 text-white">
@@ -304,11 +304,12 @@ export const PetWorldDesign: React.FC<PetWorldDesignProps> = ({
             ))}
           </AnimatePresence>
 
-          {currentPetType === 'cat' || customModelUrl ? (
+          {customModelUrl ? (
             <ModelViewerPetStage
-              src={customModelUrl || 'https://skfb.ly/pQwNL'}
+              src={customModelUrl}
               alt={displayName}
               colorHex={currentFurHex}
+              hasWholeColor={Boolean(kittenState.petColors?.[currentPetType])}
               isSpectator={isSpectator}
               isDead={isPetDead}
               cdPet={cdPet}
@@ -508,11 +509,11 @@ export const PetWorldDesign: React.FC<PetWorldDesignProps> = ({
         <button
           type="button"
           onClick={onFeed}
-          disabled={isSpectator || isPetDead || cdFeed > 0}
+          disabled={isSpectator || isPetDead}
           className="min-h-[48px] px-3 py-3 rounded-[14px] border border-white/15 bg-white/[0.07] hover:bg-white/[0.12] text-white font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Utensils className="w-4 h-4 text-amber-300" />
-          <span>{cdFeed > 0 ? formatCooldownMs(cdFeed) : 'Alimentar'}</span>
+          <span>Alimentar</span>
         </button>
 
         {onWater && (
@@ -530,11 +531,11 @@ export const PetWorldDesign: React.FC<PetWorldDesignProps> = ({
         <button
           type="button"
           onClick={onPlay}
-          disabled={isSpectator || isPetDead || cdPlay > 0}
+          disabled={isSpectator || isPetDead}
           className="min-h-[48px] px-3 py-3 rounded-[14px] border border-white/15 bg-white/[0.07] hover:bg-white/[0.12] text-white font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Gamepad2 className="w-4 h-4 text-pink-300" />
-          <span>{cdPlay > 0 ? formatCooldownMs(cdPlay) : 'Brincar'}</span>
+          <span>Brincar</span>
         </button>
 
         <button

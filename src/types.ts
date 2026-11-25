@@ -243,6 +243,7 @@ export interface KittenState {
   petColors?: Partial<Record<PetType, string>>;
   petPartColors?: Partial<Record<PetType, Record<string, string>>>;
   accessoryColors?: Record<string, string>;
+  foodInventory?: Record<string, number>;
 }
 
 export interface TreeDecorationItem {

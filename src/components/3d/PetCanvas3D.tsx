@@ -16,6 +16,7 @@ import {
   type PetActionCueType,
   type PetAnimationCue,
 } from '../../utils/petGlbAnimations';
+import { applySmartCatCoatToMeshes } from '../../utils/petCoatPainter';
 
 export type PetDanceMove = 'idle' | 'dance' | 'spin' | 'jump' | 'wave' | 'kiss';
 
@@ -28,6 +29,8 @@ interface PetCanvas3DProps {
   customModelUrl?: string;
   paintMode?: boolean;
   actionCue?: PetAnimationCue;
+  requestedClip?: { name: string; tick: number } | null;
+  onAnimationsDetected?: (clips: string[]) => void;
   onPetTouch?: (part: 'head' | 'belly' | 'paw') => void;
   onPaintPart?: (partKey: string, label?: string) => void;
 }
@@ -53,11 +56,11 @@ interface SpeciesVisualSpec {
 
 const SPECIES_SPECS: Record<PetType, SpeciesVisualSpec> = {
   cat: {
-    main: 0xf7b2c9,
-    secondary: 0xfff5f8,
-    earOuter: 0xf472b6,
-    earInner: 0xffe4e6,
-    nose: 0xe11d48,
+    main: 0xe69f58,
+    secondary: 0xfff8ef,
+    earOuter: 0xc26e2a,
+    earInner: 0xfbcfe8,
+    nose: 0xf472b6,
     earStyle: 'cat',
     tailStyle: 'cat',
     snoutStyle: 'soft',
@@ -325,6 +328,8 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
   customModelUrl,
   paintMode = false,
   actionCue,
+  requestedClip,
+  onAnimationsDetected,
   onPetTouch,
   onPaintPart,
 }) => {
@@ -339,6 +344,8 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
     customModelUrl,
     paintMode,
     actionCue,
+    requestedClip,
+    onAnimationsDetected,
     onPetTouch,
     onPaintPart,
   });
@@ -351,6 +358,8 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
     customModelUrl,
     paintMode,
     actionCue,
+    requestedClip,
+    onAnimationsDetected,
     onPetTouch,
     onPaintPart,
   };
@@ -358,6 +367,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
   const rebuildFnRef = useRef<(() => void) | null>(null);
   const applyGlbColorsFnRef = useRef<(() => void) | null>(null);
   const syncGlbAnimFnRef = useRef<((forceCue?: PetActionCueType) => void) | null>(null);
+  const playExplicitGlbClipRef = useRef<((clipName: string) => void) | null>(null);
   const isGlbActiveRef = useRef<boolean>(false);
   const loadedGlbKeyRef = useRef<string>('');
 
@@ -614,15 +624,11 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
       const { petType: type, kitten: st } = propsRef.current;
       const partMap = st.petPartColors?.[type] || {};
       const wholeHex = st.petColors?.[type];
-      glbMeshes.forEach(({ mesh, partKey, origHexes }) => {
-        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-        const chosenHex = partMap[partKey] || wholeHex;
-        mats.forEach((m, idx) => {
-          const std = m as THREE.MeshStandardMaterial;
-          if (!std?.color) return;
-          std.color.set(chosenHex || origHexes[idx] || '#ffffff');
-          std.needsUpdate = true;
-        });
+      applySmartCatCoatToMeshes(glbMeshes, {
+        wholeColor: wholeHex,
+        partColors: partMap,
+        isCatSpecies: type === 'cat',
+        rootRef: bodyGroup,
       });
     };
     applyGlbColorsFnRef.current = applyGlbPartColors;
@@ -647,6 +653,9 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
       }
       activeGlbAction = nextAction;
       activeGlbClipName = matched;
+    };
+    playExplicitGlbClipRef.current = (clipName: string) => {
+      playGlbClipByCandidates([clipName], 3200);
     };
 
     const syncGlbAnimation = (overrideCue?: PetActionCueType) => {
@@ -761,14 +770,17 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
             glbMeshes = collected;
             applyGlbPartColors();
 
+            const detectedNames: string[] = [];
             if (animations.length > 0) {
               glbMixer = new THREE.AnimationMixer(group);
               animations.forEach((clip) => {
                 if (!glbMixer) return;
                 glbActions.set(clip.name, glbMixer.clipAction(clip));
+                detectedNames.push(clip.name);
               });
               syncGlbAnimation();
             }
+            propsRef.current.onAnimationsDetected?.(detectedNames);
           })
           .catch(() => {
             // Silent fallback to procedural model if external GLB fails to load
@@ -789,7 +801,7 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         metalness: 0.02,
       });
       const headMat = new THREE.MeshStandardMaterial({
-        color: partColors.head ? new THREE.Color(partColors.head) : baseFurColor,
+        color: (partColors.head || partColors.body) ? new THREE.Color(partColors.head || partColors.body) : baseFurColor,
         roughness: 0.62,
         metalness: 0.02,
       });
@@ -820,6 +832,14 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
       const noseMat = new THREE.MeshStandardMaterial({
         color: partColors.nose ? new THREE.Color(partColors.nose) : new THREE.Color(spec.nose),
         roughness: 0.18,
+        metalness: 0.08,
+      });
+      const irisColorHex =
+        partColors.eyes ||
+        (type === 'cat' ? '#10b981' : type === 'dog' ? '#78350f' : '#4f46e5');
+      const eyeIrisMat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(irisColorHex),
+        roughness: 0.14,
         metalness: 0.08,
       });
       const eyeMat = new THREE.MeshStandardMaterial({
@@ -1053,16 +1073,22 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
           head.add(lid);
         });
       } else {
-        const eyeGeo = new THREE.SphereGeometry(0.078, 22, 18);
-        const rimRingGeo = new THREE.SphereGeometry(0.09, 20, 18);
-        const hlBigGeo = new THREE.SphereGeometry(0.027, 12, 12);
+        const eyeGeo = new THREE.SphereGeometry(0.082, 22, 18);
+        const pupilGeo = new THREE.SphereGeometry(0.048, 16, 14);
+        const rimRingGeo = new THREE.SphereGeometry(0.094, 20, 18);
+        const hlBigGeo = new THREE.SphereGeometry(0.026, 12, 12);
         const hlSmallGeo = new THREE.SphereGeometry(0.013, 10, 10);
-        const lidGeo = new THREE.SphereGeometry(0.084, 16, 12);
+        const lidGeo = new THREE.SphereGeometry(0.086, 16, 12);
 
         [-0.16, 0.16].forEach((ex) => {
-          const eye = tagPart(new THREE.Mesh(eyeGeo, eyeMat), 'head');
+          const eye = tagPart(new THREE.Mesh(eyeGeo, eyeIrisMat), 'eyes');
           eye.position.set(ex, 0.045, 0.39);
           eye.scale.set(1.0, 1.1, 0.68);
+
+          const pupil = tagPart(new THREE.Mesh(pupilGeo, eyeMat), 'eyes');
+          pupil.position.set(0, 0, 0.044);
+          pupil.scale.set(0.92, 1.05, 0.68);
+          eye.add(pupil);
 
           const outerRim = tagPart(new THREE.Mesh(rimRingGeo, secMat), 'head');
           outerRim.position.set(0, 0, -0.012);
@@ -1070,14 +1096,14 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
           eye.add(outerRim);
 
           const hl1 = new THREE.Mesh(hlBigGeo, whiteMat);
-          hl1.position.set(0.024, 0.028, 0.06);
+          hl1.position.set(0.024, 0.028, 0.072);
           const hl2 = new THREE.Mesh(hlSmallGeo, whiteMat);
-          hl2.position.set(-0.022, -0.02, 0.062);
+          hl2.position.set(-0.022, -0.02, 0.072);
           eye.add(hl1, hl2);
 
           // Upper eyelid mesh for natural blinking
           const eyelid = tagPart(new THREE.Mesh(lidGeo, headMat), 'head');
-          eyelid.position.set(0, 0.03, 0.022);
+          eyelid.position.set(0, 0.03, 0.024);
           eyelid.scale.set(1.12, 0.06, 0.9);
           eye.add(eyelid);
           blinkLids.push(eyelid);
@@ -1134,6 +1160,26 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
         nose.scale.set(1.2, 0.85, 0.85);
         nose.position.set(0, -0.035, 0.44);
         head.add(nose);
+
+        if (type === 'cat') {
+          const stripeMat = new THREE.MeshStandardMaterial({ color: 0x9a4a12, roughness: 0.72 });
+          [-0.08, 0, 0.08].forEach((sx, idx) => {
+            const stripe = tagPart(new THREE.Mesh(new THREE.CapsuleGeometry(0.015, 0.095, 6, 8), stripeMat), 'head');
+            stripe.position.set(sx, 0.28, 0.34);
+            stripe.rotation.z = idx === 0 ? 0.18 : idx === 2 ? -0.18 : 0;
+            stripe.rotation.x = -0.35;
+            head.add(stripe);
+          });
+          const whiskMat = new THREE.MeshStandardMaterial({ color: 0xfff8ef, roughness: 0.5 });
+          [-1, 1].forEach((side) => {
+            [-0.085, -0.115].forEach((wy, idx) => {
+              const w = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.004, 0.24, 6), whiskMat);
+              w.position.set(side * 0.26, wy, 0.36);
+              w.rotation.z = Math.PI / 2 + side * (idx === 0 ? -0.12 : 0.08);
+              head.add(w);
+            });
+          });
+        }
       }
 
       // --- EARS ---
@@ -2008,6 +2054,12 @@ export const PetCanvas3D: React.FC<PetCanvas3DProps> = ({
     danceMove,
     actionCue?.tick,
   ]);
+
+  // Play explicit clip chosen from Pet Menu (.glb animations bar)
+  useEffect(() => {
+    if (!requestedClip?.name || !isGlbActiveRef.current) return;
+    playExplicitGlbClipRef.current?.(requestedClip.name);
+  }, [requestedClip?.tick, requestedClip?.name]);
 
   return (
     <div

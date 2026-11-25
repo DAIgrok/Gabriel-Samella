@@ -43,27 +43,38 @@ export {
   INITIAL_DREAM_HOUSE,
 };
 
-// Modelo 3D padrão do gatinho já salvo permanentemente para carregar automático na aba de pets
-export const DEFAULT_PET_GLB_URLS: Partial<Record<PetType, string>> = {
-  cat: 'https://skfb.ly/pQwNL',
-};
+export const DEFAULT_PET_GLB_URLS: Partial<Record<PetType, string>> = {};
 export const DEFAULT_FURNITURE_GLB_URLS: Record<string, string> = {};
+
+function isInvalidPagePlaceholderUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  return (
+    lower === 'https://supabase.co' ||
+    lower === 'https://supabase.co/' ||
+    lower === 'supabase-synced' ||
+    lower.includes('skfb.ly/') ||
+    lower.includes('sketchfab.com/')
+  );
+}
 
 export function resolvePetGlbUrl(petType: PetType, config?: CoupleConfig): string | undefined {
   const customMap = config?.customGlbModels?.pets;
   if (customMap && Object.prototype.hasOwnProperty.call(customMap, petType)) {
     const custom = customMap[petType]?.trim();
-    return custom || undefined;
+    if (custom && !isInvalidPagePlaceholderUrl(custom)) return custom;
+    return undefined;
   }
   const def = DEFAULT_PET_GLB_URLS[petType]?.trim();
-  return def || undefined;
+  if (def && !isInvalidPagePlaceholderUrl(def)) return def;
+  return undefined;
 }
 
 export function resolveFurnitureGlbUrl(furnitureId: string, config?: CoupleConfig): string | undefined {
   const custom = config?.customGlbModels?.furniture?.[furnitureId]?.trim();
-  if (custom) return custom;
+  if (custom && !isInvalidPagePlaceholderUrl(custom)) return custom;
   const def = DEFAULT_FURNITURE_GLB_URLS[furnitureId]?.trim();
-  return def || undefined;
+  if (def && !isInvalidPagePlaceholderUrl(def)) return def;
+  return undefined;
 }
 
 export const INITIAL_COUPLE_CONFIG: CoupleConfig = {
@@ -75,7 +86,7 @@ export const INITIAL_COUPLE_CONFIG: CoupleConfig = {
   creatorPasscode: '2010', // Modo Espectador oculto do Gabriel
   themeGlowColor: '#c084fc',
   customGlbModels: {
-    pets: { cat: 'https://skfb.ly/pQwNL' },
+    pets: {},
     furniture: {},
   },
 };
@@ -1179,6 +1190,11 @@ export const INITIAL_KITTEN: KittenState = {
   petColors: {},
   petPartColors: {},
   accessoryColors: {},
+  foodInventory: {
+    'food-sardinha': 2,
+    'food-morango': 2,
+    'food-agua': 2,
+  },
   cooldowns: {},
 };
 
@@ -1252,15 +1268,15 @@ export const INITIAL_EASTER_EGGS: EasterEgg[] = [
   },
 ];
 
-// Light Cooldowns for Pet Care, Tree Care & 24h Daily Wheel / Mystery Chest
+// Zero Cooldown on Pet Animations, Care & Eating; gentle cooldown on Tree & 24h Daily Wheel / Mystery Chest
 export const COOLDOWN_MS = {
-  pet_pet: 5 * 60 * 1000,
-  pet_water: 5 * 60 * 1000,
-  pet_play: 6 * 60 * 1000,
-  pet_dance: 6 * 60 * 1000,
-  pet_feed: 8 * 60 * 1000,
-  pet_sleep: 10 * 60 * 1000,
-  pet_bath: 12 * 60 * 1000,
+  pet_pet: 0,
+  pet_water: 0,
+  pet_play: 0,
+  pet_dance: 0,
+  pet_feed: 0,
+  pet_sleep: 0,
+  pet_bath: 0,
   tree_sun: 8 * 60 * 1000,
   tree_water: 10 * 60 * 1000,
   tree_ribbon: 10 * 60 * 1000,

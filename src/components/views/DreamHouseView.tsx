@@ -225,6 +225,7 @@ export const DreamHouseView: React.FC = () => {
             ownedPets={kitten.ownedPets}
             deadPets={kitten.deadPets}
             petColors={kitten.petColors}
+            petPartColors={kitten.petPartColors}
             petGlbUrl={catGlbUrl}
             petHunger={petHunger}
             petThirst={petThirst}

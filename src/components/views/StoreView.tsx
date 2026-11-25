@@ -18,6 +18,7 @@ import { HOUSE_CATEGORY_META } from '../../data/houseFurnitureCatalog';
 import { soundEngine } from '../../utils/audioSynth';
 import { DiamondGemIcon, VectorGlyphIcon } from '../icons/CustomIcons';
 import { StoreItemArtwork } from '../store/StoreItemArtwork';
+import { PetFoodTable } from '../pets/PetFoodTable';
 
 const COLOR_PRESETS = [
   '#f472b6',
@@ -63,6 +64,7 @@ export const StoreView: React.FC = () => {
 
   const categories = [
     { id: 'todos', label: 'Tudo', icon: 'sparkles' },
+    { id: 'comidas', label: 'Comidas', icon: 'utensils' },
     { id: 'casa', label: 'Casa 3D', icon: 'sofa' },
     { id: 'pets', label: 'Pets 3D', icon: 'paw' },
     { id: 'roupas', label: 'Roupas & Looks', icon: 'shirt' },
@@ -293,8 +295,10 @@ export const StoreView: React.FC = () => {
         </div>
       )}
 
-      {/* Store Grid */}
-      {filteredItems.length === 0 ? (
+      {/* Store Grid or Pet Foods Table */}
+      {selectedCategory === 'comidas' ? (
+        <PetFoodTable mode="store" />
+      ) : filteredItems.length === 0 ? (
         <div className="rounded-3xl p-8 glass-panel border border-purple-500/20 text-center space-y-2">
           <Sparkles className="w-6 h-6 text-pink-300 mx-auto" />
           <p className="text-sm font-bold text-white">Nenhum item encontrado</p>

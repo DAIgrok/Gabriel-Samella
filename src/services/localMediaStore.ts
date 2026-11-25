@@ -75,8 +75,41 @@ export async function deleteMediaBlob(url?: string): Promise<void> {
   }
 }
 
+function dataUrlToBlob(dataUrl: string): Blob | null {
+  try {
+    const commaIdx = dataUrl.indexOf(',');
+    if (commaIdx === -1) return null;
+    const header = dataUrl.slice(0, commaIdx);
+    const body = dataUrl.slice(commaIdx + 1);
+    const mimeMatch = /data:([^;]+)/.exec(header);
+    const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+    if (header.includes(';base64')) {
+      const bin = atob(body);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) {
+        bytes[i] = bin.charCodeAt(i);
+      }
+      return new Blob([bytes], { type: mime });
+    }
+    return new Blob([decodeURIComponent(body)], { type: mime });
+  } catch {
+    return null;
+  }
+}
+
 export async function resolveMediaUrl(url?: string): Promise<string> {
   if (!url) return '';
+  if (url.startsWith('data:')) {
+    const cached = objectUrlCache.get(url);
+    if (cached) return cached;
+    const blob = dataUrlToBlob(url);
+    if (blob) {
+      const objUrl = URL.createObjectURL(blob);
+      objectUrlCache.set(url, objUrl);
+      return objUrl;
+    }
+    return url;
+  }
   if (!url.startsWith(IDB_PREFIX)) return url;
 
   const cached = objectUrlCache.get(url);
@@ -102,6 +135,17 @@ export async function resolveMediaUrl(url?: string): Promise<string> {
 export function useResolvedMediaUrl(url?: string): string {
   const [resolved, setResolved] = useState<string>(() => {
     if (!url) return '';
+    if (url.startsWith('data:')) {
+      const cached = objectUrlCache.get(url);
+      if (cached) return cached;
+      const blob = dataUrlToBlob(url);
+      if (blob) {
+        const objUrl = URL.createObjectURL(blob);
+        objectUrlCache.set(url, objUrl);
+        return objUrl;
+      }
+      return url;
+    }
     if (!url.startsWith(IDB_PREFIX)) return url;
     return objectUrlCache.get(url) || '';
   });
@@ -112,7 +156,7 @@ export function useResolvedMediaUrl(url?: string): string {
       setResolved('');
       return;
     }
-    if (!url.startsWith(IDB_PREFIX)) {
+    if (!url.startsWith(IDB_PREFIX) && !url.startsWith('data:')) {
       setResolved(url);
       return;
     }

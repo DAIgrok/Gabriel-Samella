@@ -35,6 +35,7 @@ import {
   LoveTreeState,
   MemoryPhoto,
   MissionsState,
+  PetType,
   Phrase,
   QuizQuestion,
   SeasonalState,
@@ -348,6 +349,28 @@ export interface SaveCloudInput {
   initialSongIds: Set<string>;
 }
 
+function sanitizeConfigForFirestore(cfg: CoupleConfig): CoupleConfig {
+  if (!cfg.customGlbModels) return cfg;
+  const cleanPets: Partial<Record<PetType, string>> = {};
+  Object.entries(cfg.customGlbModels.pets || {}).forEach(([k, v]) => {
+    if (!v) return;
+    // Large binary data: URLs live in localStorage + IndexedDB + Supabase full_state to respect Firestore's 1MB doc limit
+    cleanPets[k as PetType] = v.startsWith('data:') && v.length > 80_000 ? 'supabase-synced' : v;
+  });
+  const cleanFurniture: Record<string, string> = {};
+  Object.entries(cfg.customGlbModels.furniture || {}).forEach(([k, v]) => {
+    if (!v) return;
+    cleanFurniture[k] = v.startsWith('data:') && v.length > 80_000 ? 'supabase-synced' : v;
+  });
+  return {
+    ...cfg,
+    customGlbModels: {
+      pets: cleanPets,
+      furniture: cleanFurniture,
+    },
+  };
+}
+
 export async function saveCloudWorld(input: SaveCloudInput): Promise<void> {
   const path = `${COUPLE_WORLD_COLLECTION}/${COUPLE_WORLD_ID}`;
   const docRef = doc(db, COUPLE_WORLD_COLLECTION, COUPLE_WORLD_ID);
@@ -425,7 +448,7 @@ export async function saveCloudWorld(input: SaveCloudInput): Promise<void> {
       coins: Math.max(0, Math.min(500000, Math.round(Number.isFinite(input.coins) ? input.coins : 0))),
       treeWaterCount: Math.max(0, Math.min(500000, Math.round(Number.isFinite(input.treeWaterCount) ? input.treeWaterCount : 0))),
       currentDailyIndex: Math.max(0, Math.min(5000, Math.round(Number.isFinite(input.currentDailyIndex) ? input.currentDailyIndex : 0))),
-      config: input.config,
+      config: sanitizeConfigForFirestore(input.config),
       treeState: input.treeState,
       kitten: input.kitten,
       lettersState,
@@ -468,11 +491,44 @@ export async function saveCloudWorld(input: SaveCloudInput): Promise<void> {
   }
 }
 
-export async function clearCloudWorld(): Promise<void> {
+export async function clearCloudWorld(
+  preservedCustomGlbModels?: CoupleConfig['customGlbModels']
+): Promise<void> {
   const path = `${COUPLE_WORLD_COLLECTION}/${COUPLE_WORLD_ID}`;
   try {
-    // Mantém a subcoleção de fotos reais intacta permanentemente mesmo ao zerar o progresso
-    await deleteDoc(doc(db, COUPLE_WORLD_COLLECTION, COUPLE_WORLD_ID));
+    const docRef = doc(db, COUPLE_WORLD_COLLECTION, COUPLE_WORLD_ID);
+    let modelsToKeep = preservedCustomGlbModels;
+    if (!modelsToKeep) {
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        const data = snap.data() as { config?: CoupleConfig };
+        modelsToKeep = data.config?.customGlbModels;
+      }
+    }
+    // Mantém a subcoleção de fotos reais e modelos 3D .glb intactos permanentemente mesmo ao zerar o progresso
+    await deleteDoc(docRef);
+    if (
+      modelsToKeep &&
+      (Object.keys(modelsToKeep.pets || {}).length > 0 ||
+        Object.keys(modelsToKeep.furniture || {}).length > 0)
+    ) {
+      await setDoc(docRef, {
+        worldId: COUPLE_WORLD_ID,
+        journeyStarted: false,
+        config: sanitizeConfigForFirestore({
+          partnerName: 'Samella',
+          myName: 'Gabriel',
+          anniversaryDate: '2023-06-12T00:00:00',
+          subtitle: 'Que bom ter você aqui de novo ♡',
+          passcode: '120623',
+          creatorPasscode: '2010',
+          themeGlowColor: '#c084fc',
+          customGlbModels: modelsToKeep,
+        }),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
   }

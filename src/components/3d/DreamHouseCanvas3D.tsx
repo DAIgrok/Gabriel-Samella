@@ -14,6 +14,7 @@ import {
 import { HOUSE_FURNITURE_CATALOG } from '../../data/houseFurnitureCatalog';
 import { AQUARIUM_SPECIES_CATALOG } from '../../data/initialData';
 import { buildCompactRoamingPet, RoamingPetInstance } from '../../utils/petMesh3D';
+import { applySmartCatCoatToMeshes } from '../../utils/petCoatPainter';
 import {
   addCozyThreePointLights,
   detectSoftwareWebGL,
@@ -187,6 +188,7 @@ interface DreamHouseCanvas3DProps {
   ownedPets?: PetType[];
   deadPets?: PetType[];
   petColors?: Partial<Record<PetType, string>>;
+  petPartColors?: Partial<Record<PetType, Record<string, string>>>;
   petGlbUrl?: string;
   petHunger?: number;
   petThirst?: number;
@@ -1734,6 +1736,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
   ownedPets,
   deadPets,
   petColors,
+  petPartColors,
   petGlbUrl,
   petHunger = 80,
   petThirst = 80,
@@ -1767,6 +1770,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     ownedPets,
     deadPets,
     petColors,
+    petPartColors,
     petGlbUrl,
     petHunger,
     petThirst,
@@ -1797,6 +1801,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     ownedPets,
     deadPets,
     petColors,
+    petPartColors,
     petGlbUrl,
     petHunger,
     petThirst,
@@ -1991,6 +1996,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
         ownedPets: oPets,
         deadPets: dPets,
         petColors: pColors,
+        petPartColors: pPartColors,
         petGlbUrl: pGlbUrl,
         aquarium: aqState,
       } = propsRef.current;
@@ -2253,25 +2259,30 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
                 disposeObject3D(glbGroup);
                 return;
               }
-              const catColor = pColors?.cat;
-              if (catColor) {
-                const col = new THREE.Color(catColor);
-                glbGroup.traverse((obj) => {
-                  if ((obj as THREE.Mesh).isMesh) {
-                    const mesh = obj as THREE.Mesh;
-                    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-                    mats.forEach((m) => {
-                      if (!m) return;
-                      const matName = (m.name || '').toLowerCase();
-                      const hasCatMat = matName.includes('c_cat_mixed');
-                      if ((hasCatMat || mats.length === 1) && 'color' in m && m.color instanceof THREE.Color) {
-                        m.color.copy(col);
-                        m.needsUpdate = true;
-                      }
-                    });
-                  }
-                });
-              }
+              const glbCoatEntries: { mesh: THREE.Mesh; partKey: string; origHexes: string[] }[] = [];
+              glbGroup.traverse((obj) => {
+                if ((obj as THREE.Mesh).isMesh && (obj as THREE.Mesh).material) {
+                  const mesh = obj as THREE.Mesh;
+                  const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+                  const origHexes = mats.map((m) => {
+                    const std = m as THREE.MeshStandardMaterial;
+                    return std?.color && typeof std.color.getHexString === 'function'
+                      ? `#${std.color.getHexString()}`
+                      : '#ffffff';
+                  });
+                  glbCoatEntries.push({
+                    mesh,
+                    partKey: mesh.name || mats[0]?.name || 'body',
+                    origHexes,
+                  });
+                }
+              });
+              applySmartCatCoatToMeshes(glbCoatEntries, {
+                wholeColor: pColors?.cat,
+                partColors: pPartColors?.cat,
+                isCatSpecies: true,
+                rootRef: glbGroup,
+              });
               inst.bodyGroup.visible = false;
               inst.root.add(glbGroup);
 
@@ -2711,6 +2722,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
   const ownedPetsKey = (ownedPets || []).join(',');
   const deadPetsKey = (deadPets || []).join(',');
   const petColorsKey = JSON.stringify(petColors || {});
+  const petPartColorsKey = JSON.stringify(petPartColors || {});
   const aqFishKey = (aquarium?.activeFishIds || []).join(',');
   const aqModeKey = `${aquarium?.lightMode || 'day'}:${aquarium?.bubblesActive !== false}`;
   useEffect(() => {
@@ -2732,6 +2744,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     ownedPetsKey,
     deadPetsKey,
     petColorsKey,
+    petPartColorsKey,
     petGlbUrl,
     aqFishKey,
     aqModeKey,

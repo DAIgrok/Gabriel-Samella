@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { PetType } from '../types';
 
 export const PET_BASE_HEX: Record<PetType, string> = {
-  cat: '#f8fafc',
+  cat: '#e69f58',
   dog: '#fbbf24',
   bunny: '#fbcfe8',
   pig: '#f9a8d4',

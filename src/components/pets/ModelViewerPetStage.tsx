@@ -12,6 +12,10 @@ import {
   getDesiredGlbClipCandidates,
   type PetAnimationCue,
 } from '../../utils/petGlbAnimations';
+import {
+  applySmartCatCoatToMeshes,
+  DEFAULT_CAT_COAT,
+} from '../../utils/petCoatPainter';
 
 export const DEFAULT_SKETCHFAB_CAT_URL = 'https://skfb.ly/pQwNL';
 
@@ -66,10 +70,12 @@ export interface ModelViewerPetStageProps {
   isShowering?: boolean;
   danceMove?: PetDanceMove;
   actionCue?: PetAnimationCue;
+  requestedClip?: { name: string; tick: number } | null;
   cdPet?: number;
   cdFeed?: number;
   onColorChange?: (hex: string) => void;
   onPaintPart?: (partKey: string, label?: string) => void;
+  onAnimationsDetected?: (clips: string[]) => void;
   onPetTap?: () => void;
   onFeedPet?: () => void;
   fallback: React.ReactNode;
@@ -161,10 +167,13 @@ function extractInternalThreeNodes(mv: ModelViewerElement): {
         if (mesh?.isMesh && mesh.material) {
           if (!mesh.userData.__mvPartKey) {
             const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-            const clonedMats = mats.map((m) => (m && typeof m.clone === 'function' ? m.clone() : m));
-            mesh.material = Array.isArray(mesh.material) ? clonedMats : clonedMats[0];
-            const origHexes = clonedMats.map((m) => {
+            const origHexes = mats.map((m) => {
               const std = m as THREE.MeshStandardMaterial;
+              if (std && typeof std.metalness === 'number' && std.metalness > 0.72 && !std.metalnessMap) {
+                std.metalness = 0.12;
+                std.roughness = Math.max(std.roughness ?? 0.55, 0.52);
+                std.needsUpdate = true;
+              }
               return std?.color && typeof std.color.getHexString === 'function'
                 ? `#${std.color.getHexString()}`
                 : '#ffffff';
@@ -269,10 +278,12 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
   isShowering = false,
   danceMove = 'idle' as PetDanceMove,
   actionCue,
-  cdPet = 0,
-  cdFeed = 0,
+  requestedClip,
+  cdPet: _cdPet = 0,
+  cdFeed: _cdFeed = 0,
   onColorChange,
   onPaintPart,
+  onAnimationsDetected,
   onPetTap,
   onFeedPet,
   fallback,
@@ -285,6 +296,7 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
 
   const indexedMeshesRef = useRef<IndexedGlbMesh[]>([]);
   const internalCamRef = useRef<THREE.Camera | null>(null);
+  const internalRootRef = useRef<THREE.Object3D | null>(null);
   const origMaterialFactorsRef = useRef<[number, number, number, number][]>([]);
   const pointerDownPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
@@ -293,7 +305,7 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
   const [isLoaded, setIsLoaded] = useState(false);
   const [animations, setAnimations] = useState<string[]>([]);
   const [activeAnim, setActiveAnim] = useState<string>('Idle');
-  const [localColor, setLocalColor] = useState<string>(colorHex || '#f7b2c9');
+  const [localColor, setLocalColor] = useState<string>(colorHex || '#e69f58');
   const [isJumping, setIsJumping] = useState(false);
   const [particles, setParticles] = useState<HeartParticle[]>([]);
 
@@ -330,7 +342,7 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
         return;
       }
 
-      if (trimmed.startsWith('idb://')) {
+      if (trimmed.startsWith('idb://') || trimmed.startsWith('data:')) {
         try {
           const objUrl = await resolveMediaUrl(trimmed);
           if (!active) return;
@@ -346,7 +358,7 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
         }
       }
 
-      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('blob:')) {
         if (active) setResolvedSrc(trimmed);
         return;
       }
@@ -383,7 +395,7 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
     };
   }, [src]);
 
-  // Apply per-part or whole-pet color WITHOUT washing out original GLB on first load
+  // Apply realistic cat coat on blank white .glb OR custom per-part / whole-pet colors
   const applyPerPartAndWholeColors = () => {
     const mv = mvRef.current;
     if (!mv) return;
@@ -391,18 +403,11 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
     const shouldTintWhole = Boolean(hasWholeColor && colorHex);
 
     if (indexedMeshesRef.current.length > 0) {
-      indexedMeshesRef.current.forEach(({ mesh, partKey, origHexes }) => {
-        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-        const partHex = partColors?.[partKey];
-        const wholeHex = shouldTintWhole ? colorHex : undefined;
-
-        mats.forEach((m, idx) => {
-          const std = m as THREE.MeshStandardMaterial;
-          if (!std?.color) return;
-          const targetHex = partHex || wholeHex || origHexes[idx] || '#ffffff';
-          std.color.set(targetHex);
-          std.needsUpdate = true;
-        });
+      applySmartCatCoatToMeshes(indexedMeshesRef.current, {
+        wholeColor: shouldTintWhole ? colorHex : undefined,
+        partColors,
+        isCatSpecies: true,
+        rootRef: internalRootRef.current,
       });
       return;
     }
@@ -412,7 +417,14 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
     if (materials.length === 0) return;
 
     if (partKeys.length === 0 && !shouldTintWhole) {
-      // Restore recorded original baseColorFactors if previously tinted
+      const allWhiteCanvas = materials.every((_, idx) => {
+        const fac = origMaterialFactorsRef.current[idx];
+        return !fac || (fac[0] > 0.88 && fac[1] > 0.88 && fac[2] > 0.88);
+      });
+      if (allWhiteCanvas) {
+        materials.forEach((mat) => setSingleMaterialColor(mat, DEFAULT_CAT_COAT.parts.body));
+        return;
+      }
       materials.forEach((mat, idx) => {
         const orig = origMaterialFactorsRef.current[idx];
         if (orig && mat.pbrMetallicRoughness?.setBaseColorFactor) {
@@ -422,9 +434,10 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
       return;
     }
 
+    const partColorsMap: Record<string, string> = partColors || {};
     materials.forEach((mat, idx) => {
       const matKey = `glb_mat_${sanitizePartToken(mat.name || `m${idx}`)}_${idx}`;
-      const partHex = partColors?.[matKey];
+      const partHex = partColorsMap[matKey] || partColorsMap.body;
       const targetHex = partHex || (shouldTintWhole ? colorHex : undefined);
       if (targetHex) {
         setSingleMaterialColor(mat, targetHex);
@@ -459,17 +472,24 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
       setIsLoaded(true);
       const list = Array.isArray(mv.availableAnimations) ? mv.availableAnimations : [];
       setAnimations(list);
+      onAnimationsDetected?.(list);
 
-      // Snapshot original baseColorFactors before any tinting
+      // Snapshot original baseColorFactors & normalize extreme untextured metallic PBR so models never look pitch black
       const mats = mv.model?.materials || [];
       origMaterialFactorsRef.current = mats.map((m) => {
-        const fac = m.pbrMetallicRoughness?.baseColorFactor;
+        const pbr = m.pbrMetallicRoughness;
+        if (pbr && !pbr.metallicRoughnessTexture && typeof pbr.metallicFactor === 'number' && pbr.metallicFactor > 0.72) {
+          pbr.setMetallicFactor?.(0.14);
+          pbr.setRoughnessFactor?.(Math.max(pbr.roughnessFactor ?? 0.55, 0.52));
+        }
+        const fac = pbr?.baseColorFactor;
         return fac ? ([fac[0], fac[1], fac[2], fac[3]] as [number, number, number, number]) : [1, 1, 1, 1];
       });
 
       const { meshes, camera } = extractInternalThreeNodes(mv);
       indexedMeshesRef.current = meshes;
       internalCamRef.current = camera;
+      internalRootRef.current = meshes[0]?.mesh.parent || null;
 
       if (list.length > 0) {
         const desired = getDesiredGlbClipCandidates({
@@ -550,6 +570,12 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
     danceMove,
     actionCue?.tick,
   ]);
+
+  // Play explicit clip chosen directly from Pet Menu (.glb animations bar)
+  useEffect(() => {
+    if (!isLoaded || hasError || isDead || !requestedClip?.name) return;
+    playClipOnViewer([requestedClip.name], 3200);
+  }, [requestedClip?.tick, isLoaded, hasError, isDead]);
 
   // Autonomous Pet Brain (only when awake & idle, never interrupting Talking Tom actions)
   useEffect(() => {
@@ -825,8 +851,11 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
               alt={alt}
               autoplay
               camera-controls
-              shadow-intensity="1.2"
-              exposure="1.05"
+              environment-image="neutral"
+              tone-mapping="commerce"
+              shadow-intensity="1.15"
+              shadow-softness="0.85"
+              exposure="1.22"
               interaction-prompt="auto"
               touch-action="pan-y"
               style={{
@@ -906,17 +935,17 @@ export const ModelViewerPetStage: React.FC<ModelViewerPetStageProps> = ({
             className="min-h-[46px] px-3 py-2.5 rounded-2xl bg-gradient-to-r from-pink-500/85 to-rose-500/85 hover:brightness-110 border border-pink-300/45 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-[0_6px_20px_rgba(236,72,153,0.3)] cursor-pointer transition active:scale-95"
           >
             <Heart className="w-4 h-4 fill-current" />
-            <span>{cdPet > 0 ? `Carinho (${formatCooldownMs(cdPet)})` : 'Fazer Carinho'}</span>
+            <span>Fazer Carinho</span>
           </button>
 
           <button
             type="button"
             onClick={handleFeedAction}
-            disabled={isSpectator || cdFeed > 0}
+            disabled={isSpectator}
             className="min-h-[46px] px-3 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600/85 to-fuchsia-600/85 hover:brightness-110 border border-purple-300/40 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-[0_6px_20px_rgba(168,85,247,0.3)] cursor-pointer transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Utensils className="w-4 h-4" />
-            <span>{cdFeed > 0 ? formatCooldownMs(cdFeed) : 'Dar Comida'}</span>
+            <span>Dar Comida</span>
           </button>
         </div>
       )}

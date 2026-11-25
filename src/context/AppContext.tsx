@@ -86,6 +86,7 @@ import {
 } from '../services/firebaseAuth';
 import { fetchDriveFolderPhotos, TARGET_DRIVE_FOLDER_ID } from '../services/googleDrive';
 import { HOUSE_ROOM_PRICES } from '../data/houseFurnitureCatalog';
+import { findPetFoodById } from '../data/petFoodsCatalog';
 import {
   clearCloudWorld,
   CloudWorldPayload,
@@ -310,10 +311,11 @@ interface AppContextType {
   removeSong: (id: string) => void;
   unlockAchievement: (id: string) => void;
   buyStoreItem: (id: string, customColor?: string) => boolean;
+  buyPetFood: (foodId: string, quantity?: number) => boolean;
   redeemVoucher: (id: string) => void;
   petKitten: (part?: 'head' | 'belly' | 'paw') => void;
-  feedKitten: (foodName?: string, hungerBoost?: number, happyBoost?: number) => boolean;
-  giveWaterKitten: () => boolean;
+  feedKitten: (foodName?: string, hungerBoost?: number, happyBoost?: number, foodId?: string) => boolean;
+  giveWaterKitten: (foodId?: string, thirstBoost?: number) => boolean;
   batheKitten: (boostAmount?: number) => boolean;
   toggleSleepKitten: () => boolean;
   playWithKitten: (toyName?: string, source?: 'toy' | 'dance') => boolean;
@@ -323,6 +325,7 @@ interface AppContextType {
   adoptPet: (petType: PetType, customColor?: string) => void;
   setPetColor: (petType: PetType, hex: string) => void;
   setPetPartColor: (petType: PetType, partKey: string, hex: string) => void;
+  setPetPartColorsBatch: (petType: PetType, parts: Record<string, string>, toastMessage?: string) => void;
   clearPetPartColors: (petType: PetType) => void;
   setAccessoryColor: (itemId: string, hex: string) => void;
   waterLoveTree: () => boolean;
@@ -684,6 +687,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     )
   );
   const lastWheelSpinRef = useRef<number>(0);
+  const petBonusThrottleRef = useRef<Record<string, number>>({});
 
   const songsRef = useRef<Song[]>(songs);
   songsRef.current = songs;
@@ -722,23 +726,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const localGlb = readLocalCustomGlbModels();
       const cloudPets = cloud.config.customGlbModels?.pets || {};
       const localPets = localGlb?.pets || {};
-      const mergedPets: Partial<Record<PetType, string>> = { ...cloudPets };
-      // Preserve local idb:// uploads and locally saved custom URLs when cloud still holds default placeholder
+      const mergedPets: Partial<Record<PetType, string>> = {};
+      const isValidGlbRef = (u?: string) =>
+        Boolean(u && u !== 'supabase-synced' && !u.toLowerCase().includes('skfb.ly/'));
+      (Object.entries(cloudPets) as [PetType, string | undefined][]).forEach(([petK, val]) => {
+        if (isValidGlbRef(val)) mergedPets[petK] = val;
+      });
+      // Preserve local idb://, data: uploads and locally saved custom URLs
       (Object.entries(localPets) as [PetType, string | undefined][]).forEach(([petK, localVal]) => {
-        if (!localVal) return;
-        const cloudVal = cloudPets[petK];
+        if (!localVal || !isValidGlbRef(localVal)) return;
+        const cloudVal = mergedPets[petK];
         if (
           localVal.startsWith('idb://') ||
+          localVal.startsWith('data:') ||
           !cloudVal ||
           cloudVal === INITIAL_COUPLE_CONFIG.customGlbModels?.pets?.[petK]
         ) {
           mergedPets[petK] = localVal;
         }
       });
-      const mergedFurniture = {
-        ...(cloud.config.customGlbModels?.furniture || {}),
-        ...(localGlb?.furniture || {}),
-      };
+      const mergedFurniture: Record<string, string> = {};
+      Object.entries(cloud.config.customGlbModels?.furniture || {}).forEach(([k, v]) => {
+        if (isValidGlbRef(v)) mergedFurniture[k] = v;
+      });
+      Object.entries(localGlb?.furniture || {}).forEach(([k, v]) => {
+        if (isValidGlbRef(v)) mergedFurniture[k] = v;
+      });
       setConfig({
         ...INITIAL_COUPLE_CONFIG,
         ...cloud.config,
@@ -2441,6 +2454,36 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  const canGrantPetBonus = (key: string, minIntervalMs = 90_000): boolean => {
+    const now = Date.now();
+    const last = petBonusThrottleRef.current[key] || 0;
+    if (now - last < minIntervalMs) return false;
+    petBonusThrottleRef.current[key] = now;
+    return true;
+  };
+
+  const buyPetFood = (foodId: string, quantity = 1): boolean => {
+    if (guardSpectator()) return false;
+    const food = findPetFoodById(foodId);
+    if (!food) return false;
+    const qty = Math.max(1, Math.floor(quantity));
+    const totalCost = food.price * qty;
+    if (!spendCoins(totalCost)) {
+      showToast(`Você precisa de ${totalCost} Diamante(s) para comprar ${food.name}!`, 'store');
+      return false;
+    }
+    soundEngine.playCoin();
+    setKitten((prev) => ({
+      ...prev,
+      foodInventory: {
+        ...(prev.foodInventory || {}),
+        [food.id]: Math.max(0, (prev.foodInventory?.[food.id] || 0) + qty),
+      },
+    }));
+    showToast(`Comprou ${qty}x ${food.name} para o seu pet!`, 'store');
+    return true;
+  };
+
   const petKitten = (_part?: 'head' | 'belly' | 'paw') => {
     if (guardSpectator()) return;
     const activeType = (kitten.petType || 'cat') as PetType;
@@ -2450,11 +2493,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
     soundEngine.playPurr();
     triggerHeartExplosion(0.5, 0.4);
-    const rem = getCooldownRemaining(kitten.cooldowns, 'pet_pet');
-    if (rem > 0) {
-      showToast(`Carinho retribuído! Próximo bônus em ${formatCooldownMs(rem)}`, 'paw');
-      return;
-    }
 
     let reached10 = false;
     let reached50 = false;
@@ -2474,10 +2512,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         affectionLevel: (prev.affectionLevel || 0) + 1,
         mood: 'ronronando',
         petCount: nextPetCount,
-        cooldowns: {
-          ...(prev.cooldowns || {}),
-          pet_pet: Date.now() + COOLDOWN_MS.pet_pet,
-        },
       };
     });
 
@@ -2493,11 +2527,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     if (reached10) unlockAchievement('ach-pet-cat');
     if (reached50) unlockAchievement('ach-pet-lover50');
-    addCoins(1, `Carinho em ${petLabel}`);
-    gainKittenXp(8);
+    if (canGrantPetBonus('pet', 90_000)) {
+      addCoins(1, `Carinho em ${petLabel}`);
+      gainKittenXp(8);
+    }
   };
 
-  const feedKitten = (foodName = 'Comidinha Especial', hungerBoost = 30, happyBoost = 10): boolean => {
+  const feedKitten = (
+    foodName = 'Comidinha Especial',
+    hungerBoost = 30,
+    happyBoost = 10,
+    foodId?: string
+  ): boolean => {
     if (guardSpectator()) return false;
     const activeType = (kitten.petType || 'cat') as PetType;
     if ((kitten.deadPets || []).includes(activeType)) {
@@ -2515,37 +2556,48 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return false;
     }
 
-    const rem = getCooldownRemaining(kitten.cooldowns, 'pet_feed');
-    if (rem > 0) {
-      showToast(`Cheio por agora! Alimente de novo em ${formatCooldownMs(rem)}`, 'paw');
-      return false;
+    if (foodId) {
+      const currentQty = kitten.foodInventory?.[foodId] || 0;
+      if (currentQty <= 0) {
+        showToast(`Compre ${foodName} na tabela de comidas antes de servir!`, 'store');
+        return false;
+      }
     }
+
+    const catalogFood = foodId ? findPetFoodById(foodId) : undefined;
+    const thirstBonus = catalogFood?.thirstBoost || 0;
 
     soundEngine.playEat();
     triggerHeartExplosion(0.5, 0.4);
     const label = getSpeciesDisplayName(kitten.petType, kitten.name);
-    setKitten((prev) => ({
-      ...prev,
-      hunger: Math.min(100, (prev.hunger || 50) + hungerBoost),
-      happiness: Math.min(100, (prev.happiness || 50) + happyBoost),
-      mood: 'feliz',
-      isEating: true,
-      lastFedTimestamp: Date.now(),
-      lastFed: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      cooldowns: {
-        ...(prev.cooldowns || {}),
-        pet_feed: Date.now() + COOLDOWN_MS.pet_feed,
-      },
-    }));
+    setKitten((prev) => {
+      const nextInventory = { ...(prev.foodInventory || {}) };
+      if (foodId) {
+        nextInventory[foodId] = Math.max(0, (nextInventory[foodId] || 0) - 1);
+      }
+      return {
+        ...prev,
+        hunger: Math.min(100, (prev.hunger || 50) + hungerBoost),
+        thirst: Math.min(100, (prev.thirst || 50) + thirstBonus),
+        happiness: Math.min(100, (prev.happiness || 50) + happyBoost),
+        mood: 'feliz',
+        isEating: true,
+        lastFedTimestamp: Date.now(),
+        lastFed: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        foodInventory: nextInventory,
+      };
+    });
     gainKittenXp(12);
-    addCoins(1, `${label} saboreou ${foodName}`);
+    if (canGrantPetBonus('feed', 60_000)) {
+      addCoins(1, `${label} saboreou ${foodName}`);
+    }
     setTimeout(() => {
       setKitten((prev) => ({ ...prev, isEating: false }));
     }, 1800);
     return true;
   };
 
-  const giveWaterKitten = (): boolean => {
+  const giveWaterKitten = (foodId?: string, thirstBoost = 35): boolean => {
     if (guardSpectator()) return false;
     const activeType = (kitten.petType || 'cat') as PetType;
     if ((kitten.deadPets || []).includes(activeType)) {
@@ -2563,28 +2615,38 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return false;
     }
 
-    const rem = getCooldownRemaining(kitten.cooldowns, 'pet_water');
-    if (rem > 0) {
-      showToast(`Hidratado! Próxima água em ${formatCooldownMs(rem)}`, 'aqua');
-      return false;
+    if (foodId) {
+      const currentQty = kitten.foodInventory?.[foodId] || 0;
+      if (currentQty <= 0) {
+        const drinkInfo = findPetFoodById(foodId);
+        showToast(`Compre ${drinkInfo?.name || 'a bebida'} na tabela primeiro!`, 'store');
+        return false;
+      }
     }
 
+    const drinkInfo = foodId ? findPetFoodById(foodId) : undefined;
     soundEngine.playDrink();
     const label = getSpeciesDisplayName(kitten.petType, kitten.name);
-    setKitten((prev) => ({
-      ...prev,
-      thirst: Math.min(100, (prev.thirst || 50) + 35),
-      happiness: Math.min(100, (prev.happiness || 50) + 6),
-      mood: 'feliz',
-      isDrinking: true,
-      lastFedTimestamp: Date.now(),
-      cooldowns: {
-        ...(prev.cooldowns || {}),
-        pet_water: Date.now() + COOLDOWN_MS.pet_water,
-      },
-    }));
+    setKitten((prev) => {
+      const nextInventory = { ...(prev.foodInventory || {}) };
+      if (foodId) {
+        nextInventory[foodId] = Math.max(0, (nextInventory[foodId] || 0) - 1);
+      }
+      return {
+        ...prev,
+        thirst: Math.min(100, (prev.thirst || 50) + thirstBoost),
+        hunger: Math.min(100, (prev.hunger || 50) + (drinkInfo?.hungerBoost || 0)),
+        happiness: Math.min(100, (prev.happiness || 50) + (drinkInfo?.happyBoost || 6)),
+        mood: 'feliz',
+        isDrinking: true,
+        lastFedTimestamp: Date.now(),
+        foodInventory: nextInventory,
+      };
+    });
     gainKittenXp(8);
-    addCoins(1, `${label} bebeu água fresquinha`);
+    if (canGrantPetBonus('water', 60_000)) {
+      addCoins(1, `${label} bebeu ${drinkInfo?.name || 'água fresquinha'}`);
+    }
     setTimeout(() => {
       setKitten((prev) => ({ ...prev, isDrinking: false }));
     }, 1600);
@@ -2681,18 +2743,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       showToast('Este pet virou estrelinha. Adote um novo mascote na Loja ♡', 'paw');
       return false;
     }
-    const cdKey = source === 'dance' ? 'pet_dance' : 'pet_play';
-    const cdDuration = source === 'dance' ? COOLDOWN_MS.pet_dance : COOLDOWN_MS.pet_play;
-    const rem = getCooldownRemaining(kitten.cooldowns, cdKey);
-    if (rem > 0) {
-      showToast(
-        source === 'dance'
-          ? `Descansando os passinhos! Nova dança premiada em ${formatCooldownMs(rem)}`
-          : `Descansando da brincadeira! Disponível em ${formatCooldownMs(rem)}`,
-        'paw'
-      );
-      return false;
-    }
 
     soundEngine.playToyBoing();
     triggerHeartExplosion(0.5, 0.4);
@@ -2700,19 +2750,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setKitten((prev) => ({
       ...prev,
       fun: Math.min(100, (prev.fun || 50) + 30),
-      energy: Math.max(10, (prev.energy || 80) - 8),
-      hygiene: Math.max(15, (prev.hygiene || 70) - 4),
+      energy: Math.max(10, (prev.energy || 80) - 4),
+      hygiene: Math.max(15, (prev.hygiene || 70) - 2),
       happiness: Math.min(100, (prev.happiness || 50) + 15),
       mood: 'brincalhao',
       isPlayMode: true,
       lastPlayed: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      cooldowns: {
-        ...(prev.cooldowns || {}),
-        [cdKey]: Date.now() + cdDuration,
-      },
     }));
-    gainKittenXp(15);
-    addCoins(2, source === 'dance' ? `${label} arrasou na dança` : `${label} brincou com ${toyName}`);
+    gainKittenXp(12);
+    if (canGrantPetBonus(source === 'dance' ? 'dance' : 'play', 90_000)) {
+      addCoins(2, source === 'dance' ? `${label} arrasou na dança` : `${label} brincou com ${toyName}`);
+    }
     setTimeout(() => {
       setKitten((prev) => ({ ...prev, isPlayMode: false }));
     }, 2000);
@@ -2857,6 +2905,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         },
       },
     }));
+  };
+
+  const setPetPartColorsBatch = (
+    petType: PetType,
+    parts: Record<string, string>,
+    toastMessage?: string
+  ) => {
+    if (guardSpectator()) return;
+    soundEngine.playHeartPop();
+    setKitten((prev) => {
+      const nextPetColors = { ...(prev.petColors || {}) };
+      delete nextPetColors[petType];
+      return {
+        ...prev,
+        petColors: nextPetColors,
+        petPartColors: {
+          ...(prev.petPartColors || {}),
+          [petType]: { ...parts },
+        },
+      };
+    });
+    if (toastMessage) {
+      showToast(toastMessage, 'sparkles');
+    }
   };
 
   const clearPetPartColors = (petType: PetType) => {
@@ -3949,9 +4021,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const resetAllData = async () => {
     setJourneyStarted(false);
+    const glbToPreserve = config.customGlbModels || readLocalCustomGlbModels();
+    writeLocalCustomGlbModels(glbToPreserve);
     try {
-      await clearSupabaseWorld();
-      await clearCloudWorld().catch(() => {});
+      await clearSupabaseWorld(glbToPreserve);
+      await clearCloudWorld(glbToPreserve).catch(() => {});
     } catch (e) {
       console.warn('Erro ao limpar nuvem:', e);
     }
@@ -4070,6 +4144,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         removeSong,
         unlockAchievement,
         buyStoreItem,
+        buyPetFood,
         redeemVoucher,
         petKitten,
         feedKitten,
@@ -4083,6 +4158,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         adoptPet,
         setPetColor,
         setPetPartColor,
+        setPetPartColorsBatch,
         clearPetPartColors,
         setAccessoryColor,
         waterLoveTree,

@@ -3,6 +3,11 @@ import React from 'react';
 export interface ModelViewerPBR {
   baseColorFactor: [number, number, number, number];
   setBaseColorFactor: (color: [number, number, number, number]) => void;
+  metallicFactor?: number;
+  roughnessFactor?: number;
+  metallicRoughnessTexture?: unknown;
+  setMetallicFactor?: (metallic: number) => void;
+  setRoughnessFactor?: (roughness: number) => void;
 }
 
 export interface ModelViewerMaterial {
@@ -38,7 +43,10 @@ declare module 'react' {
         autoplay?: boolean;
         'camera-controls'?: boolean;
         'shadow-intensity'?: string | number;
+        'shadow-softness'?: string | number;
         exposure?: string | number;
+        'environment-image'?: string;
+        'tone-mapping'?: string;
         'animation-name'?: string;
         'interaction-prompt'?: string;
         'touch-action'?: string;

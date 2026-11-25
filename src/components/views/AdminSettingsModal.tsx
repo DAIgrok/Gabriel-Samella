@@ -24,9 +24,16 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { motion } from 'motion/react';
-import { saveMediaBlob } from '../../services/localMediaStore';
+import { resolveMediaUrl, saveMediaBlob } from '../../services/localMediaStore';
 import { extractYouTubeId, fetchYouTubeMetadata, getYouTubeThumbnailUrl } from '../../services/realAudio';
 import { compressPhotoSafe, extractPhotosFromZipFile } from '../../utils/zipPhotoExtractor';
+import {
+  analyzeGlbFile,
+  analyzeGlbUrl,
+  fileToSyncableGlbDataUrl,
+  translateGlbClipLabel,
+  type GlbAnalysisResult,
+} from '../../utils/glbAnalyzer';
 import {
   DEFAULT_PET_GLB_URLS,
   HOUSE_FURNITURE_CATALOG,
@@ -135,6 +142,8 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
     () => ({ ...(config.customGlbModels?.furniture || {}) })
   );
   const [isGlbSaved, setIsGlbSaved] = useState(false);
+  const [petGlbAnalysis, setPetGlbAnalysis] = useState<GlbAnalysisResult | null>(null);
+  const [isAnalyzingGlb, setIsAnalyzingGlb] = useState(false);
 
   useEffect(() => {
     setGlbPetsDraft(
@@ -144,6 +153,36 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
     );
     setGlbFurnitureDraft({ ...(config.customGlbModels?.furniture || {}) });
   }, [config.customGlbModels]);
+
+  const currentPetGlbDraftUrl = (glbPetsDraft[selectedGlbPet] || '').trim();
+
+  useEffect(() => {
+    if (activeTab !== 'modelos3d') return;
+    if (!currentPetGlbDraftUrl) {
+      setPetGlbAnalysis(null);
+      setIsAnalyzingGlb(false);
+      return;
+    }
+    let cancelled = false;
+    setIsAnalyzingGlb(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const res = await analyzeGlbUrl(currentPetGlbDraftUrl, resolveMediaUrl);
+        if (!cancelled) {
+          setPetGlbAnalysis(res);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsAnalyzingGlb(false);
+        }
+      }
+    }, 180);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [activeTab, selectedGlbPet, currentPetGlbDraftUrl]);
 
   // Reset state
   const [confirmReset, setConfirmReset] = useState(false);
@@ -972,14 +1011,28 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
+                    setIsAnalyzingGlb(true);
                     try {
-                      const idbKey = await saveMediaBlob(`glb-pet-${selectedGlbPet}-${Date.now()}`, file);
-                      const nextPets = { ...glbPetsDraft, [selectedGlbPet]: idbKey };
+                      const analysis = await analyzeGlbFile(file);
+                      setPetGlbAnalysis(analysis);
+                      if (!analysis.isValid) {
+                        showToast(analysis.error || 'O arquivo não é um modelo .GLB válido.');
+                        return;
+                      }
+                      const syncable = await fileToSyncableGlbDataUrl(file);
+                      const storedRef =
+                        syncable || (await saveMediaBlob(`glb-pet-${selectedGlbPet}-${Date.now()}`, file));
+                      const nextPets = { ...glbPetsDraft, [selectedGlbPet]: storedRef };
                       setGlbPetsDraft(nextPets);
-                      persistGlbDrafts(nextPets, glbFurnitureDraft, `Arquivo ${file.name} salvo no aparelho!`);
+                      persistGlbDrafts(
+                        nextPets,
+                        glbFurnitureDraft,
+                        `${file.name} salvo para sempre (${analysis.animations.length} animações)!`
+                      );
                     } catch {
-                      showToast('Erro ao salvar arquivo .glb localmente.');
+                      showToast('Erro ao analisar e salvar arquivo .glb.');
                     } finally {
+                      setIsAnalyzingGlb(false);
                       e.target.value = '';
                     }
                   }}
@@ -1089,6 +1142,85 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                     <p className="text-[11px] text-amber-300/90 leading-snug">
                       Aviso: links curtos <code className="font-mono">skfb.ly/...</code> são páginas web, não arquivos <code className="font-mono">.glb</code> diretos. Envie o arquivo <code className="font-mono">.glb</code> baixado ou cole a URL terminando em <code className="font-mono">.glb</code>.
                     </p>
+                  )}
+
+                  {/* Built-in .GLB File & Animation Analyzer Report */}
+                  {(isAnalyzingGlb || petGlbAnalysis) && (
+                    <div
+                      className={`p-3 rounded-xl border text-[11px] space-y-2 ${
+                        isAnalyzingGlb
+                          ? 'bg-purple-950/60 border-purple-400/30 text-purple-200'
+                          : petGlbAnalysis?.isValid
+                          ? 'bg-emerald-950/35 border-emerald-400/35 text-emerald-100'
+                          : 'bg-rose-950/40 border-rose-400/35 text-rose-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="font-bold flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                          <span>
+                            {isAnalyzingGlb
+                              ? 'Analisando arquivo .GLB...'
+                              : petGlbAnalysis?.isValid
+                              ? `Analisador .GLB: Modelo ${petGlbAnalysis.format.toUpperCase()} v${petGlbAnalysis.gltfVersion || 2} verificado`
+                              : 'Analisador .GLB: Arquivo incompatível'}
+                          </span>
+                        </span>
+                        {petGlbAnalysis && petGlbAnalysis.fileSizeBytes > 0 && (
+                          <span className="font-mono text-[10px] opacity-80">
+                            {(petGlbAnalysis.fileSizeBytes / 1024).toFixed(0)} KB
+                          </span>
+                        )}
+                      </div>
+
+                      {!isAnalyzingGlb && petGlbAnalysis?.isValid && (
+                        <>
+                          <div className="flex flex-wrap gap-1.5 text-[10px] font-mono">
+                            <span className="px-2 py-0.5 rounded-md bg-black/35 border border-white/10">
+                              Malhas: {petGlbAnalysis.meshCount}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md bg-black/35 border border-white/10">
+                              Materiais: {petGlbAnalysis.materialCount}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md bg-black/35 border border-white/10">
+                              Texturas: {petGlbAnalysis.textureCount}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md bg-black/35 border border-white/10">
+                              Animações: {petGlbAnalysis.animations.length}
+                            </span>
+                          </div>
+
+                          {petGlbAnalysis.animations.length > 0 && (
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-semibold text-emerald-200 block">
+                                Clipes detectados e conectados automaticamente ao menu do pet:
+                              </span>
+                              <div className="flex flex-wrap gap-1">
+                                {petGlbAnalysis.animations.map((anim) => (
+                                  <span
+                                    key={anim.name}
+                                    className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/35 text-[10px] font-semibold text-emerald-100"
+                                  >
+                                    {translateGlbClipLabel(anim.name)} ({anim.name})
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      {!isAnalyzingGlb && petGlbAnalysis?.error && (
+                        <p className="text-[11px] text-rose-200 leading-snug">{petGlbAnalysis.error}</p>
+                      )}
+
+                      {!isAnalyzingGlb &&
+                        petGlbAnalysis?.warnings.map((w, idx) => (
+                          <p key={idx} className="text-[10px] text-amber-200/90 leading-snug">
+                            • {w}
+                          </p>
+                        ))}
+                    </div>
                   )}
                 </div>
 
