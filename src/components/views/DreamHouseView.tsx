@@ -851,6 +851,24 @@ export const DreamHouseView: React.FC = () => {
                       </div>
                       <button type="button" onClick={() => setSelectedConstructionWallId(null)} className="min-h-[34px] px-2.5 rounded-lg border border-purple-400/25 text-[11px] font-bold text-purple-200">Fechar</button>
                     </div>
+                    <div className="rounded-xl bg-black/20 p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[10px] font-bold text-purple-200">Posição da parede</p>
+                        <span className="text-[10px] text-purple-200/60">Toques de 25 cm</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5 max-w-[190px] mx-auto">
+                        <span />
+                        <button type="button" disabled={isSpectator} onClick={() => updateSelectedWall({ start: { ...selectedConstructionWall.start, z: Number((selectedConstructionWall.start.z - 0.25).toFixed(2)) }, end: { ...selectedConstructionWall.end, z: Number((selectedConstructionWall.end.z - 0.25).toFixed(2)) } })} className="min-h-[38px] rounded-lg border border-purple-300/25 text-white">↑</button>
+                        <span />
+                        <button type="button" disabled={isSpectator} onClick={() => updateSelectedWall({ start: { ...selectedConstructionWall.start, x: Number((selectedConstructionWall.start.x - 0.25).toFixed(2)) }, end: { ...selectedConstructionWall.end, x: Number((selectedConstructionWall.end.x - 0.25).toFixed(2)) } })} className="min-h-[38px] rounded-lg border border-purple-300/25 text-white">←</button>
+                        <button type="button" disabled={isSpectator} onClick={() => updateSelectedWall({ start: { ...selectedConstructionWall.start, x: Number((selectedConstructionWall.start.x + 0.25).toFixed(2)) }, end: { ...selectedConstructionWall.end, x: Number((selectedConstructionWall.end.x + 0.25).toFixed(2)) } })} className="min-h-[38px] rounded-lg border border-purple-300/25 text-white">→</button>
+                        <button type="button" disabled={isSpectator} onClick={() => updateSelectedWall({ start: { ...selectedConstructionWall.start, z: Number((selectedConstructionWall.start.z + 0.25).toFixed(2)) }, end: { ...selectedConstructionWall.end, z: Number((selectedConstructionWall.end.z + 0.25).toFixed(2)) } })} className="min-h-[38px] rounded-lg border border-purple-300/25 text-white">↓</button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button type="button" disabled={isSpectator} onClick={() => { const cx = (selectedConstructionWall.start.x + selectedConstructionWall.end.x) / 2; const cz = (selectedConstructionWall.start.z + selectedConstructionWall.end.z) / 2; const angle = -Math.PI / 12; const rotate = (p: { x: number; z: number }) => ({ x: Number((cx + (p.x - cx) * Math.cos(angle) - (p.z - cz) * Math.sin(angle)).toFixed(2)), z: Number((cz + (p.x - cx) * Math.sin(angle) + (p.z - cz) * Math.cos(angle)).toFixed(2)) }); updateSelectedWall({ start: rotate(selectedConstructionWall.start), end: rotate(selectedConstructionWall.end) }); }} className="min-h-[38px] rounded-lg border border-purple-300/25 text-purple-100 text-xs font-bold">↶ Girar 15°</button>
+                        <button type="button" disabled={isSpectator} onClick={() => { const cx = (selectedConstructionWall.start.x + selectedConstructionWall.end.x) / 2; const cz = (selectedConstructionWall.start.z + selectedConstructionWall.end.z) / 2; const angle = Math.PI / 12; const rotate = (p: { x: number; z: number }) => ({ x: Number((cx + (p.x - cx) * Math.cos(angle) - (p.z - cz) * Math.sin(angle)).toFixed(2)), z: Number((cz + (p.x - cx) * Math.sin(angle) + (p.z - cz) * Math.cos(angle)).toFixed(2)) }); updateSelectedWall({ start: rotate(selectedConstructionWall.start), end: rotate(selectedConstructionWall.end) }); }} className="min-h-[38px] rounded-lg border border-purple-300/25 text-purple-100 text-xs font-bold">↷ Girar 15°</button>
+                      </div>
+                    </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="rounded-xl bg-black/20 p-2.5">
                         <p className="text-[10px] font-bold text-purple-200">Altura · {selectedConstructionWall.height.toFixed(1)} m</p>
