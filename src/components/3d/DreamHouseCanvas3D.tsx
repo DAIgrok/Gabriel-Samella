@@ -1840,6 +1840,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     isEditMode,
     wallBuildMode,
     selectedFurnitureId,
+    selectedConstructionWallId,
     furnitureGlbUrls,
     ownedPets,
     deadPets,
@@ -1854,6 +1855,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     onSelectFurniture,
     onMoveFurniture,
     onCreateWall,
+    onSelectConstructionWall,
   };
 
   const rebuildFnRef = useRef<(() => void) | null>(null);
