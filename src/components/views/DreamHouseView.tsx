@@ -828,12 +828,21 @@ export const DreamHouseView: React.FC = () => {
                     ) : (
                       <div className="mt-2 space-y-2">
                         {(dreamHouse.customWalls || []).filter((wall) => !wall.roomId || wall.roomId === currentRoom).map((wall, index) => (
-                          <div key={wall.id} className="flex items-center gap-2 rounded-xl bg-purple-950/55 px-3 py-2">
+                          <div key={wall.id} className={`flex items-center gap-2 rounded-xl px-3 py-2 border ${selectedConstructionWallId === wall.id ? 'bg-pink-500/15 border-pink-400/45' : 'bg-purple-950/55 border-transparent'}`}>
                             <span className="flex-1 text-xs font-semibold text-purple-100">Parede {index + 1} · {Math.hypot(wall.end.x - wall.start.x, wall.end.z - wall.start.z).toFixed(2)} m</span>
                             <button
                               type="button"
                               disabled={isSpectator}
-                              onClick={() => setHouseCustomWalls((dreamHouse.customWalls || []).filter((item) => item.id !== wall.id))}
+                              onClick={() => setSelectedConstructionWallId(wall.id)}
+                              className="min-h-[32px] px-2.5 rounded-lg border border-pink-400/30 bg-pink-500/15 text-[11px] font-bold text-pink-100 disabled:opacity-40"
+                            >{selectedConstructionWallId === wall.id ? 'Selecionada' : 'Editar'}</button>
+                            <button
+                              type="button"
+                              disabled={isSpectator}
+                              onClick={() => {
+                                setHouseCustomWalls((dreamHouse.customWalls || []).filter((item) => item.id !== wall.id));
+                                if (selectedConstructionWallId === wall.id) setSelectedConstructionWallId(null);
+                              }}
                               className="text-[11px] font-bold text-rose-200 disabled:opacity-40"
                             >Remover</button>
                           </div>
