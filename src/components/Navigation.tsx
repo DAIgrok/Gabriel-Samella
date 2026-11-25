@@ -84,7 +84,28 @@ export const Navigation: React.FC = () => {
     { id: 'config', label: 'Configurações (Criador)', icon: Settings, color: 'text-slate-300' },
   ];
 
-  const drawerItems = allDrawerItems;
+  const drawerSections = [
+    {
+      title: 'NOSSO ESPAÇO',
+      subtitle: 'Os lugares que fazem parte da nossa história',
+      items: allDrawerItems.filter((item) => ['inicio', 'casa', 'aquario', 'arvore', 'gatinho'].includes(item.id)),
+    },
+    {
+      title: 'CONEXÃO & MEMÓRIAS',
+      subtitle: 'Momentos, conversas e lembranças',
+      items: allDrawerItems.filter((item) => ['conversas', 'cartas', 'fotos', 'musica', 'frases'].includes(item.id)),
+    },
+    {
+      title: 'EXPERIÊNCIAS DO CASAL',
+      subtitle: 'Jogos, sonhos e conquistas compartilhadas',
+      items: allDrawerItems.filter((item) => ['missoes', 'jogos', 'conquistas', 'metas', 'calendario'].includes(item.id)),
+    },
+    {
+      title: 'PERSONALIZAÇÃO',
+      subtitle: 'Cuide e personalize nosso mundo',
+      items: allDrawerItems.filter((item) => ['loja', 'config'].includes(item.id)),
+    },
+  ];
 
   return (
     <>
@@ -236,37 +257,58 @@ export const Navigation: React.FC = () => {
 
               {/* Navigation List */}
               <div className="space-y-1.5 flex-1 py-1">
-                {drawerItems.map((item) => {
-                  const Icon = item.icon;
-                  const isSelected = extendedView === item.id;
+                {drawerSections.map((section) => (
+                  <section key={section.title} className="pt-3 first:pt-1">
+                    <div className="px-2 pb-2">
+                      <h3 className="text-[10px] font-extrabold tracking-[0.2em] text-pink-200/80">
+                        {section.title}
+                      </h3>
+                      <p className="mt-0.5 text-[10px] leading-relaxed text-violet-200/45">
+                        {section.subtitle}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      {section.items.map((item) => {
+                        const Icon = item.icon;
+                        const isSelected = extendedView === item.id;
 
-                  return (
-                    <button
-                      key={item.id}
-                      id={`drawer-item-${item.id}`}
-                      onClick={() => setExtendedView(item.id)}
-                      className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all cursor-pointer ${
-                        isSelected
-                          ? 'glass border border-purple-500/40 text-white shadow-md'
-                          : 'text-white/70 hover:bg-white/5 hover:text-white'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon className={`w-5 h-5 ${item.color}`} />
-                        <span className="text-sm font-medium">{item.label}</span>
-                      </div>
+                        return (
+                          <button
+                            key={item.id}
+                            id={`drawer-item-${item.id}`}
+                            onClick={() => {
+                              setExtendedView(item.id);
+                              setIsDrawerOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between px-3 py-3 rounded-2xl transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-gradient-to-r from-fuchsia-500/15 to-violet-500/15 border border-pink-300/30 text-white shadow-[0_8px_24px_rgba(168,85,247,0.12)]'
+                                : 'border border-transparent text-white/70 hover:bg-white/[0.045] hover:text-white'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className={`w-9 h-9 shrink-0 rounded-xl flex items-center justify-center bg-white/[0.045] border border-white/[0.06] ${item.color}`}>
+                                <Icon className="w-[18px] h-[18px]" />
+                              </span>
+                              <span className="text-[13px] font-semibold tracking-[0.01em] text-left leading-tight">
+                                {item.label}
+                              </span>
+                            </div>
 
-                      <div className="flex items-center gap-1.5">
-                        {item.badge && (
-                          <span className="text-[10px] bg-purple-500/20 text-purple-200 px-2 py-0.5 rounded-full border border-purple-400/30">
-                            {item.badge}
-                          </span>
-                        )}
-                        <ChevronRight className="w-4 h-4 text-white/30" />
-                      </div>
-                    </button>
-                  );
-                })}
+                            <div className="flex items-center gap-1.5 pl-2">
+                              {item.badge && (
+                                <span className="text-[9px] font-bold bg-purple-500/15 text-purple-100/80 px-2 py-1 rounded-full border border-purple-300/15">
+                                  {item.badge}
+                                </span>
+                              )}
+                              <ChevronRight className={`w-4 h-4 ${isSelected ? 'text-pink-200' : 'text-white/25'}`} />
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
                 <div className="pt-2 space-y-1.5 border-t border-white/10 mt-2">
                   <button
                     type="button"
