@@ -136,6 +136,7 @@ export const DreamHouseView: React.FC = () => {
 
   useEffect(() => {
     setSelectedFurnitureId(null);
+    setSelectedConstructionWallId(null);
     setCatFilter('all');
   }, [currentRoom]);
 
