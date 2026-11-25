@@ -212,6 +212,7 @@ interface DreamHouseCanvas3DProps {
   onSelectFurniture?: (furnitureId: string | null) => void;
   onMoveFurniture?: (furnitureId: string, transform: HouseFurnitureTransform) => void;
   onCreateWall?: (wall: HouseConstructionWall) => void;
+  onSelectConstructionWall?: (wallId: string | null) => void;
 }
 
 function createFloorTexture(
@@ -2901,6 +2902,12 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
           propsRef.current.onTapAquarium?.();
           return;
         }
+      }
+
+      const constructionHit = hits.find((h) => h.object.userData?.constructionId);
+      if (constructionHit) {
+        propsRef.current.onSelectConstructionWall?.(String(constructionHit.object.userData.constructionId));
+        return;
       }
 
       const hit = hits.find((h) => h.object.userData?.furnitureId);
