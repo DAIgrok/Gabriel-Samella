@@ -194,6 +194,7 @@ interface DreamHouseCanvas3DProps {
   isEditMode?: boolean;
   wallBuildMode?: boolean;
   selectedFurnitureId?: string | null;
+  selectedConstructionWallId?: string | null;
   furnitureGlbUrls?: Record<string, string>;
   ownedPets?: PetType[];
   deadPets?: PetType[];
@@ -2536,6 +2537,12 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
       // User-built wall segments are persisted and rendered as solid 3D geometry.
       (savedCustomWalls || []).filter((wall) => !wall.roomId || wall.roomId === room).forEach((wall) => {
         try {
+          const isSelectedWall = propsRef.current.selectedConstructionWallId === wall.id;
+          const wallMaterial = isSelectedWall ? wallMat.clone() : wallMat;
+          if (isSelectedWall) {
+            wallMaterial.emissive.set(0xf472b6);
+            wallMaterial.emissiveIntensity = 0.2;
+          }
           const customWall = createHouseWallMesh(
             {
               id: wall.id,
@@ -2545,7 +2552,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
               thickness: wall.thickness,
               openings: wall.openings || [],
             },
-            wallMat
+            wallMaterial
           );
           customWall.userData.isUserBuiltWall = true;
           roomGroup.add(customWall);
@@ -3241,6 +3248,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     footprintDepth,
     wallHeight,
     JSON.stringify(customWalls || []),
+    selectedConstructionWallId,
   ]);
 
   const transformsKey = JSON.stringify(furnitureTransforms || {});
