@@ -1753,6 +1753,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
   isEditMode = false,
   wallBuildMode = false,
   selectedFurnitureId = null,
+  selectedConstructionWallId = null,
   furnitureGlbUrls,
   ownedPets,
   deadPets,
@@ -1767,6 +1768,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
   onSelectFurniture,
   onMoveFurniture,
   onCreateWall,
+  onSelectConstructionWall,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [contextLost, setContextLost] = useState(false);
@@ -1796,6 +1798,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     isEditMode,
     wallBuildMode,
     selectedFurnitureId,
+    selectedConstructionWallId,
     furnitureGlbUrls,
     ownedPets,
     deadPets,
@@ -1810,6 +1813,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
     onSelectFurniture,
     onMoveFurniture,
     onCreateWall,
+    onSelectConstructionWall,
   });
   propsRef.current = {
     activeRoom,
