@@ -1,134 +1,1090 @@
-import React from 'react';
-import { motion } from 'motion/react';
-import { DreamHouseCrestIcon } from '../icons/CustomIcons';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import {
+  Bath,
+  Camera,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  CloudSun,
+  Droplets,
+  Flame,
+  Lightbulb,
+  Lock,
+  Move,
+  Palette,
+  PawPrint,
+  RotateCcw,
+  RotateCw,
+  ShoppingBag,
+  Sofa,
+  Square,
+  Triangle,
+  Sparkles,
+  Utensils,
+} from 'lucide-react';
+import { useApp } from '../../context/AppContext';
+import {
+  DEFAULT_FURNITURE_TRANSFORMS,
+  DreamHouseCanvas3D,
+  DreamHouseSkyMode,
+} from '../3d/DreamHouseCanvas3D';
+import {
+  HOUSE_FLOOR_THEMES,
+  HOUSE_FURNITURE_CATALOG,
+  HOUSE_WALL_THEMES,
+  resolveFurnitureGlbUrl,
+  resolvePetGlbUrl,
+} from '../../data/initialData';
+import { HOUSE_CATEGORY_META } from '../../data/houseFurnitureCatalog';
+import { HouseConstructionWall, HouseFurnitureCategory, HouseRoomId } from '../../types';
+import {
+  DiamondGemIcon,
+  DreamHouseCrestIcon,
+  EclipseSkyIcon,
+  VectorGlyphIcon,
+} from '../icons/CustomIcons';
 
-const MODELS = [
-  {
-    id: 'forest-home',
-    eyebrow: 'NOSSO REFÚGIO',
-    title: 'Nossa casa',
-    subtitle: 'Forest-sided · A peaceful place to live',
-    description: 'Um pequeno refúgio cercado pela natureza, com detalhes para explorar em cada ângulo.',
-    modelId: '01bde51946244b9db917bf9370ef605b',
-    source: 'https://sketchfab.com/3d-models/forest-sided-a-peaceful-place-to-live-diorama-01bde51946244b9db917bf9370ef605b',
-    creator: 'Cleuza Costa',
-    license: 'Creative Commons Attribution (CC BY)',
-  },
-  {
-    id: 'love-tree',
-    eyebrow: 'NOSSO SÍMBOLO',
-    title: 'Nossa árvore',
-    subtitle: 'Stylized Tree Diorama',
-    description: 'Uma árvore em 3D para completar esse cantinho que representa o nosso mundo.',
-    modelId: 'bf809101703b402ca12e5c3591febeb4',
-    source: 'https://sketchfab.com/3d-models/stylized-tree-diorama-bf809101703b402ca12e5c3591febeb4',
-    creator: null,
-    license: null,
-  },
+const ROOMS: { id: HouseRoomId; label: string }[] = [
+  { id: 'sala', label: 'Sala' },
+  { id: 'quarto', label: 'Quarto' },
+  { id: 'cozinha', label: 'Cozinha' },
+  { id: 'banheiro', label: 'Banheiro' },
+  { id: 'varanda', label: 'Varanda' },
 ];
 
+function getRealtimeSkyLabel(): string {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 7) return 'Amanhecer';
+  if (h >= 7 && h < 17) return 'Dia Ensolarado';
+  if (h >= 17 && h < 19) return 'Pôr do Sol';
+  return 'Noite Estrelada';
+}
+
 export const DreamHouseView: React.FC = () => {
+  const {
+    isSpectator,
+    config,
+    dreamHouse,
+    kitten,
+    aquarium,
+    treeState,
+    activeSeasonalEvent,
+    setHouseRoom,
+    setHouseWallTheme,
+    setHouseFloorTheme,
+    setHouseCustomWallHex,
+    setHouseCustomFloorHex,
+    setHouseCustomCeilingHex,
+    setHouseRoofStyle,
+    setHouseDimensions,
+    setHouseCustomWalls,
+    setHouseFurnitureColor,
+    toggleHouseLights,
+    toggleHouseFireplace,
+    toggleHouseFurniturePlacement,
+    setHouseFurnitureTransform,
+    resetHouseFurnitureTransform,
+    recordHouseVisit,
+    interactHouseFurniture,
+    feedKitten,
+    giveWaterKitten,
+    batheKitten,
+    captureVirtualPhoto,
+    setExtendedView,
+    storeItems,
+  } = useApp();
+
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [dockTab, setDockTab] = useState<'moveis' | 'paredes' | 'pisos' | 'telhados' | 'construcao'>('construcao');
+  const [showCeiling, setShowCeiling] = useState(false);
+  const [catFilter, setCatFilter] = useState<'all' | HouseFurnitureCategory>('all');
+  const [skyMode, setSkyMode] = useState<DreamHouseSkyMode>('auto');
+  const [viewMode, setViewMode] = useState<'interior' | 'exterior'>('exterior');
+  const [hudExpanded, setHudExpanded] = useState(true);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isWallBuildMode, setIsWallBuildMode] = useState(false);
+  const [selectedFurnitureId, setSelectedFurnitureId] = useState<string | null>(null);
+  const [selectedConstructionWallId, setSelectedConstructionWallId] = useState<string | null>(null);
+
+  useEffect(() => {
+    recordHouseVisit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const unlockedRooms = dreamHouse.unlockedRooms || ['sala'];
+  const currentRoom = unlockedRooms.includes(dreamHouse.activeRoom) ? dreamHouse.activeRoom : 'sala';
+  const placedInRoom = dreamHouse.placedFurniture?.[currentRoom] || [];
+  const totalPlacedAllRooms = Object.values(dreamHouse.placedFurniture || {}).flat().length;
+  const roomFurniture = HOUSE_FURNITURE_CATALOG.filter((f) => f.room === currentRoom);
+  const filteredRoomFurniture =
+    catFilter === 'all' ? roomFurniture : roomFurniture.filter((f) => f.category === catFilter);
+
+  const roomCategories = Array.from(new Set(roomFurniture.map((f) => f.category)));
+  const roomLabel = ROOMS.find((r) => r.id === currentRoom)?.label || 'Sala';
+
+  const petType = kitten.petType || 'cat';
+  const isPetDead = Boolean(kitten.deadPets?.includes(petType));
+  const petHunger = Math.round(kitten.hunger ?? 80);
+  const petThirst = Math.round(kitten.thirst ?? 80);
+  const petHygiene = Math.round(kitten.hygiene ?? 85);
+  const hasKitchenAndBowl =
+    unlockedRooms.includes('cozinha') &&
+    Boolean(dreamHouse.placedFurniture?.cozinha?.includes('house-pet-bowl'));
+  const hasBathroomUnlocked = unlockedRooms.includes('banheiro');
+  const catGlbUrl = useMemo(() => resolvePetGlbUrl('cat', config), [config]);
+
+  useEffect(() => {
+    setSelectedFurnitureId(null);
+    setSelectedConstructionWallId(null);
+    setCatFilter('all');
+  }, [currentRoom]);
+
+  useEffect(() => {
+    if (isSpectator && isEditMode) setIsEditMode(false);
+    if (isSpectator && isWallBuildMode) setIsWallBuildMode(false);
+    if (viewMode === 'exterior' && isWallBuildMode) setIsWallBuildMode(false);
+  }, [isSpectator, isEditMode, isWallBuildMode, viewMode]);
+
+  const furnitureGlbUrls = useMemo(() => {
+    const map: Record<string, string> = {};
+    placedInRoom.forEach((fId) => {
+      const resolved = resolveFurnitureGlbUrl(fId, config);
+      if (resolved) map[fId] = resolved;
+    });
+    return map;
+  }, [placedInRoom, config]);
+
+  const selectedFurnitureInfo = selectedFurnitureId
+    ? HOUSE_FURNITURE_CATALOG.find((f) => f.id === selectedFurnitureId)
+    : null;
+  const selectedConstructionWall = (dreamHouse.customWalls || []).find(
+    (wall) => wall.id === selectedConstructionWallId && (!wall.roomId || wall.roomId === currentRoom)
+  ) || null;
+
+  const updateSelectedWall = (patch: Partial<HouseConstructionWall>) => {
+    if (!selectedConstructionWall || isSpectator) return;
+    setHouseCustomWalls((dreamHouse.customWalls || []).map((wall) =>
+      wall.id === selectedConstructionWall.id ? { ...wall, ...patch } : wall
+    ));
+  };
+
+  const addOpeningToSelectedWall = (kind: 'door' | 'window') => {
+    if (!selectedConstructionWall || isSpectator) return;
+    const length = Math.hypot(
+      selectedConstructionWall.end.x - selectedConstructionWall.start.x,
+      selectedConstructionWall.end.z - selectedConstructionWall.start.z
+    );
+    const width = kind === 'door' ? 0.9 : 1.25;
+    if (length < width + 0.25) return;
+    const opening = {
+      id: `${kind}-${selectedConstructionWall.id}-${Date.now()}`,
+      kind,
+      offset: Number(((length - width) / 2).toFixed(2)),
+      width,
+      height: kind === 'door' ? 2.1 : 1.1,
+      sillHeight: kind === 'door' ? 0 : 0.9,
+    };
+    setHouseCustomWalls((dreamHouse.customWalls || []).map((wall) =>
+      wall.id === selectedConstructionWall.id
+        ? { ...wall, openings: [...(wall.openings || []), opening] }
+        : wall
+    ));
+  };
+
+  const handleRotateSelected = (deltaRad: number) => {
+    if (!selectedFurnitureId || isSpectator) return;
+    const base =
+      dreamHouse.furnitureTransforms?.[selectedFurnitureId] ||
+      DEFAULT_FURNITURE_TRANSFORMS[selectedFurnitureId] || { x: 0, z: 0, rotY: 0 };
+    setHouseFurnitureTransform(selectedFurnitureId, {
+      ...base,
+      rotY: Number((base.rotY + deltaRad).toFixed(4)),
+    });
+  };
+
   return (
-    <motion.main
+    <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      className="relative mx-auto w-full max-w-6xl space-y-6 overflow-hidden px-1 pb-28 sm:space-y-8 sm:pb-24"
+      exit={{ opacity: 0, y: -10 }}
+      className="space-y-4 pb-28 sm:pb-24 max-w-3xl mx-auto"
     >
-      <div aria-hidden="true" className="pointer-events-none absolute -left-24 top-12 h-64 w-64 rounded-full bg-violet-600/15 blur-3xl" />
-      <div aria-hidden="true" className="pointer-events-none absolute -right-24 top-72 h-72 w-72 rounded-full bg-pink-500/10 blur-3xl" />
-
-      <header className="glass-card-glow relative overflow-hidden rounded-[2rem] border border-fuchsia-300/20 bg-gradient-to-br from-[#211039]/95 via-[#160d2b]/95 to-[#0c1024]/95 p-5 shadow-2xl shadow-purple-950/30 sm:p-7">
-        <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-16 h-48 w-48 rounded-full border border-fuchsia-200/10" />
-        <div aria-hidden="true" className="pointer-events-none absolute -right-2 -top-8 h-32 w-32 rounded-full border border-violet-200/10" />
-        <div className="relative flex items-start gap-3 sm:items-center sm:gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-pink-300/30 bg-gradient-to-br from-pink-400/20 to-violet-500/25 shadow-lg shadow-pink-950/20 sm:h-14 sm:w-14">
-            <DreamHouseCrestIcon className="h-6 w-6 text-pink-200 sm:h-7 sm:w-7" />
+      {/* Header Banner */}
+      <div className="glass-card-glow rounded-3xl p-4 sm:p-5 border border-pink-400/25 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-pink-500/25 to-purple-600/35 border border-pink-400/35 flex items-center justify-center shrink-0">
+            <DreamHouseCrestIcon className="w-6 h-6 text-pink-300" />
           </div>
           <div className="min-w-0">
-            <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.28em] text-pink-200/75 sm:text-[10px]">Nosso pequeno universo</p>
-            <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">Casa dos Sonhos</h2>
-            <p className="mt-1 max-w-xl text-xs leading-relaxed text-violet-100/70 sm:text-sm">
-              Dois cenários em 3D escolhidos para fazer parte do nosso cantinho.
+            <h2 className="text-lg sm:text-xl font-bold text-white truncate">
+              Casa
+            </h2>
+            <p className="text-xs text-purple-200/75 truncate">
+              {isSpectator
+                ? 'Modo Espectador: explore a casa em tempo real'
+                : isWallBuildMode
+                ? 'Desenhe uma parede arrastando o dedo pelo chão'
+                : isEditMode
+                ? 'Modo Decorar: arraste móveis na grade e personalize cores'
+                : `Arraste para girar · Toque nos móveis para interagir · Conforto Nv.${dreamHouse.comfortLevel || 1}`}
             </p>
           </div>
         </div>
-        <div className="relative mt-5 flex items-center gap-2 rounded-2xl border border-white/10 bg-black/15 px-3 py-2.5 text-[11px] text-violet-100/70 sm:mt-6 sm:text-xs">
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.7)]" />
-          Arraste para girar e use os controles do visualizador para aproximar e explorar em 360°.
+
+        <button
+          type="button"
+          onClick={() => setExtendedView('loja')}
+          className="min-h-[42px] px-3.5 rounded-2xl bg-pink-500/20 hover:bg-pink-500/30 border border-pink-400/35 text-pink-200 text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer"
+        >
+          <ShoppingBag className="w-4 h-4" />
+          <span className="hidden sm:inline">Móveis na Loja</span>
+        </button>
+      </div>
+
+      {isSpectator && (
+        <div className="px-4 py-2.5 rounded-2xl bg-purple-950/60 border border-amber-400/30 text-amber-200 text-xs font-semibold flex items-center gap-2">
+          <Lock className="w-4 h-4 shrink-0 text-amber-300" />
+          <span>Modo Espectador ativo: apenas Samella pode mover, pintar ou comprar móveis.</span>
         </div>
-      </header>
+      )}
 
-      <section className="relative grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6" aria-label="Modelos 3D do nosso mundo">
-        {MODELS.map((model, index) => (
-          <motion.article
-            key={model.id}
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: index * 0.08 }}
-            className="group min-w-0 overflow-hidden rounded-[1.7rem] border border-violet-300/20 bg-gradient-to-b from-[#1a1030]/95 to-[#0d091a]/95 shadow-xl shadow-purple-950/30 transition duration-300 hover:border-pink-300/35 hover:shadow-2xl hover:shadow-purple-950/40"
+      {/* 3D Viewport Stage with Real-Time Climatic Sky Backdrop */}
+      <div className="relative rounded-3xl border border-purple-500/30 shadow-2xl overflow-hidden">
+        <div ref={stageRef} className="w-full">
+          <DreamHouseCanvas3D
+            activeRoom={currentRoom}
+            wallTheme={dreamHouse.wallTheme}
+            floorTheme={dreamHouse.floorTheme}
+            customWallHex={dreamHouse.customWallHex}
+            customFloorHex={dreamHouse.customFloorHex}
+            customCeilingHex={dreamHouse.customCeilingHex}
+            footprintWidth={dreamHouse.footprintWidth ?? 6.4}
+            footprintDepth={dreamHouse.footprintDepth ?? 5.4}
+            wallHeight={dreamHouse.wallHeight ?? 2.75}
+            customWalls={dreamHouse.customWalls || []}
+            showCeiling={showCeiling}
+            roofStyle={dreamHouse.roofStyle || 'gable'}
+            furnitureColors={dreamHouse.customColors}
+            skyMode={skyMode}
+            viewMode={viewMode}
+            lightsOn={dreamHouse.lightsOn}
+            fireplaceLit={dreamHouse.fireplaceLit}
+            placedFurnitureIds={placedInRoom}
+            treeLevel={treeState.level || 1}
+            activeSeasonalEvent={activeSeasonalEvent}
+            furnitureTransforms={dreamHouse.furnitureTransforms}
+            isEditMode={isEditMode && !isSpectator}
+            wallBuildMode={isWallBuildMode && !isSpectator}
+            selectedFurnitureId={selectedFurnitureId}
+            selectedConstructionWallId={selectedConstructionWallId}
+            furnitureGlbUrls={furnitureGlbUrls}
+            ownedPets={kitten.ownedPets}
+            deadPets={kitten.deadPets}
+            petColors={kitten.petColors}
+            petGlbUrl={catGlbUrl}
+            petHunger={petHunger}
+            petThirst={petThirst}
+            petLastFedTimestamp={kitten.lastFedAt}
+            aquarium={aquarium}
+            onTapAquarium={() => setExtendedView('aquario')}
+            onInteractFurniture={interactHouseFurniture}
+            onSelectFurniture={setSelectedFurnitureId}
+            onMoveFurniture={setHouseFurnitureTransform}
+            onCreateWall={(wall) => {
+              setHouseCustomWalls([...(dreamHouse.customWalls || []), wall]);
+              setSelectedConstructionWallId(wall.id);
+              setIsWallBuildMode(false);
+            }}
+            onSelectConstructionWall={setSelectedConstructionWallId}
+          />
+        </div>
+
+        {/* View mode and sky controls */}
+        <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setViewMode((current) => (current === 'interior' ? 'exterior' : 'interior'))}
+            className="px-3 py-1.5 rounded-full bg-[#130627]/90 backdrop-blur-sm border border-pink-400/40 text-[11px] font-bold text-white shadow-lg cursor-pointer"
           >
-            <div className="flex items-start justify-between gap-3 px-4 pb-3 pt-4 sm:px-5 sm:pt-5">
-              <div className="min-w-0">
-                <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.24em] text-pink-200/65">{model.eyebrow}</p>
-                <h3 className="text-base font-bold text-white sm:text-lg">{model.title}</h3>
-                <p className="mt-0.5 text-[10px] text-violet-200/60 sm:text-xs">{model.subtitle}</p>
-              </div>
-              <a
-                href={model.source}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shrink-0 rounded-full border border-pink-200/25 bg-pink-400/10 px-3 py-2 text-[10px] font-semibold text-pink-100 transition hover:border-pink-200/50 hover:bg-pink-400/20 focus:outline-none focus:ring-2 focus:ring-pink-300/60"
-                aria-label={`Abrir ${model.title} no Sketchfab`}
+            {viewMode === 'interior' ? 'Ver bairro · 360°' : 'Entrar na casa'}
+          </button>
+          {viewMode === 'interior' && (
+            <div className="px-3 py-1.5 rounded-full bg-[#130627]/85 backdrop-blur-sm border border-pink-400/30 text-[11px] font-bold text-white flex items-center gap-1.5 pointer-events-none">
+              <Sparkles className="w-3.5 h-3.5 text-pink-300" />
+              <span>{roomLabel}</span>
+              {currentRoom === 'varanda' && (
+                <span className="text-teal-300">· Árvore Nv.{treeState.level || 1}</span>
+              )}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setSkyMode((prev) => (prev === 'auto' ? 'eclipse' : 'auto'))}
+            className={`px-2.5 py-1.5 rounded-full backdrop-blur-sm border text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition ${
+              skyMode === 'eclipse'
+                ? 'bg-pink-600/80 border-pink-300 text-white shadow'
+                : 'bg-[#130627]/80 border-purple-400/35 text-purple-100 hover:text-white'
+            }`}
+            title="Alternar entre céu em tempo real e Eclipse Romântico"
+          >
+            {skyMode === 'eclipse' ? (
+              <EclipseSkyIcon className="w-3.5 h-3.5" />
+            ) : (
+              <CloudSun className="w-3.5 h-3.5 text-sky-300" />
+            )}
+            <span>{skyMode === 'eclipse' ? 'Eclipse Solar' : getRealtimeSkyLabel()}</span>
+          </button>
+
+          {viewMode === 'interior' && currentRoom === 'sala' && (
+            <button
+              type="button"
+              onClick={() => setExtendedView('aquario')}
+              className="px-2.5 py-1.5 rounded-full bg-sky-500/25 hover:bg-sky-500/40 backdrop-blur-sm border border-sky-300/40 text-sky-100 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition"
+              title="Abrir Aquário 3D completo"
+            >
+              <span>Aquário</span>
+            </button>
+          )}
+        </div>
+
+        {/* Snapshot Trigger Top-Right */}
+        <button
+          type="button"
+          onClick={() =>
+            captureVirtualPhoto(
+              stageRef.current,
+              `Casa dos Sonhos — ${roomLabel}`,
+              `Estilo ${HOUSE_WALL_THEMES.find((w) => w.id === dreamHouse.wallTheme)?.label || 'Romântico'}`
+            )
+          }
+          className="absolute top-3 right-3 z-20 min-h-[38px] px-3 rounded-full bg-[#130627]/85 backdrop-blur-sm border border-pink-400/35 text-pink-200 hover:text-white text-[11px] font-bold flex items-center gap-1.5 shadow-lg cursor-pointer"
+          title="Fotografar para a Galeria"
+        >
+          <Camera className="w-3.5 h-3.5 text-pink-400" />
+          <span className="hidden xs:inline">Foto Virtual</span>
+        </button>
+      </div>
+
+      {/* Compact Pet Needs Bar inside Dream House */}
+      <div className="glass-card-glow rounded-3xl px-3.5 py-2.5 border border-purple-500/25 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="inline-flex items-center gap-1.5 font-bold text-pink-200">
+            <PawPrint className="w-3.5 h-3.5 text-pink-400" />
+            <span>Pets na Casa:</span>
+          </span>
+          <span className={`px-2 py-0.5 rounded-full border text-[11px] font-bold ${petHunger < 35 ? 'bg-rose-500/20 border-rose-400/45 text-rose-200' : 'bg-purple-950/60 border-purple-500/25 text-purple-100'}`}>
+            Fome {petHunger}%
+          </span>
+          <span className={`px-2 py-0.5 rounded-full border text-[11px] font-bold ${petThirst < 35 ? 'bg-rose-500/20 border-rose-400/45 text-rose-200' : 'bg-purple-950/60 border-purple-500/25 text-sky-200'}`}>
+            Sede {petThirst}%
+          </span>
+          <span className={`px-2 py-0.5 rounded-full border text-[11px] font-bold ${petHygiene < 35 ? 'bg-amber-500/20 border-amber-400/45 text-amber-200' : 'bg-purple-950/60 border-purple-500/25 text-teal-200'}`}>
+            Higiene {petHygiene}%
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          {!isPetDead && !isSpectator && (
+            <>
+              <button
+                type="button"
+                onClick={feedKitten}
+                disabled={!hasKitchenAndBowl}
+                className="min-h-[34px] px-2.5 rounded-xl bg-pink-500/20 border border-pink-400/35 text-pink-100 text-[11px] font-bold flex items-center gap-1 cursor-pointer disabled:opacity-45"
+                title={hasKitchenAndBowl ? 'Encher tigela com ração' : 'Desbloqueie a Cozinha e coloque a Tigela Dupla'}
               >
-                Ver modelo ↗
-              </a>
+                <Utensils className="w-3 h-3" />
+                <span>Ração</span>
+              </button>
+              <button
+                type="button"
+                onClick={giveWaterKitten}
+                disabled={!hasKitchenAndBowl}
+                className="min-h-[34px] px-2.5 rounded-xl bg-sky-500/20 border border-sky-400/35 text-sky-100 text-[11px] font-bold flex items-center gap-1 cursor-pointer disabled:opacity-45"
+                title={hasKitchenAndBowl ? 'Encher tigela com água fresca' : 'Desbloqueie a Cozinha e coloque a Tigela Dupla'}
+              >
+                <Droplets className="w-3 h-3" />
+                <span>Água</span>
+              </button>
+              <button
+                type="button"
+                onClick={batheKitten}
+                disabled={!hasBathroomUnlocked}
+                className="min-h-[34px] px-2.5 rounded-xl bg-teal-500/20 border border-teal-400/35 text-teal-100 text-[11px] font-bold flex items-center gap-1 cursor-pointer disabled:opacity-45"
+                title={hasBathroomUnlocked ? 'Dar banho no Banheiro' : 'Desbloqueie o Banheiro'}
+              >
+                <Bath className="w-3 h-3" />
+                <span>Banho</span>
+              </button>
+            </>
+          )}
+          {(!hasKitchenAndBowl || !hasBathroomUnlocked) && (
+            <button
+              type="button"
+              onClick={() => setExtendedView('loja')}
+              className="min-h-[34px] px-2.5 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-200 text-[11px] font-bold cursor-pointer"
+            >
+              {!hasKitchenAndBowl ? 'Falta Cozinha/Tigela' : 'Falta Banheiro'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Empty House Welcome Banner */}
+      {totalPlacedAllRooms === 0 && (
+        <div className="glass-card-glow rounded-3xl p-4 border border-pink-400/35 bg-gradient-to-r from-purple-950/80 to-pink-950/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <Sofa className="w-4 h-4 text-pink-400" />
+              Sua Casa dos Sonhos começou novinha e vazia!
+            </h3>
+            <p className="text-xs text-purple-200/80">
+              Compre sofás, TVs, setup gamer, camas, móveis de cozinha, banheiro e decoração na Loja escolhendo a cor que quiser.
+            </p>
+          </div>
+          {!isSpectator && (
+            <button
+              type="button"
+              onClick={() => setExtendedView('loja')}
+              className="min-h-[40px] px-4 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer shadow-lg"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              <span>Ir para a Loja</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Mobile Decorate Bar */}
+      <AnimatePresence>
+        {isEditMode && !isSpectator && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            className="glass-card-glow rounded-3xl p-3 sm:p-3.5 border border-pink-400/40 bg-[#1a0b36]/95 flex flex-wrap items-center justify-between gap-2.5 shadow-lg"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-pink-400 animate-pulse shrink-0" />
+              <p className="text-xs font-bold text-white truncate">
+                {selectedFurnitureInfo
+                  ? `${selectedFurnitureInfo.name} selecionado`
+                  : 'Toque em um móvel no cenário para mover'}
+              </p>
             </div>
 
-            <div className="relative mx-3 overflow-hidden rounded-2xl border border-white/10 bg-[#080611] shadow-inner shadow-black/40 sm:mx-4">
-              <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_center,rgba(111,70,160,0.13),transparent_68%)]" />
-              <div className="relative aspect-[4/3] w-full sm:aspect-[16/10]">
-                <iframe
-                  title={`${model.title} — visualização 3D`}
-                  src={`https://sketchfab.com/models/${model.modelId}/embed?autostart=1&ui_theme=dark&ui_infos=1&ui_hint=1&preload=1`}
-                  className="absolute inset-0 h-full w-full border-0"
-                  allow="autoplay; fullscreen; xr-spatial-tracking"
-                  allowFullScreen
-                  loading={index === 0 ? 'eager' : 'lazy'}
-                  referrerPolicy="strict-origin-when-cross-origin"
-                />
-              </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {selectedFurnitureId && selectedFurnitureInfo && (
+                <label className="min-h-[44px] px-3 rounded-2xl bg-purple-950/80 border border-pink-400/40 text-pink-100 text-xs font-bold flex items-center gap-2 cursor-pointer">
+                  <span>Cor</span>
+                  <input
+                    type="color"
+                    value={
+                      dreamHouse.customColors?.[selectedFurnitureId] ||
+                      selectedFurnitureInfo.accentHex
+                    }
+                    onChange={(e) => setHouseFurnitureColor(selectedFurnitureId, e.target.value)}
+                    className="w-6 h-6 rounded-md bg-transparent border-0 cursor-pointer"
+                    aria-label="Escolher cor do móvel"
+                  />
+                </label>
+              )}
+              <button
+                type="button"
+                disabled={!selectedFurnitureId}
+                onClick={() => handleRotateSelected(-Math.PI / 4)}
+                className="min-h-[44px] px-3 rounded-2xl bg-purple-950/80 border border-purple-400/35 text-purple-100 hover:text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition active:scale-95"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>-45°</span>
+              </button>
+              <button
+                type="button"
+                disabled={!selectedFurnitureId}
+                onClick={() => handleRotateSelected(Math.PI / 4)}
+                className="min-h-[44px] px-3 rounded-2xl bg-purple-950/80 border border-purple-400/35 text-purple-100 hover:text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition active:scale-95"
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+                <span>+45°</span>
+              </button>
+              {selectedFurnitureId && (
+                <button
+                  type="button"
+                  onClick={() => resetHouseFurnitureTransform(selectedFurnitureId)}
+                  className="min-h-[44px] px-3 rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-200 hover:text-white text-xs font-bold cursor-pointer transition active:scale-95"
+                >
+                  Resetar
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditMode(false);
+                  setSelectedFurnitureId(null);
+                }}
+                className="min-h-[44px] px-4 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer transition active:scale-95"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Concluir</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Unified Bottom Control Dock */}
+      <div className="glass-card-glow rounded-3xl border border-purple-500/25 overflow-hidden">
+        <div className="p-3 sm:p-4 border-b border-purple-500/15 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-[10px] uppercase tracking-[0.16em] text-purple-300/70 font-bold shrink-0">Ambiente</span>
+            {unlockedRooms.map((roomId) => {
+              const room = ROOMS.find((entry) => entry.id === roomId);
+              if (!room) return null;
+              return (
+                <button
+                  key={room.id}
+                  type="button"
+                  onClick={() => setHouseRoom(room.id)}
+                  className={`min-h-[38px] px-4 rounded-xl text-xs font-bold transition shrink-0 ${currentRoom === room.id ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-md' : 'bg-purple-950/60 border border-purple-500/25 text-purple-200 hover:text-white'}`}
+                >
+                  {room.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              disabled={isSpectator}
+              onClick={() => {
+                setIsEditMode((prev) => {
+                  if (prev) setSelectedFurnitureId(null);
+                  return !prev;
+                });
+              }}
+              className={`min-h-[40px] px-3 rounded-2xl text-xs font-bold border flex items-center gap-1.5 cursor-pointer transition disabled:opacity-45 disabled:cursor-not-allowed ${
+                isEditMode
+                  ? 'bg-pink-500/30 border-pink-400 text-white shadow-md'
+                  : 'bg-purple-950/60 border-purple-500/25 text-pink-200 hover:text-white'
+              }`}
+            >
+              <Move className="w-3.5 h-3.5" />
+              <span>{isEditMode ? 'Modo Explorar' : 'Modo Decorar'}</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={isSpectator}
+              onClick={toggleHouseLights}
+              className={`min-h-[40px] px-3 rounded-2xl text-xs font-bold border flex items-center gap-1.5 cursor-pointer transition disabled:opacity-45 disabled:cursor-not-allowed ${
+                dreamHouse.lightsOn
+                  ? 'bg-amber-400/20 border-amber-300/45 text-amber-200'
+                  : 'bg-purple-950/60 border-purple-500/25 text-purple-300'
+              }`}
+            >
+              <Lightbulb className="w-3.5 h-3.5" />
+              <span>{dreamHouse.lightsOn ? 'Luzes Acesas' : 'Penumbra'}</span>
+            </button>
+
+            {currentRoom === 'sala' && (
+              <button
+                type="button"
+                disabled={isSpectator}
+                onClick={toggleHouseFireplace}
+                className={`min-h-[40px] px-3 rounded-2xl text-xs font-bold border flex items-center gap-1.5 cursor-pointer transition disabled:opacity-45 disabled:cursor-not-allowed ${
+                  dreamHouse.fireplaceLit
+                    ? 'bg-orange-500/25 border-orange-400/50 text-orange-200'
+                    : 'bg-purple-950/60 border-purple-500/25 text-purple-300'
+                }`}
+              >
+                <Flame className="w-3.5 h-3.5" />
+                <span>Lareira</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setHudExpanded((v) => !v)}
+              className="min-w-[40px] min-h-[40px] rounded-2xl bg-purple-950/60 border border-purple-500/25 text-purple-200 flex items-center justify-center cursor-pointer"
+              aria-label={hudExpanded ? 'Recolher opções' : 'Expandir opções'}
+            >
+              {hudExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
+        {hudExpanded && (
+          <div className="p-4 space-y-4">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+              {[
+                { id: 'moveis' as const, label: 'Móveis', icon: Sofa },
+                { id: 'paredes' as const, label: 'Paredes', icon: Square },
+                { id: 'pisos' as const, label: 'Pisos', icon: Palette },
+                { id: 'telhados' as const, label: 'Telhados', icon: Triangle },
+                { id: 'construcao' as const, label: 'Planta', icon: Move },
+              ].map((t) => {
+                const Icon = t.icon;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setDockTab(t.id)}
+                    className={`min-h-[38px] px-3.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border shrink-0 cursor-pointer transition ${
+                      dockTab === t.id
+                        ? 'bg-pink-500/25 border-pink-400/50 text-white'
+                        : 'bg-purple-950/50 border-purple-500/20 text-purple-300 hover:text-white'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{t.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
-            <div className="px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
-              <p className="text-[11px] leading-relaxed text-violet-100/65 sm:text-xs">{model.description}</p>
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.07] pt-3">
-                <span className="text-[9px] text-violet-200/45">Visualização 3D interativa · Sketchfab</span>
-                {model.creator && (
-                  <a
-                    href={model.source}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[9px] text-violet-200/65 underline decoration-violet-300/30 underline-offset-2 hover:text-pink-100"
-                  >
-                    {model.creator} · {model.license}
-                  </a>
-                )}
-                {!model.creator && (
-                  <a
-                    href={model.source}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[9px] text-violet-200/65 underline decoration-violet-300/30 underline-offset-2 hover:text-pink-100"
-                  >
-                    Créditos e licença
-                  </a>
-                )}
+            {dockTab === 'construcao' && (
+              <div className="rounded-2xl border border-purple-400/20 bg-gradient-to-br from-[#24103f] to-[#160b2d] p-4 space-y-3">
+                <div>
+                  <p className="text-sm font-bold text-white">Planta do ambiente</p>
+                  <p className="text-[11px] text-purple-200/70 mt-1">Ajuste o tamanho do espaço. Para desenhar divisórias, use a aba Paredes.</p>
+                </div>
+                {[
+                  { label: 'Largura', value: dreamHouse.footprintWidth ?? 6.4, min: 4, max: 12, unit: 'm' },
+                  { label: 'Profundidade', value: dreamHouse.footprintDepth ?? 5.4, min: 4, max: 12, unit: 'm' },
+                  { label: 'Altura das paredes', value: dreamHouse.wallHeight ?? 2.75, min: 2.2, max: 4.5, unit: 'm' },
+                ].map((dimension) => (
+                  <label key={dimension.label} className="block space-y-1.5">
+                    <span className="flex items-center justify-between text-xs font-semibold text-purple-100">
+                      <span>{dimension.label}</span>
+                      <span className="text-pink-200 tabular-nums">{dimension.value.toFixed(2)} {dimension.unit}</span>
+                    </span>
+                    <input
+                      type="range"
+                      min={dimension.min}
+                      max={dimension.max}
+                      step="0.25"
+                      value={dimension.value}
+                      disabled={isSpectator}
+                      onChange={(event) => {
+                        const next = Number(event.target.value);
+                        setHouseDimensions(
+                          dimension.label === 'Largura' ? next : dreamHouse.footprintWidth ?? 6.4,
+                          dimension.label === 'Profundidade' ? next : dreamHouse.footprintDepth ?? 5.4,
+                          dimension.label === 'Altura das paredes' ? next : dreamHouse.wallHeight ?? 2.75
+                        );
+                      }}
+                      className="w-full accent-pink-400 disabled:opacity-40"
+                    />
+                  </label>
+                ))}
               </div>
-            </div>
-          </motion.article>
-        ))}
-      </section>
-    </motion.main>
+            )}
+
+            {dockTab === 'moveis' && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  <button
+                    type="button"
+                    onClick={() => setCatFilter('all')}
+                    className={`px-3 py-1.5 rounded-full text-[11px] font-bold border shrink-0 cursor-pointer ${
+                      catFilter === 'all'
+                        ? 'bg-pink-500 text-white border-pink-300'
+                        : 'bg-purple-950/60 text-purple-200/80 border-purple-500/25'
+                    }`}
+                  >
+                    Todos ({roomFurniture.length})
+                  </button>
+                  {HOUSE_CATEGORY_META.filter((c) => roomCategories.includes(c.id)).map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setCatFilter(c.id)}
+                      className={`px-3 py-1.5 rounded-full text-[11px] font-bold border shrink-0 flex items-center gap-1 cursor-pointer ${
+                        catFilter === c.id
+                          ? 'bg-pink-500 text-white border-pink-300'
+                          : 'bg-purple-950/60 text-purple-200/80 border-purple-500/25'
+                      }`}
+                    >
+                      <VectorGlyphIcon name={c.icon} className="w-3 h-3" />
+                      <span>{c.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {filteredRoomFurniture.map((item, idx) => {
+                    const unlocked =
+                      dreamHouse.unlockedFurnitureIds.includes(item.id) ||
+                      Boolean(item.unlockedByDefault) ||
+                      storeItems.some((s) => s.targetId === item.id && s.purchased);
+                    const placed = placedInRoom.includes(item.id);
+                    const activeHex = dreamHouse.customColors?.[item.id] || item.accentHex;
+
+                    return (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2, delay: Math.min(0.24, idx * 0.025) }}
+                        className={`p-3 rounded-2xl border flex items-center justify-between gap-2.5 smooth-card-hover ${
+                          placed
+                            ? 'bg-pink-500/15 border-pink-400/45 shadow-sm'
+                            : 'bg-purple-950/45 border-purple-500/20'
+                        }`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="w-3 h-3 rounded-full shrink-0 border border-white/25"
+                              style={{ backgroundColor: activeHex }}
+                            />
+                            <p className="text-xs font-bold text-white truncate">{item.name}</p>
+                          </div>
+                          <p className="text-[11px] text-purple-200/70 line-clamp-1 mt-0.5">
+                            {item.description}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {unlocked && !isSpectator && (
+                            <label
+                              className="w-8 h-8 rounded-xl bg-purple-900/70 border border-pink-400/30 flex items-center justify-center cursor-pointer"
+                              title="Mudar cor do móvel"
+                            >
+                              <input
+                                type="color"
+                                value={activeHex}
+                                onChange={(e) => setHouseFurnitureColor(item.id, e.target.value)}
+                                className="w-5 h-5 rounded border-0 bg-transparent cursor-pointer"
+                                aria-label={`Cor de ${item.name}`}
+                              />
+                            </label>
+                          )}
+
+                          {unlocked ? (
+                            <button
+                              type="button"
+                              disabled={isSpectator}
+                              onClick={() => toggleHouseFurniturePlacement(item.id)}
+                              className={`min-h-[38px] px-3 rounded-xl text-xs font-bold shrink-0 cursor-pointer transition active:scale-95 disabled:opacity-45 ${
+                                placed
+                                  ? 'bg-purple-900/80 text-pink-200 border border-pink-400/35'
+                                  : 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow'
+                              }`}
+                            >
+                              {placed ? 'Guardar' : 'Colocar'}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setExtendedView('loja')}
+                              className="min-h-[38px] px-3 rounded-xl bg-amber-500/15 border border-amber-400/40 text-amber-200 text-xs font-bold flex items-center gap-1 shrink-0 cursor-pointer transition active:scale-95"
+                            >
+                              <span>{item.price || 18}</span>
+                              <DiamondGemIcon className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {dockTab === 'paredes' && (
+              <div className="space-y-3">
+                <div className="rounded-2xl border border-pink-400/25 bg-gradient-to-br from-[#24103f] to-[#160b2d] p-3 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center"><Square className="w-5 h-5" /></span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-white">Construir parede</p>
+                      <p className="text-[11px] text-purple-200/70">{viewMode === 'exterior' ? 'Entre na casa para desenhar' : isWallBuildMode ? 'Arraste no piso para definir o comprimento' : 'Desenhe diretamente no piso, sem eixos X/Z'}</p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isSpectator || viewMode === 'exterior'}
+                      onClick={() => {
+                        setIsEditMode(false);
+                        setSelectedFurnitureId(null);
+                        setIsWallBuildMode((active) => !active);
+                      }}
+                      className={`min-h-[40px] px-3 rounded-xl border text-xs font-bold transition disabled:opacity-40 ${isWallBuildMode ? 'bg-pink-500/25 border-pink-300 text-white' : 'bg-purple-950/65 border-purple-400/25 text-purple-100'}`}
+                    >
+                      {isWallBuildMode ? 'Cancelar' : 'Desenhar'}
+                    </button>
+                  </div>
+                  <div className="rounded-xl border border-purple-400/20 bg-black/15 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-bold text-white">Paredes adicionadas</span>
+                      <span className="text-[10px] text-purple-200/65">Grade de 25 cm</span>
+                    </div>
+                    {(dreamHouse.customWalls || []).filter((wall) => !wall.roomId || wall.roomId === currentRoom).length === 0 ? (
+                      <p className="text-[11px] text-purple-200/65 mt-2">Nenhuma parede extra ainda. Toque em Desenhar e arraste no piso.</p>
+                    ) : (
+                      <div className="mt-2 space-y-2">
+                        {(dreamHouse.customWalls || []).filter((wall) => !wall.roomId || wall.roomId === currentRoom).map((wall, index) => (
+                          <div key={wall.id} className={`flex items-center gap-2 rounded-xl px-3 py-2 border ${selectedConstructionWallId === wall.id ? 'bg-pink-500/15 border-pink-400/45' : 'bg-purple-950/55 border-transparent'}`}>
+                            <span className="flex-1 text-xs font-semibold text-purple-100">Parede {index + 1} · {Math.hypot(wall.end.x - wall.start.x, wall.end.z - wall.start.z).toFixed(2)} m</span>
+                            <button
+                              type="button"
+                              disabled={isSpectator}
+                              onClick={() => setSelectedConstructionWallId(wall.id)}
+                              className="min-h-[32px] px-2.5 rounded-lg border border-pink-400/30 bg-pink-500/15 text-[11px] font-bold text-pink-100 disabled:opacity-40"
+                            >{selectedConstructionWallId === wall.id ? 'Selecionada' : 'Editar'}</button>
+                            <button
+                              type="button"
+                              disabled={isSpectator}
+                              onClick={() => {
+                                setHouseCustomWalls((dreamHouse.customWalls || []).filter((item) => item.id !== wall.id));
+                                if (selectedConstructionWallId === wall.id) setSelectedConstructionWallId(null);
+                              }}
+                              className="text-[11px] font-bold text-rose-200 disabled:opacity-40"
+                            >Remover</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {selectedConstructionWall && (
+                  <div className="rounded-2xl border border-pink-400/40 bg-gradient-to-br from-[#2b1247] to-[#160b2d] p-3 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-white">Parede selecionada</p>
+                        <p className="text-[11px] text-purple-200/75">{Math.hypot(selectedConstructionWall.end.x - selectedConstructionWall.start.x, selectedConstructionWall.end.z - selectedConstructionWall.start.z).toFixed(2)} m · Toque na parede para selecioná-la</p>
+                      </div>
+                      <button type="button" onClick={() => setSelectedConstructionWallId(null)} className="min-h-[34px] px-2.5 rounded-lg border border-purple-400/25 text-[11px] font-bold text-purple-200">Fechar</button>
+                    </div>
+                    <div className="rounded-xl bg-black/20 p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[10px] font-bold text-purple-200">Posição da parede</p>
+                        <span className="text-[10px] text-purple-200/60">Toques de 25 cm</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5 max-w-[190px] mx-auto">
+                        <span />
+                        <button type="button" disabled={isSpectator} onClick={() => updateSelectedWall({ start: { ...selectedConstructionWall.start, z: Number((selectedConstructionWall.start.z - 0.25).toFixed(2)) }, end: { ...selectedConstructionWall.end, z: Number((selectedConstructionWall.end.z - 0.25).toFixed(2)) } })} className="min-h-[38px] rounded-lg border border-purple-300/25 text-white">↑</button>
+                        <span />
+                        <button type="button" disabled={isSpectator} onClick={() => updateSelectedWall({ start: { ...selectedConstructionWall.start, x: Number((selectedConstructionWall.start.x - 0.25).toFixed(2)) }, end: { ...selectedConstructionWall.end, x: Number((selectedConstructionWall.end.x - 0.25).toFixed(2)) } })} className="min-h-[38px] rounded-lg border border-purple-300/25 text-white">←</button>
+                        <button type="button" disabled={isSpectator} onClick={() => updateSelectedWall({ start: { ...selectedConstructionWall.start, x: Number((selectedConstructionWall.start.x + 0.25).toFixed(2)) }, end: { ...selectedConstructionWall.end, x: Number((selectedConstructionWall.end.x + 0.25).toFixed(2)) } })} className="min-h-[38px] rounded-lg border border-purple-300/25 text-white">→</button>
+                        <button type="button" disabled={isSpectator} onClick={() => updateSelectedWall({ start: { ...selectedConstructionWall.start, z: Number((selectedConstructionWall.start.z + 0.25).toFixed(2)) }, end: { ...selectedConstructionWall.end, z: Number((selectedConstructionWall.end.z + 0.25).toFixed(2)) } })} className="min-h-[38px] rounded-lg border border-purple-300/25 text-white">↓</button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button type="button" disabled={isSpectator} onClick={() => { const cx = (selectedConstructionWall.start.x + selectedConstructionWall.end.x) / 2; const cz = (selectedConstructionWall.start.z + selectedConstructionWall.end.z) / 2; const angle = -Math.PI / 12; const rotate = (p: { x: number; z: number }) => ({ x: Number((cx + (p.x - cx) * Math.cos(angle) - (p.z - cz) * Math.sin(angle)).toFixed(2)), z: Number((cz + (p.x - cx) * Math.sin(angle) + (p.z - cz) * Math.cos(angle)).toFixed(2)) }); updateSelectedWall({ start: rotate(selectedConstructionWall.start), end: rotate(selectedConstructionWall.end) }); }} className="min-h-[38px] rounded-lg border border-purple-300/25 text-purple-100 text-xs font-bold">↶ Girar 15°</button>
+                        <button type="button" disabled={isSpectator} onClick={() => { const cx = (selectedConstructionWall.start.x + selectedConstructionWall.end.x) / 2; const cz = (selectedConstructionWall.start.z + selectedConstructionWall.end.z) / 2; const angle = Math.PI / 12; const rotate = (p: { x: number; z: number }) => ({ x: Number((cx + (p.x - cx) * Math.cos(angle) - (p.z - cz) * Math.sin(angle)).toFixed(2)), z: Number((cz + (p.x - cx) * Math.sin(angle) + (p.z - cz) * Math.cos(angle)).toFixed(2)) }); updateSelectedWall({ start: rotate(selectedConstructionWall.start), end: rotate(selectedConstructionWall.end) }); }} className="min-h-[38px] rounded-lg border border-purple-300/25 text-purple-100 text-xs font-bold">↷ Girar 15°</button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-xl bg-black/20 p-2.5">
+                        <p className="text-[10px] font-bold text-purple-200">Altura · {selectedConstructionWall.height.toFixed(1)} m</p>
+                        <div className="mt-2 grid grid-cols-2 gap-1.5">
+                          <button type="button" disabled={isSpectator || selectedConstructionWall.height <= 1.8} onClick={() => updateSelectedWall({ height: Math.max(1.8, Number((selectedConstructionWall.height - 0.2).toFixed(1))) })} className="min-h-[38px] rounded-lg border border-purple-300/20 text-white text-lg">−</button>
+                          <button type="button" disabled={isSpectator || selectedConstructionWall.height >= 4.5} onClick={() => updateSelectedWall({ height: Math.min(4.5, Number((selectedConstructionWall.height + 0.2).toFixed(1))) })} className="min-h-[38px] rounded-lg border border-purple-300/20 text-white text-lg">＋</button>
+                        </div>
+                      </div>
+                      <div className="rounded-xl bg-black/20 p-2.5">
+                        <p className="text-[10px] font-bold text-purple-200">Espessura · {selectedConstructionWall.thickness.toFixed(2)} m</p>
+                        <div className="mt-2 grid grid-cols-2 gap-1.5">
+                          <button type="button" disabled={isSpectator || selectedConstructionWall.thickness <= 0.08} onClick={() => updateSelectedWall({ thickness: Math.max(0.08, Number((selectedConstructionWall.thickness - 0.02).toFixed(2))) })} className="min-h-[38px] rounded-lg border border-purple-300/20 text-white text-lg">−</button>
+                          <button type="button" disabled={isSpectator || selectedConstructionWall.thickness >= 0.35} onClick={() => updateSelectedWall({ thickness: Math.min(0.35, Number((selectedConstructionWall.thickness + 0.02).toFixed(2))) })} className="min-h-[38px] rounded-lg border border-purple-300/20 text-white text-lg">＋</button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" disabled={isSpectator || Math.hypot(selectedConstructionWall.end.x - selectedConstructionWall.start.x, selectedConstructionWall.end.z - selectedConstructionWall.start.z) < 1.15} onClick={() => addOpeningToSelectedWall('door')} className="min-h-[44px] rounded-xl border border-amber-300/35 bg-amber-500/15 text-amber-100 text-xs font-bold disabled:opacity-40">＋ Adicionar porta</button>
+                      <button type="button" disabled={isSpectator || Math.hypot(selectedConstructionWall.end.x - selectedConstructionWall.start.x, selectedConstructionWall.end.z - selectedConstructionWall.start.z) < 1.5} onClick={() => addOpeningToSelectedWall('window')} className="min-h-[44px] rounded-xl border border-sky-300/35 bg-sky-500/15 text-sky-100 text-xs font-bold disabled:opacity-40">＋ Adicionar janela</button>
+                    </div>
+                    {(selectedConstructionWall.openings || []).length > 0 && (
+                      <div className="space-y-1.5">
+                        {(selectedConstructionWall.openings || []).map((opening, index) => (
+                          <div key={opening.id} className="flex items-center justify-between gap-2 rounded-lg bg-black/20 px-3 py-2">
+                            <span className="text-[11px] font-semibold text-purple-100 flex-1">{opening.kind === 'door' ? 'Porta' : 'Janela'} {index + 1} · {opening.width.toFixed(2)} m</span>
+                            <button type="button" disabled={isSpectator || opening.width <= 0.55} onClick={() => setHouseCustomWalls((dreamHouse.customWalls || []).map((wall) => wall.id === selectedConstructionWall.id ? { ...wall, openings: (wall.openings || []).map((item) => item.id === opening.id ? { ...item, width: Math.max(0.55, Number((item.width - 0.1).toFixed(2))) } : item) } : wall))} className="min-w-[30px] min-h-[32px] rounded-lg border border-purple-300/20 text-white">−</button>
+                            <button type="button" disabled={isSpectator || opening.width >= 2.2} onClick={() => setHouseCustomWalls((dreamHouse.customWalls || []).map((wall) => wall.id === selectedConstructionWall.id ? { ...wall, openings: (wall.openings || []).map((item) => item.id === opening.id ? { ...item, width: Math.min(2.2, Number((item.width + 0.1).toFixed(2))) } : item) } : wall))} className="min-w-[30px] min-h-[32px] rounded-lg border border-purple-300/20 text-white">＋</button>
+                            <button type="button" aria-label="Mover abertura para a esquerda" disabled={isSpectator || opening.offset <= 0.05} onClick={() => setHouseCustomWalls((dreamHouse.customWalls || []).map((wall) => wall.id === selectedConstructionWall.id ? { ...wall, openings: (wall.openings || []).map((item) => item.id === opening.id ? { ...item, offset: Math.max(0.05, Number((item.offset - 0.1).toFixed(2))) } : item) } : wall))} className="min-w-[30px] min-h-[32px] rounded-lg border border-purple-300/20 text-white">←</button>
+                            <button type="button" aria-label="Mover abertura para a direita" disabled={isSpectator || opening.offset + opening.width >= Math.hypot(selectedConstructionWall.end.x - selectedConstructionWall.start.x, selectedConstructionWall.end.z - selectedConstructionWall.start.z) - 0.05} onClick={() => setHouseCustomWalls((dreamHouse.customWalls || []).map((wall) => wall.id === selectedConstructionWall.id ? { ...wall, openings: (wall.openings || []).map((item) => item.id === opening.id ? { ...item, offset: Math.min(Math.hypot(wall.end.x - wall.start.x, wall.end.z - wall.start.z) - item.width - 0.05, Number((item.offset + 0.1).toFixed(2))) } : item) } : wall))} className="min-w-[30px] min-h-[32px] rounded-lg border border-purple-300/20 text-white">→</button>
+                            <button type="button" disabled={isSpectator} onClick={() => setHouseCustomWalls((dreamHouse.customWalls || []).map((wall) => wall.id === selectedConstructionWall.id ? { ...wall, openings: (wall.openings || []).filter((item) => item.id !== opening.id) } : wall))} className="text-[11px] font-bold text-rose-200 disabled:opacity-40">Remover</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <button type="button" disabled={isSpectator} onClick={() => { setHouseCustomWalls((dreamHouse.customWalls || []).filter((wall) => wall.id !== selectedConstructionWall.id)); setSelectedConstructionWallId(null); }} className="w-full min-h-[40px] rounded-xl border border-rose-400/30 bg-rose-500/10 text-rose-200 text-xs font-bold disabled:opacity-40">Excluir esta parede</button>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-purple-950/55 border border-pink-400/30">
+                  <div>
+                    <p className="text-xs font-bold text-white">Cor Livre de Parede</p>
+                    <p className="text-[11px] text-purple-200/75">
+                      Escolha qualquer tonalidade para pintar as paredes deste cômodo
+                    </p>
+                  </div>
+                  <input
+                    type="color"
+                    disabled={isSpectator}
+                    value={dreamHouse.customWallHex || '#4c2887'}
+                    onChange={(e) => setHouseCustomWallHex(e.target.value)}
+                    className="w-10 h-10 rounded-xl border border-white/25 bg-transparent cursor-pointer disabled:opacity-45"
+                    aria-label="Escolher cor livre da parede"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {HOUSE_WALL_THEMES.map((w) => {
+                    const unlocked =
+                      Boolean(w.unlockedByDefault) ||
+                      storeItems.some((s) => s.targetId === w.id && s.purchased);
+                    const active = dreamHouse.wallTheme === w.id && !dreamHouse.customWallHex;
+                    return (
+                      <button
+                        key={w.id}
+                        type="button"
+                        disabled={unlocked && isSpectator}
+                        onClick={() => {
+                          if (unlocked) setHouseWallTheme(w.id);
+                          else setExtendedView('loja');
+                        }}
+                        className={`min-h-[48px] p-3 rounded-2xl border flex items-center justify-between gap-2 text-left cursor-pointer transition disabled:opacity-50 ${
+                          active
+                            ? 'bg-pink-500/20 border-pink-400 text-white'
+                            : 'bg-purple-950/50 border-purple-500/25 text-purple-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className="w-4 h-4 rounded-full border border-white/30 shrink-0"
+                            style={{ backgroundColor: w.colorHex }}
+                          />
+                          <span className="text-xs font-bold truncate">{w.label}</span>
+                        </div>
+                        {!unlocked && <span className="text-[10px] text-amber-300 font-bold">Loja</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {dockTab === 'telhados' && (
+              <div className="space-y-3">
+                <div className="rounded-2xl border border-purple-400/20 bg-gradient-to-br from-[#24103f] to-[#160b2d] p-4 space-y-3">
+                  <div>
+                    <p className="text-sm font-bold text-white">Formato do telhado</p>
+                    <p className="text-[11px] text-purple-200/70">Escolha a cobertura e visualize o acabamento superior do ambiente 3D.</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      disabled={isSpectator}
+                      onClick={() => setHouseRoofStyle('gable')}
+                      className={`min-h-[78px] rounded-2xl border p-3 flex flex-col items-center justify-center gap-2 transition disabled:opacity-40 ${(dreamHouse.roofStyle || 'gable') === 'gable' ? 'bg-pink-500/20 border-pink-300 text-white' : 'bg-purple-950/55 border-purple-400/20 text-purple-200'}`}
+                    >
+                      <Triangle className="w-6 h-6" />
+                      <span className="text-xs font-bold">Duas águas</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isSpectator}
+                      onClick={() => setHouseRoofStyle('flat')}
+                      className={`min-h-[78px] rounded-2xl border p-3 flex flex-col items-center justify-center gap-2 transition disabled:opacity-40 ${(dreamHouse.roofStyle || 'gable') === 'flat' ? 'bg-pink-500/20 border-pink-300 text-white' : 'bg-purple-950/55 border-purple-400/20 text-purple-200'}`}
+                    >
+                      <Square className="w-6 h-6" />
+                      <span className="text-xs font-bold">Plano</span>
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-purple-400/20 bg-black/15 p-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-white">Visualização da cobertura</p>
+                      <p className="text-[11px] text-purple-200/70">Mostra ou oculta o telhado no ambiente</p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isSpectator}
+                      onClick={() => setShowCeiling((visible) => !visible)}
+                      className={`min-h-[38px] px-3 rounded-xl border text-xs font-bold disabled:opacity-45 ${showCeiling ? 'bg-pink-500/25 border-pink-400 text-white' : 'bg-purple-900/70 border-purple-500/30 text-purple-200'}`}
+                    >
+                      {showCeiling ? 'Visível' : 'Mostrar'}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-purple-400/20 bg-black/15 p-3">
+                    <div>
+                      <p className="text-xs font-bold text-white">Cor da cobertura</p>
+                      <p className="text-[11px] text-purple-200/70">Personalização livre</p>
+                    </div>
+                    <input
+                      type="color"
+                      disabled={isSpectator}
+                      value={dreamHouse.customCeilingHex || '#eee7f5'}
+                      onChange={(e) => setHouseCustomCeilingHex(e.target.value)}
+                      className="w-10 h-10 rounded-xl border border-white/25 bg-transparent cursor-pointer disabled:opacity-45"
+                      aria-label="Escolher cor do telhado"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {dockTab === 'pisos' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-purple-950/55 border border-pink-400/30">
+                  <div>
+                    <p className="text-xs font-bold text-white">Cor Livre de Piso</p>
+                    <p className="text-[11px] text-purple-200/75">
+                      Personalize o assoalho com qualquer cor que combine com seu estilo
+                    </p>
+                  </div>
+                  <input
+                    type="color"
+                    disabled={isSpectator}
+                    value={dreamHouse.customFloorHex || '#5c3419'}
+                    onChange={(e) => setHouseCustomFloorHex(e.target.value)}
+                    className="w-10 h-10 rounded-xl border border-white/25 bg-transparent cursor-pointer disabled:opacity-45"
+                    aria-label="Escolher cor livre do piso"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {HOUSE_FLOOR_THEMES.map((fl) => {
+                    const unlocked =
+                      Boolean(fl.unlockedByDefault) ||
+                      storeItems.some((s) => s.targetId === fl.id && s.purchased);
+                    const active = dreamHouse.floorTheme === fl.id && !dreamHouse.customFloorHex;
+                    return (
+                      <button
+                        key={fl.id}
+                        type="button"
+                        disabled={unlocked && isSpectator}
+                        onClick={() => {
+                          if (unlocked) setHouseFloorTheme(fl.id);
+                          else setExtendedView('loja');
+                        }}
+                        className={`min-h-[48px] p-3 rounded-2xl border flex items-center justify-between gap-2 text-left cursor-pointer transition disabled:opacity-50 ${
+                          active
+                            ? 'bg-pink-500/20 border-pink-400 text-white'
+                            : 'bg-purple-950/50 border-purple-500/25 text-purple-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className="w-4 h-4 rounded-full border border-white/30 shrink-0"
+                            style={{ backgroundColor: fl.colorHex }}
+                          />
+                          <span className="text-xs font-bold truncate">{fl.label}</span>
+                        </div>
+                        {!unlocked && <span className="text-[10px] text-amber-300 font-bold">Loja</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </motion.div>
   );
 };
