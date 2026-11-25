@@ -26,10 +26,10 @@ export const Sidebar: React.FC = () => {
   const navItems: { id: ExtendedView; label: string; icon: React.ElementType }[] = [
     { id: 'inicio', label: 'Início', icon: Home },
     { id: 'conversas', label: 'Chat', icon: MessageCircle },
-    { id: 'casa', label: 'Casa 3D', icon: DreamHouseCrestIcon },
+    { id: 'casa', label: 'Casa', icon: DreamHouseCrestIcon },
     { id: 'aquario', label: 'Aquário', icon: AquariumCoralIcon },
-    { id: 'gatinho', label: 'Meu Pet', icon: Cat },
-    { id: 'arvore', label: 'Nossa Árvore', icon: Trees },
+    { id: 'gatinho', label: 'Pet', icon: Cat },
+    { id: 'arvore', label: 'Árvore', icon: Trees },
     { id: 'missoes', label: 'Missões', icon: MissionCompassIcon },
     { id: 'loja', label: 'Loja', icon: ShoppingBag },
     { id: 'cartas', label: 'Cartas', icon: Mail },
