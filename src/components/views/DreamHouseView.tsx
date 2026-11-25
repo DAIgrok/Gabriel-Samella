@@ -162,6 +162,13 @@ export const DreamHouseView: React.FC = () => {
     (wall) => wall.id === selectedConstructionWallId && (!wall.roomId || wall.roomId === currentRoom)
   ) || null;
 
+  const updateSelectedWall = (patch: Partial<HouseConstructionWall>) => {
+    if (!selectedConstructionWall || isSpectator) return;
+    setHouseCustomWalls((dreamHouse.customWalls || []).map((wall) =>
+      wall.id === selectedConstructionWall.id ? { ...wall, ...patch } : wall
+    ));
+  };
+
   const addOpeningToSelectedWall = (kind: 'door' | 'window') => {
     if (!selectedConstructionWall || isSpectator) return;
     const length = Math.hypot(
@@ -845,6 +852,22 @@ export const DreamHouseView: React.FC = () => {
                       <button type="button" onClick={() => setSelectedConstructionWallId(null)} className="min-h-[34px] px-2.5 rounded-lg border border-purple-400/25 text-[11px] font-bold text-purple-200">Fechar</button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-xl bg-black/20 p-2.5">
+                        <p className="text-[10px] font-bold text-purple-200">Altura · {selectedConstructionWall.height.toFixed(1)} m</p>
+                        <div className="mt-2 grid grid-cols-2 gap-1.5">
+                          <button type="button" disabled={isSpectator || selectedConstructionWall.height <= 1.8} onClick={() => updateSelectedWall({ height: Math.max(1.8, Number((selectedConstructionWall.height - 0.2).toFixed(1))) })} className="min-h-[38px] rounded-lg border border-purple-300/20 text-white text-lg">−</button>
+                          <button type="button" disabled={isSpectator || selectedConstructionWall.height >= 4.5} onClick={() => updateSelectedWall({ height: Math.min(4.5, Number((selectedConstructionWall.height + 0.2).toFixed(1))) })} className="min-h-[38px] rounded-lg border border-purple-300/20 text-white text-lg">＋</button>
+                        </div>
+                      </div>
+                      <div className="rounded-xl bg-black/20 p-2.5">
+                        <p className="text-[10px] font-bold text-purple-200">Espessura · {selectedConstructionWall.thickness.toFixed(2)} m</p>
+                        <div className="mt-2 grid grid-cols-2 gap-1.5">
+                          <button type="button" disabled={isSpectator || selectedConstructionWall.thickness <= 0.08} onClick={() => updateSelectedWall({ thickness: Math.max(0.08, Number((selectedConstructionWall.thickness - 0.02).toFixed(2))) })} className="min-h-[38px] rounded-lg border border-purple-300/20 text-white text-lg">−</button>
+                          <button type="button" disabled={isSpectator || selectedConstructionWall.thickness >= 0.35} onClick={() => updateSelectedWall({ thickness: Math.min(0.35, Number((selectedConstructionWall.thickness + 0.02).toFixed(2))) })} className="min-h-[38px] rounded-lg border border-purple-300/20 text-white text-lg">＋</button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
                       <button type="button" disabled={isSpectator || Math.hypot(selectedConstructionWall.end.x - selectedConstructionWall.start.x, selectedConstructionWall.end.z - selectedConstructionWall.start.z) < 1.15} onClick={() => addOpeningToSelectedWall('door')} className="min-h-[44px] rounded-xl border border-amber-300/35 bg-amber-500/15 text-amber-100 text-xs font-bold disabled:opacity-40">＋ Adicionar porta</button>
                       <button type="button" disabled={isSpectator || Math.hypot(selectedConstructionWall.end.x - selectedConstructionWall.start.x, selectedConstructionWall.end.z - selectedConstructionWall.start.z) < 1.5} onClick={() => addOpeningToSelectedWall('window')} className="min-h-[44px] rounded-xl border border-sky-300/35 bg-sky-500/15 text-sky-100 text-xs font-bold disabled:opacity-40">＋ Adicionar janela</button>
                     </div>
@@ -852,7 +875,9 @@ export const DreamHouseView: React.FC = () => {
                       <div className="space-y-1.5">
                         {(selectedConstructionWall.openings || []).map((opening, index) => (
                           <div key={opening.id} className="flex items-center justify-between gap-2 rounded-lg bg-black/20 px-3 py-2">
-                            <span className="text-[11px] font-semibold text-purple-100">{opening.kind === 'door' ? 'Porta' : 'Janela'} {index + 1}</span>
+                            <span className="text-[11px] font-semibold text-purple-100 flex-1">{opening.kind === 'door' ? 'Porta' : 'Janela'} {index + 1} · {opening.width.toFixed(2)} m</span>
+                            <button type="button" disabled={isSpectator || opening.width <= 0.55} onClick={() => setHouseCustomWalls((dreamHouse.customWalls || []).map((wall) => wall.id === selectedConstructionWall.id ? { ...wall, openings: (wall.openings || []).map((item) => item.id === opening.id ? { ...item, width: Math.max(0.55, Number((item.width - 0.1).toFixed(2))) } : item) } : wall))} className="min-w-[30px] min-h-[32px] rounded-lg border border-purple-300/20 text-white">−</button>
+                            <button type="button" disabled={isSpectator || opening.width >= 2.2} onClick={() => setHouseCustomWalls((dreamHouse.customWalls || []).map((wall) => wall.id === selectedConstructionWall.id ? { ...wall, openings: (wall.openings || []).map((item) => item.id === opening.id ? { ...item, width: Math.min(2.2, Number((item.width + 0.1).toFixed(2))) } : item) } : wall))} className="min-w-[30px] min-h-[32px] rounded-lg border border-purple-300/20 text-white">＋</button>
                             <button type="button" disabled={isSpectator} onClick={() => setHouseCustomWalls((dreamHouse.customWalls || []).map((wall) => wall.id === selectedConstructionWall.id ? { ...wall, openings: (wall.openings || []).filter((item) => item.id !== opening.id) } : wall))} className="text-[11px] font-bold text-rose-200 disabled:opacity-40">Remover</button>
                           </div>
                         ))}
