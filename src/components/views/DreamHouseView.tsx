@@ -270,6 +270,7 @@ export const DreamHouseView: React.FC = () => {
             isEditMode={isEditMode && !isSpectator}
             wallBuildMode={isWallBuildMode && !isSpectator}
             selectedFurnitureId={selectedFurnitureId}
+            selectedConstructionWallId={selectedConstructionWallId}
             furnitureGlbUrls={furnitureGlbUrls}
             ownedPets={kitten.ownedPets}
             deadPets={kitten.deadPets}
