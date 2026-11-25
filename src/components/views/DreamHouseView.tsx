@@ -157,6 +157,32 @@ export const DreamHouseView: React.FC = () => {
   const selectedFurnitureInfo = selectedFurnitureId
     ? HOUSE_FURNITURE_CATALOG.find((f) => f.id === selectedFurnitureId)
     : null;
+  const selectedConstructionWall = (dreamHouse.customWalls || []).find(
+    (wall) => wall.id === selectedConstructionWallId && (!wall.roomId || wall.roomId === currentRoom)
+  ) || null;
+
+  const addOpeningToSelectedWall = (kind: 'door' | 'window') => {
+    if (!selectedConstructionWall || isSpectator) return;
+    const length = Math.hypot(
+      selectedConstructionWall.end.x - selectedConstructionWall.start.x,
+      selectedConstructionWall.end.z - selectedConstructionWall.start.z
+    );
+    const width = kind === 'door' ? 0.9 : 1.25;
+    if (length < width + 0.25) return;
+    const opening = {
+      id: `${kind}-${selectedConstructionWall.id}-${Date.now()}`,
+      kind,
+      offset: Number(((length - width) / 2).toFixed(2)),
+      width,
+      height: kind === 'door' ? 2.1 : 1.1,
+      sillHeight: kind === 'door' ? 0 : 0.9,
+    };
+    setHouseCustomWalls((dreamHouse.customWalls || []).map((wall) =>
+      wall.id === selectedConstructionWall.id
+        ? { ...wall, openings: [...(wall.openings || []), opening] }
+        : wall
+    ));
+  };
 
   const handleRotateSelected = (deltaRad: number) => {
     if (!selectedFurnitureId || isSpectator) return;
@@ -261,6 +287,7 @@ export const DreamHouseView: React.FC = () => {
               setSelectedConstructionWallId(wall.id);
               setIsWallBuildMode(false);
             }}
+            onSelectConstructionWall={setSelectedConstructionWallId}
           />
         </div>
 
@@ -806,6 +833,33 @@ export const DreamHouseView: React.FC = () => {
                     )}
                   </div>
                 </div>
+                {selectedConstructionWall && (
+                  <div className="rounded-2xl border border-pink-400/40 bg-gradient-to-br from-[#2b1247] to-[#160b2d] p-3 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-white">Parede selecionada</p>
+                        <p className="text-[11px] text-purple-200/75">{Math.hypot(selectedConstructionWall.end.x - selectedConstructionWall.start.x, selectedConstructionWall.end.z - selectedConstructionWall.start.z).toFixed(2)} m · Toque na parede para selecioná-la</p>
+                      </div>
+                      <button type="button" onClick={() => setSelectedConstructionWallId(null)} className="min-h-[34px] px-2.5 rounded-lg border border-purple-400/25 text-[11px] font-bold text-purple-200">Fechar</button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" disabled={isSpectator || Math.hypot(selectedConstructionWall.end.x - selectedConstructionWall.start.x, selectedConstructionWall.end.z - selectedConstructionWall.start.z) < 1.15} onClick={() => addOpeningToSelectedWall('door')} className="min-h-[44px] rounded-xl border border-amber-300/35 bg-amber-500/15 text-amber-100 text-xs font-bold disabled:opacity-40">＋ Adicionar porta</button>
+                      <button type="button" disabled={isSpectator || Math.hypot(selectedConstructionWall.end.x - selectedConstructionWall.start.x, selectedConstructionWall.end.z - selectedConstructionWall.start.z) < 1.5} onClick={() => addOpeningToSelectedWall('window')} className="min-h-[44px] rounded-xl border border-sky-300/35 bg-sky-500/15 text-sky-100 text-xs font-bold disabled:opacity-40">＋ Adicionar janela</button>
+                    </div>
+                    {(selectedConstructionWall.openings || []).length > 0 && (
+                      <div className="space-y-1.5">
+                        {(selectedConstructionWall.openings || []).map((opening, index) => (
+                          <div key={opening.id} className="flex items-center justify-between gap-2 rounded-lg bg-black/20 px-3 py-2">
+                            <span className="text-[11px] font-semibold text-purple-100">{opening.kind === 'door' ? 'Porta' : 'Janela'} {index + 1}</span>
+                            <button type="button" disabled={isSpectator} onClick={() => setHouseCustomWalls((dreamHouse.customWalls || []).map((wall) => wall.id === selectedConstructionWall.id ? { ...wall, openings: (wall.openings || []).filter((item) => item.id !== opening.id) } : wall))} className="text-[11px] font-bold text-rose-200 disabled:opacity-40">Remover</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <button type="button" disabled={isSpectator} onClick={() => { setHouseCustomWalls((dreamHouse.customWalls || []).filter((wall) => wall.id !== selectedConstructionWall.id)); setSelectedConstructionWallId(null); }} className="w-full min-h-[40px] rounded-xl border border-rose-400/30 bg-rose-500/10 text-rose-200 text-xs font-bold disabled:opacity-40">Excluir esta parede</button>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-purple-950/55 border border-pink-400/30">
                   <div>
                     <p className="text-xs font-bold text-white">Cor Livre de Parede</p>
