@@ -2033,7 +2033,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
       exteriorGroup.add(lamp);
     });
 
-    loadCachedGlbInstance('new URL('../../../glbbiel/forest_house_mobile.glb', import.meta.url).href', 4.0, true)
+    loadCachedGlbInstance(''/glbbiel/forest_house_mobile.glb'', 4.0, true)
       .then(({ group: houseModel }) => {
         const bounds = new THREE.Box3().setFromObject(houseModel);
         const center = bounds.getCenter(new THREE.Vector3());
