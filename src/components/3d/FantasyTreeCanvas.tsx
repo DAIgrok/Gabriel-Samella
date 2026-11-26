@@ -1003,7 +1003,6 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
         }
         const matureTree = loadedTreeModel.clone(true);
         const stage = Math.max(2, Math.min(10, curLevel));
-        const growthScale = 0.46 + ((stage - 2) / 8) * 0.34;
         const modelBounds = new THREE.Box3().setFromObject(matureTree);
         const modelSize = modelBounds.getSize(new THREE.Vector3());
         const modelCenter = modelBounds.getCenter(new THREE.Vector3());
