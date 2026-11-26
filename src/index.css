@@ -9,11 +9,52 @@
     --font-body: 'Plus Jakarta Sans', sans-serif;
   }
 
+  html,
   body {
     font-family: var(--font-body);
     background-color: #080214;
     color: #f8fafc;
     -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  input,
+  textarea,
+  select,
+  [contenteditable="true"] {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+  }
+
+  img {
+    -webkit-touch-callout: none !important;
+    -webkit-user-drag: none !important;
+    user-drag: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    pointer-events: none !important;
+  }
+
+  .protected-media-canvas {
+    -webkit-touch-callout: none !important;
+    -webkit-user-drag: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    touch-action: manipulation;
+  }
+}
+
+@media print {
+  *,
+  html,
+  body,
+  #root {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
   }
 }
 

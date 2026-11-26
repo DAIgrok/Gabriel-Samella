@@ -11,6 +11,18 @@ export const LoginScreen: React.FC = () => {
   const [error, setError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const samellaExpected =
+    config.passcode && config.passcode !== '1206' && config.passcode !== '120623'
+      ? config.passcode
+      : '1111';
+  const creatorExpected =
+    config.creatorPasscode &&
+    config.creatorPasscode !== '2023' &&
+    config.creatorPasscode !== '2010'
+      ? config.creatorPasscode
+      : '0000';
+  const maxPinLen = Math.max(samellaExpected.length, creatorExpected.length, 4);
+
   const handleUnlock = (overridePass?: string) => {
     const input = (overridePass !== undefined ? overridePass : passcode).trim();
     if (!input) {
@@ -42,11 +54,16 @@ export const LoginScreen: React.FC = () => {
     if (isSubmitting) return;
     soundEngine.playHeartPop();
     if (error) setError(false);
-    if (passcode.length < 6) {
+    if (passcode.length < maxPinLen) {
       const next = passcode + num;
       setPasscode(next);
-      // Hidden creator spectator code triggers silently at 4 digits; regular PIN triggers at 6 digits
-      if (next === '2010' || next.length === 6) {
+      if (
+        next === '0000' ||
+        next === '1111' ||
+        next === creatorExpected ||
+        next === samellaExpected ||
+        next.length >= maxPinLen
+      ) {
         handleUnlock(next);
       }
     }
@@ -62,6 +79,7 @@ export const LoginScreen: React.FC = () => {
   return (
     <div
       id="login-screen"
+      onContextMenu={(e) => e.preventDefault()}
       className="fixed inset-0 z-40 flex items-center justify-center px-4 py-8 select-none bg-[#080214] overflow-y-auto"
     >
       {/* Background romantic glow */}
@@ -81,7 +99,8 @@ export const LoginScreen: React.FC = () => {
               <img
                 src={getCouplePhotoUrl(photos, 0)}
                 alt="Gabriel e Samella"
-                className="w-full h-full object-cover rounded-full"
+                draggable={false}
+                className="w-full h-full object-cover rounded-full pointer-events-none"
               />
             ) : (
               <Heart className="w-9 h-9 text-pink-200 fill-pink-400/50 animate-pulse" />
@@ -97,12 +116,12 @@ export const LoginScreen: React.FC = () => {
           Nosso Mundo <span className="text-pink-400">♡</span>
         </h1>
         <p className="text-xs text-purple-300/80 mb-6">
-          Bem-vinda, minha princesa <strong className="text-pink-300">{config.partnerName}</strong>
+          Digite sua senha para acessar com privacidade ♡
         </p>
 
-        {/* 6 Passcode Circles */}
-        <div className="flex justify-center items-center gap-2.5 mb-6">
-          {[0, 1, 2, 3, 4, 5].map((idx) => {
+        {/* Dynamic Passcode Circles */}
+        <div className="flex justify-center items-center gap-3 mb-6">
+          {Array.from({ length: maxPinLen }, (_, idx) => idx).map((idx) => {
             const isFilled = passcode.length > idx;
             return (
               <motion.div
@@ -132,7 +151,7 @@ export const LoginScreen: React.FC = () => {
               exit={{ opacity: 0 }}
               className="text-xs text-rose-300 mb-4 bg-rose-950/50 py-1.5 px-3 rounded-lg border border-rose-500/30"
             >
-              Senha incorreta! Dica: a data especial do nosso amor ♡
+              Senha incorreta. Tente novamente ♡
             </motion.p>
           )}
         </AnimatePresence>

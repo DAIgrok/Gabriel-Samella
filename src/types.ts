@@ -286,6 +286,8 @@ export interface ChatMessage {
   audioDuration?: string;
   isAudio?: boolean;
   attachmentImg?: string;
+  isViewOnce?: boolean;
+  viewOnceOpened?: boolean;
 }
 
 export interface EasterEgg {

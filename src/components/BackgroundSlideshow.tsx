@@ -50,7 +50,8 @@ export const BackgroundSlideshow: React.FC = () => {
             <img
               src={resolvedUrl}
               alt="Foto do casal ao fundo"
-              className="w-full h-full object-cover object-center opacity-50"
+              draggable={false}
+              className="w-full h-full object-cover object-center opacity-50 pointer-events-none select-none"
             />
           </motion.div>
         ) : (

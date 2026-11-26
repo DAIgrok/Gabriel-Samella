@@ -194,7 +194,11 @@ export const FloatingCoupleChat: React.FC = () => {
                         {msg.msgType === 'audio'
                           ? `Mensagem de voz (${msg.audioDuration || 'áudio'})`
                           : msg.msgType === 'image'
-                          ? 'Fotografia enviada'
+                          ? msg.isViewOnce
+                            ? msg.viewOnceOpened
+                              ? 'Foto de visualização única aberta'
+                              : 'Foto de visualização única (abra no chat)'
+                            : 'Fotografia enviada'
                           : msg.text}
                       </p>
                       {isFromMeOnScreen && (

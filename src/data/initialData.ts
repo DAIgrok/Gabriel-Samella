@@ -82,8 +82,8 @@ export const INITIAL_COUPLE_CONFIG: CoupleConfig = {
   myName: 'Gabriel',
   anniversaryDate: '2023-06-12T00:00:00',
   subtitle: 'Que bom ter você aqui de novo ♡',
-  passcode: '120623', // 12/06/2023
-  creatorPasscode: '2010', // Modo Espectador oculto do Gabriel
+  passcode: '1111',
+  creatorPasscode: '0000',
   themeGlowColor: '#c084fc',
   customGlbModels: {
     pets: {},

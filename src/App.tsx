@@ -30,6 +30,7 @@ import { MissionsView } from './components/views/MissionsView';
 import { AdminSettingsModal } from './components/views/AdminSettingsModal';
 import { PhotoVisualizerModal } from './components/PhotoVisualizerModal';
 import { PermissionsModal } from './components/PermissionsModal';
+import { SecurityPrivacyShield } from './components/SecurityPrivacyShield';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowLeft, MessageCircle, X } from 'lucide-react';
 import { DiamondGemIcon, VectorGlyphIcon } from './components/icons/CustomIcons';
@@ -51,15 +52,27 @@ const MainAppContent: React.FC = () => {
   } = useApp();
 
   if (isLoading) {
-    return <LoadingScreen />;
+    return (
+      <>
+        <SecurityPrivacyShield />
+        <LoadingScreen />
+      </>
+    );
   }
 
   if (isLocked) {
-    return <LoginScreen />;
+    return (
+      <>
+        <SecurityPrivacyShield />
+        <LoginScreen />
+      </>
+    );
   }
 
   return (
     <div className="relative min-h-screen text-slate-100 font-sans selection:bg-pink-500/30 selection:text-pink-200 bg-[#070210] flex overflow-x-hidden">
+      <SecurityPrivacyShield />
+
       {/* Heart Rain Overlay */}
       <HeartRain />
 
@@ -134,7 +147,7 @@ const MainAppContent: React.FC = () => {
       {/* Global Easter Egg Modal */}
       <EasterEggModal />
 
-      {/* Global Settings Modal (Creator PIN 2010 or Gabriel Spectator) */}
+      {/* Global Settings Modal (Creator PIN 0000 or Gabriel Spectator) */}
       <AnimatePresence>
         {isSettingsOpen && (
           <AdminSettingsModal onClose={() => setIsSettingsOpen(false)} />
@@ -179,7 +192,9 @@ const MainAppContent: React.FC = () => {
                 {inAppChatToast.msgType === 'audio'
                   ? 'Mensagem de voz'
                   : inAppChatToast.msgType === 'image'
-                  ? 'Enviou uma fotografia'
+                  ? inAppChatToast.isViewOnce
+                    ? 'Foto de visualização única'
+                    : 'Enviou uma fotografia'
                   : inAppChatToast.text}
               </p>
             </div>

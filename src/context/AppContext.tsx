@@ -102,6 +102,7 @@ import { isSupabaseConfigured } from '../services/supabaseClient';
 import {
   buildWorldSignature,
   clearSupabaseWorld,
+  consumeSupabaseViewOnceMessage,
   deleteSupabasePhoto,
   deleteSupabaseSong,
   getLastSavedWorldSignature,
@@ -120,6 +121,7 @@ import {
   upsertSupabasePhoto,
   upsertSupabaseSong,
 } from '../services/supabaseSync';
+import { markSystemPromptOpen } from '../utils/privacySecurity';
 
 export function getCooldownRemaining(cooldowns: Record<string, number> | undefined, key: string): number {
   const until = cooldowns?.[key] || 0;
@@ -343,9 +345,11 @@ interface AppContextType {
           msgType?: 'text' | 'audio' | 'image';
           mediaUrl?: string;
           audioDuration?: string;
+          isViewOnce?: boolean;
         },
     senderRole?: 'eu' | 'ela'
   ) => Promise<void>;
+  consumeViewOnceMessage: (msgId: string) => Promise<void>;
   isFloatingChatOpen: boolean;
   setIsFloatingChatOpen: (open: boolean) => void;
   unreadChatCount: number;
@@ -459,17 +463,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const readDeviceAuth = (): { unlocked: boolean; role: ViewerRole } => {
-    if (typeof window === 'undefined') return { unlocked: false, role: 'samella' };
-    try {
-      const raw = window.localStorage.getItem(DEVICE_AUTH_STORAGE_KEY);
-      if (!raw) return { unlocked: false, role: 'samella' };
-      const parsed = JSON.parse(raw);
-      const role: ViewerRole =
-        parsed?.role === 'gabriel_spectator' ? 'gabriel_spectator' : 'samella';
-      return { unlocked: Boolean(parsed?.unlocked), role };
-    } catch {
-      return { unlocked: false, role: 'samella' };
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.removeItem(DEVICE_AUTH_STORAGE_KEY);
+      } catch {
+        // Ignore storage errors
+      }
     }
+    return { unlocked: false, role: 'samella' };
   };
 
   const initialDeviceAuth = readDeviceAuth();
@@ -716,12 +717,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setJourneyStarted(Boolean(cloud.journeyStarted));
     if (cloud.config) {
       const normalizedPasscode =
-        !cloud.config.passcode || cloud.config.passcode === '1206'
-          ? '120623'
+        !cloud.config.passcode ||
+        cloud.config.passcode === '1206' ||
+        cloud.config.passcode === '120623'
+          ? '1111'
           : cloud.config.passcode;
       const normalizedCreator =
-        !cloud.config.creatorPasscode || cloud.config.creatorPasscode === '2023'
-          ? '2010'
+        !cloud.config.creatorPasscode ||
+        cloud.config.creatorPasscode === '2023' ||
+        cloud.config.creatorPasscode === '2010'
+          ? '0000'
           : cloud.config.creatorPasscode;
       const localGlb = readLocalCustomGlbModels();
       const cloudPets = cloud.config.customGlbModels?.pets || {};
@@ -775,7 +780,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (cloud.kitten) setKitten(cloud.kitten);
     if (cloud.gameRecords) setGameRecords({ ...DEFAULT_GAME_RECORDS, ...cloud.gameRecords });
     if (cloud.chatMessages && cloud.chatMessages.length > 0) {
-      setChatMessages(cloud.chatMessages);
+      setChatMessages((prev) => {
+        const openedViewOnceIds = new Set(
+          prev.filter((m) => m.isViewOnce && m.viewOnceOpened).map((m) => m.id)
+        );
+        return cloud.chatMessages.map((m) =>
+          openedViewOnceIds.has(m.id)
+            ? { ...m, mediaUrl: undefined, attachmentImg: undefined, isViewOnce: true, viewOnceOpened: true, text: '' }
+            : m
+        );
+      });
     }
 
     if (cloud.legacyResetBackup) {
@@ -1014,7 +1028,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           incomingMsg.msgType === 'audio'
             ? 'Enviou uma mensagem de voz'
             : incomingMsg.msgType === 'image'
-            ? 'Enviou uma fotografia'
+            ? incomingMsg.isViewOnce
+              ? 'Enviou uma foto de visualização única'
+              : 'Enviou uma fotografia'
             : incomingMsg.text;
         const notif = new Notification(`${senderTitle} — Nosso Mundo`, {
           body: previewBody.slice(0, 110),
@@ -1530,6 +1546,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return 'unsupported';
     }
     try {
+      markSystemPromptOpen(15_000);
       const res = await Notification.requestPermission();
       setNotificationPermission(res);
       if (res === 'granted') {
@@ -1550,14 +1567,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setHeartRainTriggerCount((prev) => prev + 1);
   };
 
-  const persistDeviceAuth = (unlocked: boolean, role: ViewerRole) => {
+  const persistDeviceAuth = (_unlocked: boolean, _role: ViewerRole) => {
     if (typeof window === 'undefined') return;
     try {
-      if (!unlocked) {
-        window.localStorage.removeItem(DEVICE_AUTH_STORAGE_KEY);
-      } else {
-        window.localStorage.setItem(DEVICE_AUTH_STORAGE_KEY, JSON.stringify({ unlocked, role }));
-      }
+      // Nunca persistir sessão desbloqueada: exige senha a cada saída/abertura
+      window.localStorage.removeItem(DEVICE_AUTH_STORAGE_KEY);
     } catch {
       // Ignore storage quota errors
     }
@@ -1586,30 +1600,49 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }, 500);
       }
     } else {
+      setIsDrawerOpen(false);
+      setIsSettingsOpen(false);
+      setSelectedPhoto(null);
+      setSelectedLetter(null);
+      setIsFloatingChatOpenState(false);
+      isFloatingChatOpenRef.current = false;
+      setInAppChatToast(null);
       persistDeviceAuth(false, viewerRole);
     }
   };
 
   const lockApp = () => {
-    soundEngine.playHeartPop();
     setIsDrawerOpen(false);
     setIsSettingsOpen(false);
+    setSelectedPhoto(null);
+    setSelectedLetter(null);
+    setIsFloatingChatOpenState(false);
+    isFloatingChatOpenRef.current = false;
+    setInAppChatToast(null);
     setIsLoggedInState(false);
     persistDeviceAuth(false, viewerRole);
   };
 
   const unlockWithPasscode = (code: string): { ok: boolean; role?: ViewerRole } => {
     const clean = code.trim();
-    const samellaExpected = config.passcode && config.passcode !== '1206' ? config.passcode : '120623';
-    const creatorPin = config.creatorPasscode && config.creatorPasscode !== '2023' ? config.creatorPasscode : '2010';
-    if (clean === '2010' || clean === creatorPin) {
+    const samellaExpected =
+      config.passcode && config.passcode !== '1206' && config.passcode !== '120623'
+        ? config.passcode
+        : '1111';
+    const creatorPin =
+      config.creatorPasscode &&
+      config.creatorPasscode !== '2023' &&
+      config.creatorPasscode !== '2010'
+        ? config.creatorPasscode
+        : '0000';
+    if (clean === '0000' || clean === creatorPin) {
       setViewerRole('gabriel_spectator');
       setIsLoggedInState(true);
       setIsLoadingDone(true);
       persistDeviceAuth(true, 'gabriel_spectator');
       return { ok: true, role: 'gabriel_spectator' };
     }
-    if (clean === samellaExpected || clean === '120623') {
+    if (clean === '1111' || clean === samellaExpected) {
       setViewerRole('samella');
       setIsLoggedInState(true);
       setIsLoadingDone(true);
@@ -3149,6 +3182,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           msgType?: 'text' | 'audio' | 'image';
           mediaUrl?: string;
           audioDuration?: string;
+          isViewOnce?: boolean;
         },
     explicitRole: 'eu' | 'ela' = 'ela'
   ) => {
@@ -3173,6 +3207,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       minute: '2-digit',
     });
     const msgId = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const isViewOncePhoto = Boolean(payload.isViewOnce && msgType === 'image');
 
     const optimisticMsg: ChatMessage = {
       id: msgId,
@@ -3185,7 +3220,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       hasHeart: true,
       msgType,
       mediaUrl: payload.mediaUrl,
+      attachmentImg: msgType === 'image' ? payload.mediaUrl : undefined,
       audioDuration: payload.audioDuration,
+      isViewOnce: isViewOncePhoto,
+      viewOnceOpened: false,
     };
 
     const totalSentAfter = chatMessages.filter((m) => m.sender === 'partner').length + 1;
@@ -3221,6 +3259,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       msgType,
       mediaUrl: payload.mediaUrl,
       audioDuration: payload.audioDuration,
+      isViewOnce: isViewOncePhoto,
     });
 
     if (saved) {
@@ -3228,6 +3267,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         prev.map((m) => (m.id === msgId ? { ...saved, status: m.readAt ? 'read' : 'delivered' } : m))
       );
     }
+  };
+
+  const consumeViewOnceMessage = async (msgId: string) => {
+    const readTimestamp = new Date().toISOString();
+    setChatMessages((prev) =>
+      prev.map((m) =>
+        m.id === msgId
+          ? {
+              ...m,
+              mediaUrl: undefined,
+              attachmentImg: undefined,
+              text: '',
+              isViewOnce: true,
+              viewOnceOpened: true,
+              readAt: m.readAt || readTimestamp,
+              status: 'read',
+            }
+          : m
+      )
+    );
+    await consumeSupabaseViewOnceMessage(msgId);
   };
 
   const triggerEasterEgg = (id: string) => {
@@ -4168,6 +4228,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         harvestTreeFruit,
         plantLoveSeed,
         sendChatMessage,
+        consumeViewOnceMessage,
         isFloatingChatOpen,
         setIsFloatingChatOpen,
         unreadChatCount,

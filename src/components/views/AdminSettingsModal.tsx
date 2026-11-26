@@ -41,6 +41,7 @@ import {
 } from '../../data/initialData';
 import { PetType } from '../../types';
 import { SmartPhoto } from '../SmartPhoto';
+import { markFilePickerOpen } from '../../utils/privacySecurity';
 
 interface Props {
   onClose: () => void;
@@ -76,7 +77,11 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
   } = useApp();
 
   const expectedCreatorPin =
-    config.creatorPasscode && config.creatorPasscode !== '2023' ? config.creatorPasscode : '2010';
+    config.creatorPasscode &&
+    config.creatorPasscode !== '2023' &&
+    config.creatorPasscode !== '2010'
+      ? config.creatorPasscode
+      : '0000';
   const [isCreatorUnlocked, setIsCreatorUnlocked] = useState(() => isSpectator);
   const [pinAttempt, setPinAttempt] = useState('');
   const [pinError, setPinError] = useState(false);
@@ -87,9 +92,17 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
   const [partnerName, setPartnerName] = useState(config.partnerName);
   const [myName, setMyName] = useState(config.myName);
   const [anniversaryDate, setAnniversaryDate] = useState(config.anniversaryDate);
-  const [passcode, setPasscode] = useState(config.passcode);
+  const [passcode, setPasscode] = useState(
+    config.passcode && config.passcode !== '1206' && config.passcode !== '120623'
+      ? config.passcode
+      : '1111'
+  );
   const [creatorPasscode, setCreatorPasscode] = useState(
-    config.creatorPasscode && config.creatorPasscode !== '2023' ? config.creatorPasscode : '2010'
+    config.creatorPasscode &&
+      config.creatorPasscode !== '2023' &&
+      config.creatorPasscode !== '2010'
+      ? config.creatorPasscode
+      : '0000'
   );
   const [isSaved, setIsSaved] = useState(false);
 
@@ -191,7 +204,7 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
   const handleUnlockSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const clean = pinAttempt.trim();
-    if (clean === expectedCreatorPin || clean === '2010') {
+    if (clean === expectedCreatorPin || clean === '0000') {
       setIsCreatorUnlocked(true);
       setPinError(false);
     } else {
@@ -206,8 +219,8 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
       partnerName: partnerName.trim() || 'Samella',
       myName: myName.trim() || 'Gabriel',
       anniversaryDate,
-      passcode: passcode.trim() || '120623',
-      creatorPasscode: creatorPasscode.trim() || '2010',
+      passcode: passcode.trim() || '1111',
+      creatorPasscode: creatorPasscode.trim() || '0000',
     });
     setIsSaved(true);
     showToast('Configurações e senhas salvas!');
@@ -529,12 +542,6 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
               </p>
             )}
 
-            {expectedCreatorPin === '2010' && (
-              <p className="text-[11px] text-purple-300/60">
-                Acesso exclusivo do criador (PIN padrão: <span className="font-mono text-pink-300">2010</span>)
-              </p>
-            )}
-
             <button
               type="submit"
               className="w-full min-h-[46px] rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-bold shadow-lg cursor-pointer hover:brightness-110"
@@ -666,7 +673,10 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                     <button
                       type="button"
                       disabled={isUploadingSong}
-                      onClick={() => audioInputRef.current?.click()}
+                      onClick={() => {
+                        markFilePickerOpen();
+                        audioInputRef.current?.click();
+                      }}
                       className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-pink-600 hover:bg-pink-500 text-white text-xs font-bold shadow cursor-pointer disabled:opacity-60"
                     >
                       <Upload className="w-3.5 h-3.5" />
@@ -810,7 +820,10 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                     <button
                       type="button"
                       disabled={isUploadingPhoto}
-                      onClick={() => photoInputRef.current?.click()}
+                      onClick={() => {
+                        markFilePickerOpen();
+                        photoInputRef.current?.click();
+                      }}
                       className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow cursor-pointer disabled:opacity-60"
                     >
                       <Upload className="w-3.5 h-3.5" />
@@ -1075,7 +1088,10 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                     </h4>
                     <button
                       type="button"
-                      onClick={() => glbPetFileInputRef.current?.click()}
+                      onClick={() => {
+                        markFilePickerOpen();
+                        glbPetFileInputRef.current?.click();
+                      }}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-pink-600/80 hover:bg-pink-500 text-white text-[11px] font-bold cursor-pointer"
                     >
                       <Upload className="w-3 h-3" />
@@ -1232,7 +1248,10 @@ export const AdminSettingsModal: React.FC<Props> = ({ onClose }) => {
                     </h4>
                     <button
                       type="button"
-                      onClick={() => glbFurnitureFileInputRef.current?.click()}
+                      onClick={() => {
+                        markFilePickerOpen();
+                        glbFurnitureFileInputRef.current?.click();
+                      }}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600/80 hover:bg-purple-500 text-white text-[11px] font-bold cursor-pointer"
                     >
                       <Upload className="w-3 h-3" />

@@ -108,6 +108,8 @@ export const SmartPhoto: React.FC<SmartPhotoProps> = ({
   return (
     <div
       onClick={onClick}
+      onContextMenu={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
       className={`relative overflow-hidden rounded-2xl select-none group transition-all duration-300 ${aspectClasses} ${className} ${
         onClick ? 'cursor-pointer' : ''
       }`}
@@ -118,11 +120,12 @@ export const SmartPhoto: React.FC<SmartPhotoProps> = ({
             <img
               src={resolvedSrc}
               alt={alt}
+              draggable={false}
               onError={handleError}
               onLoad={handleLoad}
               referrerPolicy="no-referrer"
               loading="lazy"
-              className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
+              className={`w-full h-full object-cover pointer-events-none select-none transition-all duration-500 group-hover:scale-105 ${
                 isLoaded ? 'opacity-100 filter-none' : 'opacity-0 scale-95'
               } ${imgClassName}`}
             />

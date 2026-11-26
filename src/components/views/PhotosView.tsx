@@ -17,6 +17,7 @@ import { MemoryPhoto } from '../../types';
 import { soundEngine } from '../../utils/audioSynth';
 import { SmartPhoto } from '../SmartPhoto';
 import { compressPhotoSafe, extractPhotosFromZipFile } from '../../utils/zipPhotoExtractor';
+import { markFilePickerOpen } from '../../utils/privacySecurity';
 
 export const PhotosView: React.FC = () => {
   const {
@@ -332,7 +333,10 @@ export const PhotosView: React.FC = () => {
                   <button
                     type="button"
                     disabled={isUploading}
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => {
+                      markFilePickerOpen();
+                      fileInputRef.current?.click();
+                    }}
                     className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow-lg flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-60"
                   >
                     {isUploading ? (

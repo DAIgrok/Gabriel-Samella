@@ -411,14 +411,67 @@ export async function clearSupabaseWorld(
     );
 }
 
-// --- CHAT DO CASAL (WHATSAPP REALTIME + PRESENCE + ÁUDIO + FOTO + VISTO) ---
-function rowToChatMessage(row: CoupleMessageRow): ChatMessage {
+// --- CHAT DO CASAL (WHATSAPP REALTIME + PRESENCE + ÁUDIO + FOTO + VISUALIZAÇÃO ÚNICA + VISTO) ---
+export const VIEW_ONCE_PREFIX = '__VIEW_ONCE__';
+export const VIEW_ONCE_OPENED_MARKER = '__VIEW_ONCE_OPENED__';
+
+export function rowToChatMessage(row: CoupleMessageRow): ChatMessage {
   const msgType = row.msg_type || 'text';
+  const rawText = row.text || '';
+
+  if (msgType === 'image' && rawText === VIEW_ONCE_OPENED_MARKER) {
+    return {
+      id: row.id,
+      sender: row.sender_role === 'ela' ? 'partner' : 'me',
+      senderName: row.sender_name,
+      text: '',
+      msgType: 'image',
+      mediaUrl: undefined,
+      attachmentImg: undefined,
+      isAudio: false,
+      audioDuration: undefined,
+      time: row.time_label,
+      createdAt: row.created_at,
+      readAt: row.read_at || null,
+      status: row.read_at ? 'read' : 'delivered',
+      hasHeart: row.has_heart,
+      isViewOnce: true,
+      viewOnceOpened: true,
+    };
+  }
+
+  if (
+    msgType === 'image' &&
+    (rawText === VIEW_ONCE_PREFIX || rawText.startsWith(`${VIEW_ONCE_PREFIX}|`))
+  ) {
+    const caption = rawText.startsWith(`${VIEW_ONCE_PREFIX}|`)
+      ? rawText.slice(VIEW_ONCE_PREFIX.length + 1)
+      : '';
+    return {
+      id: row.id,
+      sender: row.sender_role === 'ela' ? 'partner' : 'me',
+      senderName: row.sender_name,
+      text: caption,
+      msgType: 'image',
+      mediaUrl: row.media_url || undefined,
+      attachmentImg: row.media_url || undefined,
+      isAudio: false,
+      audioDuration: undefined,
+      time: row.time_label,
+      createdAt: row.created_at,
+      readAt: row.read_at || null,
+      status: row.read_at ? 'read' : 'delivered',
+      hasHeart: row.has_heart,
+      isViewOnce: true,
+      viewOnceOpened: !row.media_url,
+    };
+  }
+
   return {
     id: row.id,
     sender: row.sender_role === 'ela' ? 'partner' : 'me',
     senderName: row.sender_name,
-    text: row.text || '',
+    text: rawText,
     msgType,
     mediaUrl: row.media_url || undefined,
     attachmentImg: msgType === 'image' ? row.media_url || undefined : undefined,
@@ -459,15 +512,23 @@ export async function sendSupabaseMessage(params: {
   mediaUrl?: string;
   audioDuration?: string;
   timeLabel: string;
+  isViewOnce?: boolean;
 }): Promise<ChatMessage | null> {
   if (!supabase || !isSupabaseConfigured) return null;
+
+  const isViewOncePhoto = Boolean(params.isViewOnce && (params.msgType || 'text') === 'image');
+  const encodedText = isViewOncePhoto
+    ? params.text && params.text !== 'Fotografia'
+      ? `${VIEW_ONCE_PREFIX}|${params.text}`
+      : VIEW_ONCE_PREFIX
+    : params.text;
 
   const row = {
     id: params.id,
     world_id: COUPLE_WORLD_ID,
     sender_role: params.senderRole,
     sender_name: params.senderName,
-    text: params.text,
+    text: encodedText,
     msg_type: params.msgType || 'text',
     media_url: params.mediaUrl || null,
     audio_duration: params.audioDuration || null,
@@ -489,6 +550,24 @@ export async function sendSupabaseMessage(params: {
   }
 
   return rowToChatMessage(data as CoupleMessageRow);
+}
+
+export async function consumeSupabaseViewOnceMessage(msgId: string): Promise<void> {
+  if (!supabase || !isSupabaseConfigured || !msgId) return;
+
+  const { error } = await supabase
+    .from(SUPABASE_MESSAGES_TABLE)
+    .update({
+      media_url: null,
+      text: VIEW_ONCE_OPENED_MARKER,
+      read_at: new Date().toISOString(),
+    })
+    .eq('world_id', COUPLE_WORLD_ID)
+    .eq('id', msgId);
+
+  if (error) {
+    console.warn('Supabase consumeSupabaseViewOnceMessage aviso:', error.message);
+  }
 }
 
 export async function markSupabaseMessagesRead(incomingSenderRole: 'eu' | 'ela'): Promise<void> {

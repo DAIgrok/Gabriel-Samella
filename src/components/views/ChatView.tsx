@@ -1,15 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Bell,
   BellRing,
   Camera,
   Check,
   CheckCheck,
+  Eye,
+  EyeOff,
+  Flame,
   Heart,
+  Image as ImageIcon,
+  Lock,
   Mic,
   Pause,
   Play,
   Send,
+  Shield,
   Sparkles,
   Square,
   Trash2,
@@ -18,7 +25,10 @@ import {
 import { useApp } from '../../context/AppContext';
 import { AnimatePresence, motion } from 'motion/react';
 import { soundEngine } from '../../utils/audioSynth';
-import { getCouplePhotoUrl, REAL_PHOTO_SLOTS } from '../../data/mediaAssets';
+import { getCouplePhotoUrl } from '../../data/mediaAssets';
+import { ChatMessage } from '../../types';
+import { ProtectedCanvasPhoto } from '../ProtectedCanvasPhoto';
+import { markFilePickerOpen, markSystemPromptOpen } from '../../utils/privacySecurity';
 
 const QUICK_REPLIES = [
   'Te amo demais ♡',
@@ -118,6 +128,7 @@ export const ChatView: React.FC = () => {
   const {
     chatMessages,
     sendChatMessage,
+    consumeViewOnceMessage,
     config,
     photos,
     triggerHeartExplosion,
@@ -133,6 +144,12 @@ export const ChatView: React.FC = () => {
   const [senderRole, setSenderRole] = useState<'eu' | 'ela'>(isSpectator ? 'eu' : 'ela');
   const [isSending, setIsSending] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [pendingPhotoDraft, setPendingPhotoDraft] = useState<{
+    dataUrl: string;
+    mode: 'view-once' | 'normal';
+    caption: string;
+  } | null>(null);
+  const [activeViewOnceMsg, setActiveViewOnceMsg] = useState<ChatMessage | null>(null);
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -141,6 +158,8 @@ export const ChatView: React.FC = () => {
   const audioChunksRef = useRef<Blob[]>([]);
   const recordTimerRef = useRef<number | null>(null);
   const recordCancelledRef = useRef<boolean>(false);
+  const activeViewOnceRef = useRef<ChatMessage | null>(null);
+  activeViewOnceRef.current = activeViewOnceMsg;
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -149,6 +168,7 @@ export const ChatView: React.FC = () => {
   const peerRoleKey: 'Gabriel' | 'Samella' = isSpectator ? 'Samella' : 'Gabriel';
   const isPeerOnline = Boolean(onlinePeers?.[peerRoleKey]);
   const peerDisplayName = isSpectator ? config.partnerName || 'Samella' : config.myName || 'Gabriel';
+  const watermarkLabel = `${config.myName || 'Gabriel'} & ${config.partnerName || 'Samella'} ♡`;
 
   useEffect(() => {
     markChatRead();
@@ -163,6 +183,9 @@ export const ChatView: React.FC = () => {
       if (recordTimerRef.current) window.clearInterval(recordTimerRef.current);
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
+      }
+      if (activeViewOnceRef.current) {
+        consumeViewOnceMessage(activeViewOnceRef.current.id).catch(() => {});
       }
     };
   }, []);
@@ -199,21 +222,44 @@ export const ChatView: React.FC = () => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    setIsSending(true);
     try {
       const compressedUrl = await compressChatImage(file);
+      setPendingPhotoDraft({
+        dataUrl: compressedUrl,
+        mode: 'view-once',
+        caption: '',
+      });
+    } catch {
+      showToast('Não foi possível preparar esta foto.', 'camera');
+    }
+  };
+
+  const handleConfirmSendPhoto = async () => {
+    if (!pendingPhotoDraft || isSending) return;
+    const draft = pendingPhotoDraft;
+    setPendingPhotoDraft(null);
+    setIsSending(true);
+    try {
       await sendChatMessage({
-        text: 'Fotografia',
+        text: draft.caption.trim() || 'Fotografia',
         senderRole: effectiveRole,
         msgType: 'image',
-        mediaUrl: compressedUrl,
+        mediaUrl: draft.dataUrl,
+        isViewOnce: draft.mode === 'view-once',
       });
       triggerHeartExplosion();
     } catch {
-      showToast('Não foi possível processar esta foto.', 'camera');
+      showToast('Não foi possível enviar a foto.', 'camera');
     } finally {
       setIsSending(false);
     }
+  };
+
+  const handleCloseViewOnce = async () => {
+    const current = activeViewOnceMsg;
+    if (!current) return;
+    setActiveViewOnceMsg(null);
+    await consumeViewOnceMessage(current.id);
   };
 
   const startVoiceRecording = async () => {
@@ -222,6 +268,7 @@ export const ChatView: React.FC = () => {
       return;
     }
     try {
+      markSystemPromptOpen(15_000);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
@@ -317,7 +364,8 @@ export const ChatView: React.FC = () => {
               <img
                 src={getCouplePhotoUrl(photos, 0)}
                 alt={peerDisplayName}
-                className="w-10 h-10 rounded-full object-cover border border-pink-400/50"
+                draggable={false}
+                className="w-10 h-10 rounded-full object-cover border border-pink-400/50 pointer-events-none"
               />
             ) : (
               <div className="w-10 h-10 rounded-full border border-pink-400/50 bg-gradient-to-tr from-purple-700 to-pink-600 flex items-center justify-center">
@@ -339,6 +387,11 @@ export const ChatView: React.FC = () => {
             <p className="text-[11px] font-medium flex items-center gap-1.5">
               <span className={isPeerOnline ? 'text-emerald-300' : 'text-purple-300/60'}>
                 {isPeerOnline ? 'Online agora' : 'Offline no momento'}
+              </span>
+              <span className="text-purple-400/60">•</span>
+              <span className="text-pink-300/80 inline-flex items-center gap-1">
+                <Shield className="w-3 h-3" />
+                Protegido
               </span>
             </p>
           </div>
@@ -410,7 +463,6 @@ export const ChatView: React.FC = () => {
 
       {/* Blurred Stylized Sunset Beach Wallpaper + Messages Feed */}
       <div className="relative flex-1 overflow-hidden border-x border-purple-500/30 bg-[#0d051a]">
-        {/* Stylized Sunset Beach SVG Illustration Layer with Artistic Blur */}
         <svg
           viewBox="0 0 400 700"
           preserveAspectRatio="xMidYMid slice"
@@ -441,18 +493,14 @@ export const ChatView: React.FC = () => {
           <circle cx="205" cy="370" r="105" fill="url(#chatBeachSun)" />
           <circle cx="205" cy="370" r="44" fill="#ffe6a7" opacity="0.92" />
 
-          {/* Horizon & Ocean */}
           <rect y="395" width="400" height="190" fill="url(#chatBeachSea)" />
-          {/* Shimmering sun reflection across water */}
           <ellipse cx="205" cy="410" rx="55" ry="6" fill="#fbb67d" opacity="0.55" />
           <ellipse cx="205" cy="432" rx="42" ry="5" fill="#f98b78" opacity="0.45" />
           <ellipse cx="205" cy="456" rx="28" ry="4" fill="#e86f8c" opacity="0.35" />
 
-          {/* Shore Sand Curve */}
           <path d="M0 570 Q180 545 400 585 L400 700 L0 700 Z" fill="#180a29" />
           <path d="M0 568 Q180 542 400 583" stroke="#d9778b" strokeWidth="2.5" fill="none" opacity="0.5" />
 
-          {/* Palm Tree Silhouette */}
           <path d="M25 700 Q48 520 75 430" stroke="#11041d" strokeWidth="14" fill="none" strokeLinecap="round" />
           <path d="M75 430 Q15 415 -5 450" stroke="#11041d" strokeWidth="10" fill="none" strokeLinecap="round" />
           <path d="M75 430 Q35 380 8 395" stroke="#11041d" strokeWidth="9" fill="none" strokeLinecap="round" />
@@ -460,7 +508,6 @@ export const ChatView: React.FC = () => {
           <path d="M75 430 Q140 425 168 462" stroke="#11041d" strokeWidth="9" fill="none" strokeLinecap="round" />
         </svg>
 
-        {/* Legibility tint veil */}
         <div className="absolute inset-0 bg-[#0c041a]/48 backdrop-blur-[2px] pointer-events-none" />
 
         {/* Scrollable Chat Thread */}
@@ -478,6 +525,7 @@ export const ChatView: React.FC = () => {
               const isGabriel = msg.sender === 'me';
               const displayName = msg.senderName || (isGabriel ? config.myName : config.partnerName);
               const isRead = msg.status === 'read' || Boolean(msg.readAt);
+              const isViewOnce = Boolean(msg.msgType === 'image' && msg.isViewOnce);
 
               return (
                 <motion.div
@@ -498,23 +546,66 @@ export const ChatView: React.FC = () => {
                       {displayName}
                     </span>
 
-                    {msg.msgType === 'image' && msg.mediaUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setLightboxImage(msg.mediaUrl!)}
-                        className="block rounded-xl overflow-hidden mb-1.5 border border-white/20 cursor-pointer max-w-[230px]"
-                      >
-                        <img
-                          src={msg.mediaUrl}
-                          alt="Foto no chat"
-                          className="w-full max-h-60 object-cover"
-                        />
-                      </button>
+                    {/* View-Once Photo States */}
+                    {isViewOnce ? (
+                      msg.viewOnceOpened || !msg.mediaUrl ? (
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-black/25 border border-white/10 text-xs text-purple-200/75 italic my-0.5">
+                          <EyeOff className="w-4 h-4 text-purple-300/70 shrink-0" />
+                          <span>Foto de visualização única aberta</span>
+                        </div>
+                      ) : isFromMeOnScreen ? (
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 border border-pink-300/25 text-xs text-pink-100 my-0.5">
+                          <div className="w-6 h-6 rounded-full bg-pink-500/30 border border-pink-300/40 flex items-center justify-center text-[10px] font-bold">
+                            1
+                          </div>
+                          <span>Foto enviada (visualização única)</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            soundEngine.playHeartPop();
+                            setActiveViewOnceMsg(msg);
+                          }}
+                          className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-pink-600/40 to-purple-600/40 hover:from-pink-600/60 hover:to-purple-600/60 border border-pink-400/50 text-xs font-bold text-white my-0.5 cursor-pointer transition active:scale-[0.98]"
+                        >
+                          <div className="w-7 h-7 rounded-full bg-pink-500 text-white flex items-center justify-center text-[11px] font-extrabold shadow">
+                            1
+                          </div>
+                          <div className="text-left">
+                            <span className="block text-xs font-bold text-white">
+                              Foto de visualização única
+                            </span>
+                            <span className="block text-[10px] text-pink-200/85 font-normal">
+                              Toque para abrir uma vez
+                            </span>
+                          </div>
+                          <Flame className="w-4 h-4 text-pink-300 shrink-0" />
+                        </button>
+                      )
+                    ) : (
+                      msg.msgType === 'image' &&
+                      msg.mediaUrl && (
+                        <button
+                          type="button"
+                          onContextMenu={(e) => e.preventDefault()}
+                          onClick={() => setLightboxImage(msg.mediaUrl!)}
+                          className="relative block rounded-xl overflow-hidden mb-1.5 border border-white/20 cursor-pointer max-w-[230px]"
+                        >
+                          <img
+                            src={msg.mediaUrl}
+                            alt="Foto no chat"
+                            draggable={false}
+                            className="w-full max-h-60 object-cover pointer-events-none select-none"
+                          />
+                        </button>
+                      )
                     )}
 
                     {msg.msgType === 'audio' && msg.mediaUrl ? (
                       <AudioBubblePlayer src={msg.mediaUrl} duration={msg.audioDuration} />
                     ) : (
+                      !isViewOnce &&
                       msg.text &&
                       !(msg.msgType === 'image' && msg.text === 'Fotografia') && (
                         <p className="text-xs sm:text-sm leading-relaxed break-words">{msg.text}</p>
@@ -596,7 +687,10 @@ export const ChatView: React.FC = () => {
           <form onSubmit={handleSend} className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                markFilePickerOpen();
+                fileInputRef.current?.click();
+              }}
               disabled={isSending}
               aria-label="Enviar foto"
               className="w-11 h-11 rounded-2xl bg-purple-950/80 hover:bg-purple-900 border border-purple-400/30 flex items-center justify-center text-pink-300 flex-shrink-0 cursor-pointer transition"
@@ -636,33 +730,237 @@ export const ChatView: React.FC = () => {
         )}
       </div>
 
-      {/* Photo Lightbox Modal */}
-      <AnimatePresence>
-        {lightboxImage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setLightboxImage(null)}
-            className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4"
-          >
-            <button
-              type="button"
-              onClick={() => setLightboxImage(null)}
-              className="absolute top-5 right-5 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center cursor-pointer"
-              aria-label="Fechar imagem"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <img
-              src={lightboxImage}
-              alt="Foto ampliada"
-              className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl object-contain"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </motion.div>
+      {/* Pre-Send Photo Mode Choice Modal (Visualização Única vs Normal) */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {pendingPhotoDraft && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onContextMenu={(e) => e.preventDefault()}
+                className="fixed inset-0 z-[95] bg-black/90 backdrop-blur-md flex items-center justify-center p-4"
+                onClick={() => setPendingPhotoDraft(null)}
+              >
+                <motion.div
+                  initial={{ scale: 0.94, opacity: 0, y: 12 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.94, opacity: 0, y: 12 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full max-w-md rounded-3xl bg-[#130526] border border-pink-400/40 p-5 shadow-2xl space-y-4"
+                >
+                  <div className="flex items-center justify-between border-b border-purple-500/20 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <Camera className="w-4 h-4 text-pink-400" />
+                      <h3 className="text-sm font-bold text-white">Escolher modo da foto ♡</h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPendingPhotoDraft(null)}
+                      className="p-1.5 rounded-full text-purple-300 hover:text-white cursor-pointer"
+                      aria-label="Cancelar envio"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="rounded-2xl overflow-hidden bg-black/50 border border-purple-500/25 flex items-center justify-center h-52">
+                    <ProtectedCanvasPhoto
+                      src={pendingPhotoDraft.dataUrl}
+                      alt="Prévia da foto"
+                      watermarkText={watermarkLabel}
+                      className="w-full h-full"
+                    />
+                  </div>
+
+                  {/* Mode Selector */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPendingPhotoDraft((prev) =>
+                          prev ? { ...prev, mode: 'view-once' } : null
+                        )
+                      }
+                      className={`p-3 rounded-2xl border text-left transition cursor-pointer ${
+                        pendingPhotoDraft.mode === 'view-once'
+                          ? 'bg-gradient-to-br from-pink-600/35 to-purple-700/35 border-pink-400 shadow-[0_0_20px_rgba(236,72,153,0.3)]'
+                          : 'bg-purple-950/50 border-purple-500/25 hover:border-purple-400/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="w-6 h-6 rounded-full bg-pink-500 text-white text-[11px] font-extrabold flex items-center justify-center">
+                          1
+                        </span>
+                        <span className="text-xs font-bold text-white">Visualização única</span>
+                      </div>
+                      <p className="text-[11px] text-purple-200/80 leading-snug">
+                        Só pode ser aberta uma vez e some ao fechar.
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPendingPhotoDraft((prev) =>
+                          prev ? { ...prev, mode: 'normal' } : null
+                        )
+                      }
+                      className={`p-3 rounded-2xl border text-left transition cursor-pointer ${
+                        pendingPhotoDraft.mode === 'normal'
+                          ? 'bg-gradient-to-br from-purple-600/35 to-indigo-700/35 border-purple-300 shadow-[0_0_20px_rgba(168,85,247,0.3)]'
+                          : 'bg-purple-950/50 border-purple-500/25 hover:border-purple-400/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <ImageIcon className="w-5 h-5 text-purple-300" />
+                        <span className="text-xs font-bold text-white">Visualização normal</span>
+                      </div>
+                      <p className="text-[11px] text-purple-200/80 leading-snug">
+                        Fica no chat (ainda sem download e sem print).
+                      </p>
+                    </button>
+                  </div>
+
+                  {pendingPhotoDraft.mode === 'normal' && (
+                    <input
+                      type="text"
+                      value={pendingPhotoDraft.caption}
+                      onChange={(e) =>
+                        setPendingPhotoDraft((prev) =>
+                          prev ? { ...prev, caption: e.target.value } : null
+                        )
+                      }
+                      placeholder="Legenda opcional..."
+                      className="w-full px-3.5 py-2.5 rounded-2xl bg-purple-950/80 border border-purple-500/30 text-xs text-white placeholder-purple-300/50 focus:outline-none focus:border-pink-400"
+                    />
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleConfirmSendPhoto}
+                    disabled={isSending}
+                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg hover:brightness-110 active:scale-[0.99] transition cursor-pointer"
+                  >
+                    {pendingPhotoDraft.mode === 'view-once' ? (
+                      <Eye className="w-4 h-4" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                    <span>
+                      {pendingPhotoDraft.mode === 'view-once'
+                        ? 'Enviar em Visualização Única'
+                        : 'Enviar em Visualização Normal'}
+                    </span>
+                  </button>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
         )}
-      </AnimatePresence>
+
+      {/* Protected View-Once Fullscreen Reader */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {activeViewOnceMsg && activeViewOnceMsg.mediaUrl && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onContextMenu={(e) => e.preventDefault()}
+                onClick={handleCloseViewOnce}
+                className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-2xl flex flex-col justify-between p-4 select-none"
+              >
+                <div
+                  className="flex items-center justify-between gap-2 z-10"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-pink-600/25 border border-pink-400/50 text-xs font-bold text-pink-200">
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>Visualização única · Sem print ou download</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCloseViewOnce}
+                    className="w-10 h-10 rounded-full bg-white/15 hover:bg-pink-600 text-white flex items-center justify-center cursor-pointer transition"
+                    aria-label="Fechar foto única"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div
+                  className="flex-1 flex flex-col items-center justify-center my-3 overflow-hidden"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ProtectedCanvasPhoto
+                    src={activeViewOnceMsg.mediaUrl}
+                    alt="Foto de visualização única"
+                    watermarkText={`${watermarkLabel} · 1x`}
+                    className="max-w-[92vw] max-h-[74vh] w-full h-full"
+                  />
+                  {activeViewOnceMsg.text && activeViewOnceMsg.text !== 'Fotografia' && (
+                    <p className="mt-3 text-sm text-white bg-black/60 px-4 py-2 rounded-2xl border border-white/15 max-w-md text-center">
+                      {activeViewOnceMsg.text}
+                    </p>
+                  )}
+                </div>
+
+                <div className="text-center pb-2">
+                  <button
+                    type="button"
+                    onClick={handleCloseViewOnce}
+                    className="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-semibold text-purple-100 cursor-pointer transition"
+                  >
+                    Fechar (esta foto desaparecerá ao sair)
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
+
+      {/* Normal Photo Protected Lightbox Modal */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {lightboxImage && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onContextMenu={(e) => e.preventDefault()}
+                onClick={() => setLightboxImage(null)}
+                className="fixed inset-0 z-[95] bg-black/92 backdrop-blur-md flex items-center justify-center p-4 select-none"
+              >
+                <button
+                  type="button"
+                  onClick={() => setLightboxImage(null)}
+                  className="absolute top-5 right-5 z-20 w-10 h-10 rounded-full bg-white/15 hover:bg-pink-600 text-white flex items-center justify-center cursor-pointer transition"
+                  aria-label="Fechar imagem"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="max-w-[92vw] max-h-[85vh] flex items-center justify-center"
+                >
+                  <ProtectedCanvasPhoto
+                    src={lightboxImage}
+                    alt="Foto protegida do chat"
+                    watermarkText={watermarkLabel}
+                    className="max-w-[92vw] max-h-[85vh]"
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
     </motion.div>
   );
 };

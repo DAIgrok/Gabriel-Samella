@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { MemoryPhoto } from '../types';
 import { SmartPhoto } from './SmartPhoto';
+import { ProtectedCanvasPhoto } from './ProtectedCanvasPhoto';
 import { useApp } from '../context/AppContext';
 import { soundEngine } from '../utils/audioSynth';
 
@@ -266,11 +267,11 @@ export const PhotoVisualizerModal: React.FC<PhotoVisualizerModalProps> = ({
               transition: 'transform 0.25s ease-out',
             }}
           >
-            <SmartPhoto
-              photo={photo}
+            <ProtectedCanvasPhoto
+              src={photo.url}
               alt="Foto do Casal"
-              className="w-auto h-auto max-w-full max-h-[68vh] sm:max-h-[75vh] object-contain rounded-2xl select-none pointer-events-auto"
-              hideDetails
+              watermarkText="Gabriel & Samella ♡"
+              className="max-w-[92vw] max-h-[68vh] sm:max-h-[75vh] rounded-2xl"
             />
           </motion.div>
         </main>
