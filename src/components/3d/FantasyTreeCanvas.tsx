@@ -173,7 +173,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.07;
-    controls.enablePan = false;
+    controls.enablePan = true;
     controls.minDistance = 4.0;
     controls.maxDistance = 10.5;
     controls.maxPolarAngle = Math.PI / 2 + 0.08;
@@ -323,7 +323,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
     const mainTreeGroup = new THREE.Group();
     treeGroup.add(mainTreeGroup);
     let loadedTreeModel: THREE.Group | null = null;
-    const TREE_MODEL_URL = 'https://res.cloudinary.com/r3vmqjwx/raw/upload/v1795514824/nosso-mundo/models/tree-love';
+    const TREE_MODEL_URL = '/glbbiel/stylized_tree_diorama%20(1).glb';
 
     const fruitRefs: { mesh: THREE.Object3D; baseY: number; phase: number; index: number }[] = [];
     const fairyLightRefs: { mesh: THREE.Mesh; phase: number }[] = [];
@@ -1047,7 +1047,14 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
     new GLTFLoader().load(
       TREE_MODEL_URL,
       (gltf) => {
+        // Normalize the supplied diorama so its base rests on this scene's ground.
         loadedTreeModel = gltf.scene;
+        const sourceBounds = new THREE.Box3().setFromObject(loadedTreeModel);
+        const sourceSize = sourceBounds.getSize(new THREE.Vector3());
+        const sourceCenter = sourceBounds.getCenter(new THREE.Vector3());
+        const fitScale = 4.4 / Math.max(sourceSize.y, 0.001);
+        loadedTreeModel.scale.setScalar(fitScale);
+        loadedTreeModel.position.set(-sourceCenter.x * fitScale, -sourceBounds.min.y * fitScale, -sourceCenter.z * fitScale);
         rebuildFnRef.current?.();
       },
       undefined,
