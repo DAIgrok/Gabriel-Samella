@@ -2033,7 +2033,7 @@ export const DreamHouseCanvas3D: React.FC<DreamHouseCanvas3DProps> = ({
       exteriorGroup.add(lamp);
     });
 
-    loadCachedGlbInstance('https://res.cloudinary.com/r3vmqjwx/raw/upload/v1795516155/nosso-mundo/models/nosso-mundo/models/cozy-home-exterior.glb', 4.0, true)
+    loadCachedGlbInstance('/glbbiel/forest-sided_a_peaceful_place_to_live_diorama.glb', 4.0, true)
       .then(({ group: houseModel }) => {
         const bounds = new THREE.Box3().setFromObject(houseModel);
         const center = bounds.getCenter(new THREE.Vector3());
