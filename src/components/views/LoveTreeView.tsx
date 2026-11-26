@@ -95,7 +95,7 @@ export const LoveTreeView: React.FC = () => {
   const [harvestedFruits, setHarvestedFruits] = useState<number[]>([]);
   const [isAddingRibbon, setIsAddingRibbon] = useState(false);
   const [newRibbonText, setNewRibbonText] = useState('');
-  const [treeViewMode, setTreeViewMode] = useState<'design' | '3d' | '2d'>('design');
+  const [treeViewMode, setTreeViewMode] = useState<'design' | '3d' | '2d'>('3d');
   const [, setTick] = useState(0);
 
   // Live 1s ticker for cooldown countdowns
