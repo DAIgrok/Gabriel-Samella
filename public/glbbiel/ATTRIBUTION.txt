@@ -1,0 +1,15 @@
+3D MODEL ATTRIBUTION
+
+House diorama
+Title: Forest-sided, a peaceful place to live: Diorama
+Author: Cleuza Costa
+Source: https://sketchfab.com/3d-models/forest-sided-a-peaceful-place-to-live-diorama-01bde51946244b9db917bf9370ef605b
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+
+Tree diorama
+Title: Stylized Tree Diorama
+Author: TheCrownLP99
+Source: https://sketchfab.com/3d-models/stylized-tree-diorama-bf809101703b402ca12e5c3591febeb4
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+
+Optimized derivatives are provided in /public/glbbiel. The tree derivative combines repeated geometry by material and resizes/compresses textures for mobile delivery. The house derivative resizes/compresses textures. Original source files are retained separately and were not overwritten.
