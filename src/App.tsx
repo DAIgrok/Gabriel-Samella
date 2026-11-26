@@ -78,7 +78,7 @@ const MainAppContent: React.FC = () => {
       {/* Main Content Area */}
       <div className="relative z-10 flex-1 min-w-0 min-h-screen px-3 sm:px-6 md:px-8 pt-3 md:pt-4 max-w-5xl mx-auto">
         {/* If inside a sub-module, render top back button bar */}
-        {extendedView !== 'inicio' && (
+        {extendedView !== 'inicio' && extendedView !== 'arvore' && (
           <div className="flex items-center justify-between py-2 mb-2">
             <button
               onClick={() => setExtendedView('inicio')}
@@ -126,10 +126,10 @@ const MainAppContent: React.FC = () => {
       </div>
 
       {/* Persistent Bottom Floating Navigation & Side Drawer */}
-      <Navigation />
+      {extendedView !== 'arvore' && <Navigation />}
 
       {/* Floating Couple Chat (hidden when already in full ChatView) */}
-      {extendedView !== 'conversas' && <FloatingCoupleChat />}
+      {extendedView !== 'conversas' && extendedView !== 'arvore' && <FloatingCoupleChat />}
 
       {/* Global Easter Egg Modal */}
       <EasterEggModal />
