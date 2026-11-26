@@ -323,7 +323,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
     const mainTreeGroup = new THREE.Group();
     treeGroup.add(mainTreeGroup);
     let loadedTreeModel: THREE.Group | null = null;
-    const TREE_MODEL_URL = '/glbbiel/stylized_tree_diorama%20(1).glb';
+    const TREE_MODEL_URL = 'new URL('../../../glbbiel/stylized_tree_diorama_mobile.glb', import.meta.url).href';
 
     const fruitRefs: { mesh: THREE.Object3D; baseY: number; phase: number; index: number }[] = [];
     const fairyLightRefs: { mesh: THREE.Mesh; phase: number }[] = [];
@@ -1004,8 +1004,13 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
         const matureTree = loadedTreeModel.clone(true);
         const stage = Math.max(2, Math.min(10, curLevel));
         const growthScale = 0.46 + ((stage - 2) / 8) * 0.34;
-        matureTree.scale.setScalar(growthScale);
-        matureTree.position.set(0, 0.02, 0);
+        const modelBounds = new THREE.Box3().setFromObject(matureTree);
+        const modelSize = modelBounds.getSize(new THREE.Vector3());
+        const modelCenter = modelBounds.getCenter(new THREE.Vector3());
+        const targetHeight = 3.7 + ((stage - 2) / 8) * 1.7;
+        const fitScale = targetHeight / Math.max(modelSize.y, 0.001);
+        matureTree.scale.setScalar(fitScale);
+        matureTree.position.set(-modelCenter.x * fitScale, -modelBounds.min.y * fitScale + 0.02, -modelCenter.z * fitScale);
         matureTree.traverse((object) => {
           if ((object as THREE.Mesh).isMesh) {
             const mesh = object as THREE.Mesh;
@@ -1047,14 +1052,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
     new GLTFLoader().load(
       TREE_MODEL_URL,
       (gltf) => {
-        // Normalize the supplied diorama so its base rests on this scene's ground.
         loadedTreeModel = gltf.scene;
-        const sourceBounds = new THREE.Box3().setFromObject(loadedTreeModel);
-        const sourceSize = sourceBounds.getSize(new THREE.Vector3());
-        const sourceCenter = sourceBounds.getCenter(new THREE.Vector3());
-        const fitScale = 4.4 / Math.max(sourceSize.y, 0.001);
-        loadedTreeModel.scale.setScalar(fitScale);
-        loadedTreeModel.position.set(-sourceCenter.x * fitScale, -sourceBounds.min.y * fitScale, -sourceCenter.z * fitScale);
         rebuildFnRef.current?.();
       },
       undefined,
