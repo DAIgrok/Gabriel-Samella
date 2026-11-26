@@ -995,7 +995,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
       }
       // Use the generated high-detail GLB as the mature tree while keeping the
       // original sprout for level 1 and all existing fruit/ribbon interactions.
-      if (loadedTreeModel && curLevel > 1) {
+      if (loadedTreeModel) {
         while (mainTreeGroup.children.length > 0) {
           const child = mainTreeGroup.children[0];
           mainTreeGroup.remove(child);
@@ -1379,7 +1379,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
   ]);
 
   return (
-    <div className="relative w-full h-80 sm:h-96 rounded-3xl overflow-hidden cursor-grab active:cursor-grabbing select-none touch-none">
+    <div className="relative w-full h-full min-h-[100dvh] overflow-hidden cursor-grab active:cursor-grabbing select-none touch-none">
       <div ref={containerRef} className="w-full h-full" />
     </div>
   );
