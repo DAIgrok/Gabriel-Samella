@@ -323,7 +323,7 @@ export const FantasyTreeCanvas: React.FC<FantasyTreeCanvasProps> = ({
     const mainTreeGroup = new THREE.Group();
     treeGroup.add(mainTreeGroup);
     let loadedTreeModel: THREE.Group | null = null;
-    const TREE_MODEL_URL = ''/glbbiel/stylized_tree_diorama_mobile.glb'';
+    const TREE_MODEL_URL = '/glbbiel/stylized_tree_diorama_mobile.glb';
 
     const fruitRefs: { mesh: THREE.Object3D; baseY: number; phase: number; index: number }[] = [];
     const fairyLightRefs: { mesh: THREE.Mesh; phase: number }[] = [];
