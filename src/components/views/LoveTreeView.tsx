@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Orbit,
   Camera,
+  Maximize2,
 } from 'lucide-react';
 import {
   useApp,
@@ -24,6 +25,10 @@ import { soundEngine } from '../../utils/audioSynth';
 import { LoveTree2D } from '../tree/LoveTree2D';
 import { LoveTreeDesign } from '../tree/LoveTreeDesign';
 import { FantasyTreeCanvas } from '../3d/FantasyTreeCanvas';
+import {
+  LimboDioramaCanvas,
+  LimboDioramaFullscreenModal,
+} from '../3d/LimboDioramaCanvas';
 
 interface PromiseRibbon {
   id: string;
@@ -96,6 +101,8 @@ export const LoveTreeView: React.FC = () => {
   const [isAddingRibbon, setIsAddingRibbon] = useState(false);
   const [newRibbonText, setNewRibbonText] = useState('');
   const [treeViewMode, setTreeViewMode] = useState<'design' | '3d' | '2d'>('design');
+  const [tree3dVariant, setTree3dVariant] = useState<'diorama' | 'interactive'>('diorama');
+  const [isDioramaFullscreen, setIsDioramaFullscreen] = useState(false);
   const [, setTick] = useState(0);
 
   // Live 1s ticker for cooldown countdowns
@@ -321,7 +328,16 @@ export const LoveTreeView: React.FC = () => {
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
         className="space-y-3 pb-32 sm:pb-24 max-w-xl mx-auto"
       >
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setIsDioramaFullscreen(true)}
+            className="min-h-[34px] px-3 rounded-full bg-[#120624]/90 border border-pink-400/40 text-pink-200 hover:text-white text-[11px] font-bold flex items-center gap-1.5 shadow cursor-pointer transition"
+          >
+            <Maximize2 className="w-3.5 h-3.5 text-pink-400" />
+            <span>Diorama 3D · Tela Cheia</span>
+          </button>
+
           <div className="flex items-center bg-black/50 border border-teal-400/30 rounded-full p-0.5 text-[10px] font-bold">
             <button
               type="button"
@@ -393,6 +409,12 @@ export const LoveTreeView: React.FC = () => {
         />
 
         {typeof document !== 'undefined' && createPortal(modalsPortal, document.body)}
+        <LimboDioramaFullscreenModal
+          isOpen={isDioramaFullscreen}
+          initialDioramaId="stylized_tree"
+          onClose={() => setIsDioramaFullscreen(false)}
+          onCapturePhoto={captureVirtualPhoto}
+        />
       </motion.div>
     );
   }
@@ -468,47 +490,82 @@ export const LoveTreeView: React.FC = () => {
         </div>
 
         {/* Clean Unobstructed Tree Stage */}
-        <div className="relative w-full my-1">
-          {treeViewMode === '3d' ? (
-            <div ref={stageRef} className="w-full relative">
-              <FantasyTreeCanvas
-                level={currentLevel}
-                isWatering={isWatering}
-                isSunbathing={isSunbathing}
-                isPruning={isPruning}
-                hasSakuraTheme={hasSakuraTheme}
-                hasGoldenApples={hasGoldenApples}
-                hasFairyLights={hasFairyLights}
-                hasSwing={hasSwing}
-                hasLanterns={hasLanterns}
-                hasCrystals={hasCrystals}
-                hasButterfly={hasButterfly}
-                hasSongbird={hasSongbird}
-                ribbons={allRibbons}
-                harvestedFruits={harvestedFruits}
-                onHarvestFruit={handleHarvestFruit}
-                onTreeInteract={() => {
-                  soundEngine.playSparkle();
-                  triggerHeartExplosion();
-                  showToast('A Árvore do Amor vibra com o carinho de vocês! ♡', 'sparkles');
-                }}
-              />
+        <div className="relative w-full my-1 space-y-2">
+          {treeViewMode === '3d' && (
+            <div className="flex items-center justify-center gap-1.5">
               <button
                 type="button"
-                onClick={() =>
-                  captureVirtualPhoto(
-                    stageRef.current,
-                    'Árvore do Amor 3D',
-                    `${getStageLabel(currentLevel)} · Nível ${currentLevel}`
-                  )
-                }
-                className="absolute bottom-3 right-3 z-20 min-h-[38px] px-3 rounded-full bg-black/70 border border-teal-400/40 text-teal-100 hover:text-white text-[11px] font-bold flex items-center gap-1.5 shadow-lg cursor-pointer"
-                title="Fotografar Árvore 3D para a Galeria"
+                onClick={() => setTree3dVariant('diorama')}
+                className={`px-3 py-1 rounded-full text-[11px] font-bold border cursor-pointer transition ${
+                  tree3dVariant === 'diorama'
+                    ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white border-pink-400/50 shadow'
+                    : 'bg-black/50 text-purple-200/80 border-purple-500/25 hover:text-white'
+                }`}
               >
-                <Camera className="w-3.5 h-3.5 text-teal-300" />
-                <span>Foto Virtual</span>
+                Diorama Real · Limbo 3D
+              </button>
+              <button
+                type="button"
+                onClick={() => setTree3dVariant('interactive')}
+                className={`px-3 py-1 rounded-full text-[11px] font-bold border cursor-pointer transition ${
+                  tree3dVariant === 'interactive'
+                    ? 'bg-gradient-to-r from-teal-500 to-pink-500 text-white border-teal-300/50 shadow'
+                    : 'bg-black/50 text-purple-200/80 border-purple-500/25 hover:text-white'
+                }`}
+              >
+                Árvore Interativa
               </button>
             </div>
+          )}
+
+          {treeViewMode === '3d' ? (
+            tree3dVariant === 'diorama' ? (
+              <LimboDioramaCanvas
+                initialDioramaId="stylized_tree"
+                heightClass="h-[360px] sm:h-[420px]"
+                onCapturePhoto={captureVirtualPhoto}
+              />
+            ) : (
+              <div ref={stageRef} className="w-full relative">
+                <FantasyTreeCanvas
+                  level={currentLevel}
+                  isWatering={isWatering}
+                  isSunbathing={isSunbathing}
+                  isPruning={isPruning}
+                  hasSakuraTheme={hasSakuraTheme}
+                  hasGoldenApples={hasGoldenApples}
+                  hasFairyLights={hasFairyLights}
+                  hasSwing={hasSwing}
+                  hasLanterns={hasLanterns}
+                  hasCrystals={hasCrystals}
+                  hasButterfly={hasButterfly}
+                  hasSongbird={hasSongbird}
+                  ribbons={allRibbons}
+                  harvestedFruits={harvestedFruits}
+                  onHarvestFruit={handleHarvestFruit}
+                  onTreeInteract={() => {
+                    soundEngine.playSparkle();
+                    triggerHeartExplosion();
+                    showToast('A Árvore do Amor vibra com o carinho de vocês! ♡', 'sparkles');
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    captureVirtualPhoto(
+                      stageRef.current,
+                      'Árvore do Amor 3D',
+                      `${getStageLabel(currentLevel)} · Nível ${currentLevel}`
+                    )
+                  }
+                  className="absolute bottom-3 right-3 z-20 min-h-[38px] px-3 rounded-full bg-black/70 border border-teal-400/40 text-teal-100 hover:text-white text-[11px] font-bold flex items-center gap-1.5 shadow-lg cursor-pointer"
+                  title="Fotografar Árvore 3D para a Galeria"
+                >
+                  <Camera className="w-3.5 h-3.5 text-teal-300" />
+                  <span>Foto Virtual</span>
+                </button>
+              </div>
+            )
           ) : (
             <LoveTree2D
               level={currentLevel}
@@ -534,17 +591,18 @@ export const LoveTreeView: React.FC = () => {
           )}
 
           {/* Fruit Harvest Floating Trigger */}
-          {(currentLevel >= 3 || hasGoldenApples) && (
-            <button
-              type="button"
-              onClick={() => handleHarvestFruit(harvestedFruits.length % 5)}
-              disabled={isSpectator || cdFruit > 0}
-              className="absolute top-3 right-3 z-20 px-3 min-h-[36px] rounded-full bg-gradient-to-r from-amber-500 to-rose-500 text-white text-[11px] font-bold shadow-lg flex items-center gap-1.5 cursor-pointer border border-amber-300/40 disabled:opacity-65"
-            >
-              <Apple className="w-3.5 h-3.5 fill-amber-200" />
-              <span>{cdFruit > 0 ? formatCooldownMs(cdFruit) : 'Colher Fruto'}</span>
-            </button>
-          )}
+          {(currentLevel >= 3 || hasGoldenApples) &&
+            (treeViewMode !== '3d' || tree3dVariant === 'interactive') && (
+              <button
+                type="button"
+                onClick={() => handleHarvestFruit(harvestedFruits.length % 5)}
+                disabled={isSpectator || cdFruit > 0}
+                className="absolute top-3 right-3 z-20 px-3 min-h-[36px] rounded-full bg-gradient-to-r from-amber-500 to-rose-500 text-white text-[11px] font-bold shadow-lg flex items-center gap-1.5 cursor-pointer border border-amber-300/40 disabled:opacity-65"
+              >
+                <Apple className="w-3.5 h-3.5 fill-amber-200" />
+                <span>{cdFruit > 0 ? formatCooldownMs(cdFruit) : 'Colher Fruto'}</span>
+              </button>
+            )}
         </div>
 
         {/* Clean XP Bar */}

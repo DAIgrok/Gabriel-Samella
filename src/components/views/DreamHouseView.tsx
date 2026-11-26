@@ -11,6 +11,7 @@ import {
   Flame,
   Lightbulb,
   Lock,
+  Maximize2,
   Move,
   Palette,
   PawPrint,
@@ -27,6 +28,7 @@ import {
   DreamHouseCanvas3D,
   DreamHouseSkyMode,
 } from '../3d/DreamHouseCanvas3D';
+import { LimboDioramaFullscreenModal } from '../3d/LimboDioramaCanvas';
 import {
   HOUSE_FLOOR_THEMES,
   HOUSE_FURNITURE_CATALOG,
@@ -97,6 +99,7 @@ export const DreamHouseView: React.FC = () => {
   const [hudExpanded, setHudExpanded] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedFurnitureId, setSelectedFurnitureId] = useState<string | null>(null);
+  const [isForestDioramaOpen, setIsForestDioramaOpen] = useState(false);
 
   useEffect(() => {
     recordHouseVisit();
@@ -185,14 +188,26 @@ export const DreamHouseView: React.FC = () => {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setExtendedView('loja')}
-          className="min-h-[42px] px-3.5 rounded-2xl bg-pink-500/20 hover:bg-pink-500/30 border border-pink-400/35 text-pink-200 text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer"
-        >
-          <ShoppingBag className="w-4 h-4" />
-          <span className="hidden sm:inline">Móveis na Loja</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsForestDioramaOpen(true)}
+            className="min-h-[42px] px-3.5 rounded-2xl bg-gradient-to-r from-pink-600/85 to-purple-600/85 hover:brightness-110 border border-pink-400/40 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md"
+            title="Explorar diorama da Floresta e Árvore 3D em Tela Cheia com Climas Reais"
+          >
+            <Maximize2 className="w-4 h-4" />
+            <span className="hidden sm:inline">Diorama 3D</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setExtendedView('loja')}
+            className="min-h-[42px] px-3.5 rounded-2xl bg-pink-500/20 hover:bg-pink-500/30 border border-pink-400/35 text-pink-200 text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer"
+          >
+            <ShoppingBag className="w-4 h-4" />
+            <span className="hidden sm:inline">Móveis na Loja</span>
+          </button>
+        </div>
       </div>
 
       {isSpectator && (
@@ -276,6 +291,16 @@ export const DreamHouseView: React.FC = () => {
               <span>Aquário</span>
             </button>
           )}
+
+          <button
+            type="button"
+            onClick={() => setIsForestDioramaOpen(true)}
+            className="px-2.5 py-1.5 rounded-full bg-pink-600/80 hover:bg-pink-500 border border-pink-300/45 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer transition shadow"
+            title="Abrir Diorama da Floresta em Tela Cheia com Limbo e Climas Reais"
+          >
+            <Maximize2 className="w-3 h-3" />
+            <span>Tela Cheia 3D</span>
+          </button>
         </div>
 
         {/* Snapshot Trigger Top-Right */}
@@ -808,6 +833,13 @@ export const DreamHouseView: React.FC = () => {
           </div>
         )}
       </div>
+
+      <LimboDioramaFullscreenModal
+        isOpen={isForestDioramaOpen}
+        initialDioramaId="forest_house"
+        onClose={() => setIsForestDioramaOpen(false)}
+        onCapturePhoto={captureVirtualPhoto}
+      />
     </motion.div>
   );
 };

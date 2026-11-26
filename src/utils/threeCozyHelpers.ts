@@ -151,6 +151,8 @@ export function addCozyThreePointLights(
 
 // --- GLTF / .GLB Cached Loader ---
 const gltfCache = new Map<string, Promise<GLTF>>();
+const gltfProgressListeners = new Map<string, Set<(percent: number) => void>>();
+const gltfLoadedUrls = new Set<string>();
 let sharedLoader: GLTFLoader | null = null;
 
 function getSharedGltfLoader(): GLTFLoader {
@@ -172,15 +174,51 @@ export interface LoadedGlbInstance {
   animations: THREE.AnimationClip[];
 }
 
+export interface LoadGlbOptions {
+  targetHeight?: number;
+  centerAtZeroXZ?: boolean;
+  preserveMaterials?: boolean;
+  onProgress?: (percent: number) => void;
+}
+
 export async function loadCachedGlbInstance(
   url: string,
-  targetHeight = 1.45,
-  centerAtZeroXZ = true
+  targetHeightOrOptions: number | LoadGlbOptions = 1.45,
+  centerAtZeroXZArg = true
 ): Promise<LoadedGlbInstance> {
+  const opts: LoadGlbOptions =
+    typeof targetHeightOrOptions === 'number'
+      ? { targetHeight: targetHeightOrOptions, centerAtZeroXZ: centerAtZeroXZArg }
+      : targetHeightOrOptions;
+
+  const targetHeight = opts.targetHeight ?? 1.45;
+  const centerAtZeroXZ = opts.centerAtZeroXZ ?? true;
+  const preserveMaterials = opts.preserveMaterials ?? false;
+  const onProgress = opts.onProgress;
+
   const cleanUrl = url.trim();
   if (!cleanUrl) {
     throw new Error('Empty GLB URL');
   }
+
+  if (onProgress) {
+    if (gltfLoadedUrls.has(cleanUrl)) {
+      onProgress(100);
+    } else {
+      let set = gltfProgressListeners.get(cleanUrl);
+      if (!set) {
+        set = new Set();
+        gltfProgressListeners.set(cleanUrl, set);
+      }
+      set.add(onProgress);
+    }
+  }
+
+  const notifyProgress = (pct: number) => {
+    const listeners = gltfProgressListeners.get(cleanUrl);
+    if (!listeners) return;
+    listeners.forEach((cb) => cb(pct));
+  };
 
   let promise = gltfCache.get(cleanUrl);
   if (!promise) {
@@ -188,66 +226,101 @@ export async function loadCachedGlbInstance(
     promise = resolveMediaUrl(cleanUrl).then(
       (resolvedUrl) =>
         new Promise<GLTF>((resolve, reject) => {
-          loader.load(resolvedUrl, resolve, undefined, (err) => {
-            gltfCache.delete(cleanUrl);
-            reject(err);
-          });
+          loader.load(
+            resolvedUrl,
+            (gltf) => {
+              gltfLoadedUrls.add(cleanUrl);
+              notifyProgress(100);
+              gltfProgressListeners.delete(cleanUrl);
+              resolve(gltf);
+            },
+            (xhr) => {
+              if (xhr.lengthComputable && xhr.total > 0) {
+                const pct = Math.min(99, Math.round((xhr.loaded / xhr.total) * 100));
+                notifyProgress(pct);
+              } else if (xhr.loaded > 0) {
+                const approxMb = xhr.loaded / (1024 * 1024);
+                const pct = Math.min(95, Math.round((approxMb / (approxMb + 18)) * 95));
+                notifyProgress(pct);
+              }
+            },
+            (err) => {
+              gltfCache.delete(cleanUrl);
+              gltfLoadedUrls.delete(cleanUrl);
+              gltfProgressListeners.delete(cleanUrl);
+              reject(err);
+            }
+          );
         })
     );
     gltfCache.set(cleanUrl, promise);
   }
 
-  const gltf = await promise;
-  const clone = SkeletonUtils.clone(gltf.scene) as THREE.Group;
-  clone.updateMatrixWorld(true);
-
-  const box = new THREE.Box3().setFromObject(clone);
-  const size = new THREE.Vector3();
-  const center = new THREE.Vector3();
-  box.getSize(size);
-  box.getCenter(center);
-
-  const maxDim = Math.max(size.y, size.x, size.z, 0.001);
-  const scaleFactor = targetHeight / maxDim;
-
-  const wrapper = new THREE.Group();
-  clone.scale.multiplyScalar(scaleFactor);
-
-  clone.traverse((child) => {
-    if ((child as THREE.Mesh).isMesh) {
-      const mesh = child as THREE.Mesh;
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      if (mesh.material) {
-        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-        mats.forEach((m) => {
-          if (m instanceof THREE.MeshStandardMaterial) {
-            m.flatShading = false;
-            m.envMapIntensity = Math.max(m.envMapIntensity || 0.75, 0.75);
-            m.needsUpdate = true;
-          }
-        });
-      }
+  try {
+    const gltf = await promise;
+    if (onProgress) {
+      onProgress(100);
+      gltfProgressListeners.get(cleanUrl)?.delete(onProgress);
     }
-  });
 
-  wrapper.add(clone);
-  wrapper.updateMatrixWorld(true);
+    const clone = SkeletonUtils.clone(gltf.scene) as THREE.Group;
+    clone.updateMatrixWorld(true);
 
-  const scaledBox = new THREE.Box3().setFromObject(clone);
-  const scaledCenter = new THREE.Vector3();
-  scaledBox.getCenter(scaledCenter);
+    const box = new THREE.Box3().setFromObject(clone);
+    const size = new THREE.Vector3();
+    const center = new THREE.Vector3();
+    box.getSize(size);
+    box.getCenter(center);
 
-  if (centerAtZeroXZ) {
-    clone.position.x -= scaledCenter.x;
-    clone.position.z -= scaledCenter.z;
+    const maxDim = Math.max(size.y, size.x, size.z, 0.001);
+    const scaleFactor = targetHeight / maxDim;
+
+    const wrapper = new THREE.Group();
+    clone.scale.multiplyScalar(scaleFactor);
+
+    clone.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        if (mesh.material) {
+          const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+          mats.forEach((m) => {
+            if (m instanceof THREE.MeshStandardMaterial) {
+              if (!preserveMaterials) {
+                m.flatShading = false;
+              }
+              m.envMapIntensity = Math.max(m.envMapIntensity ?? 0.65, 0.65);
+              m.needsUpdate = true;
+            }
+          });
+        }
+      }
+    });
+
+    wrapper.add(clone);
+    wrapper.updateMatrixWorld(true);
+
+    const scaledBox = new THREE.Box3().setFromObject(clone);
+    const scaledCenter = new THREE.Vector3();
+    scaledBox.getCenter(scaledCenter);
+
+    if (centerAtZeroXZ) {
+      clone.position.x -= scaledCenter.x;
+      clone.position.z -= scaledCenter.z;
+    }
+    clone.position.y -= scaledBox.min.y;
+
+    return {
+      group: wrapper,
+      animations: gltf.animations || [],
+    };
+  } catch (err) {
+    if (onProgress) {
+      gltfProgressListeners.get(cleanUrl)?.delete(onProgress);
+    }
+    throw err;
   }
-  clone.position.y -= scaledBox.min.y;
-
-  return {
-    group: wrapper,
-    animations: gltf.animations || [],
-  };
 }
 
 export function disposeObject3D(root: THREE.Object3D): void {
