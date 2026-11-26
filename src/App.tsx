@@ -58,6 +58,11 @@ const MainAppContent: React.FC = () => {
     return <LoginScreen />;
   }
 
+  // The 3D tree is an immersive full-screen destination, outside the app shell.
+  if (extendedView === 'arvore') {
+    return <LoveTreeView />;
+  }
+
   return (
     <div className="relative min-h-screen text-slate-100 font-sans selection:bg-pink-500/30 selection:text-pink-200 bg-[#070210] flex overflow-x-hidden">
       {/* Heart Rain Overlay */}
